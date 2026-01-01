@@ -1,9 +1,10 @@
 ﻿using ClosedXML.Excel;
-using System.Globalization;
-using System.Text.Json;
+using Mep1.Erp.Application;
 using Mep1.Erp.Core;
 using Mep1.Erp.Infrastructure;
-using Mep1.Erp.Application;
+using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Text.Json;
 
 namespace Mep1.Erp.Importer
 {
@@ -12,6 +13,43 @@ namespace Mep1.Erp.Importer
         static string GetConfigPath()
         {
             return AppSettingsHelper.GetConfigPath();
+        }
+
+        static string GetErpDbConnectionStringFromConfig()
+        {
+            var configPath = GetConfigPath();
+            AppSettings settings;
+
+            if (File.Exists(configPath))
+            {
+                var json = File.ReadAllText(configPath);
+                settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            }
+            else
+            {
+                settings = new AppSettings();
+            }
+
+            if (!string.IsNullOrWhiteSpace(settings.ErpDbConnectionString))
+                return settings.ErpDbConnectionString;
+
+            Console.WriteLine("ERP DB connection string is not configured.");
+            Console.WriteLine("Paste the SQLite connection string (example: Data Source=../data/mep1_erp_dev.db):");
+            var input = Console.ReadLine()!.Trim('"', ' ');
+
+            while (string.IsNullOrWhiteSpace(input))
+            {
+                Console.WriteLine("That value was empty. Please try again:");
+                input = Console.ReadLine()!.Trim('"', ' ');
+            }
+
+            settings.ErpDbConnectionString = input;
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            File.WriteAllText(configPath, JsonSerializer.Serialize(settings, options));
+
+            Console.WriteLine($"Saved settings to {configPath}");
+            return input;
         }
 
         static string GetTimesheetFolderFromConfig()
@@ -251,9 +289,17 @@ namespace Mep1.Erp.Importer
 
             Console.WriteLine($"Found {files.Length} timesheet files.");
 
-            using var db = new AppDbContext();
-            // This will create the SQLite DB and tables if they don't exist yet
-            db.Database.EnsureCreated();
+            var erpDbCs = GetErpDbConnectionStringFromConfig();
+
+            // Build DbContextOptions manually (so we can control the DB file)
+            var dbOptions = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite(erpDbCs)
+                .Options;
+
+            using var db = new AppDbContext(dbOptions);
+
+            // Use migrations now (not EnsureCreated)
+            db.Database.Migrate();
 
             // Import worker rate history from Finance Sheet
             var financeSheetPath = GetFinanceSheetPathFromConfig();

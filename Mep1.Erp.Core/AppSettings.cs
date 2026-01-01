@@ -9,6 +9,7 @@ namespace Mep1.Erp.Core
     {
         public string? ApiKey { get; set; }
         public string? ApiBaseUrl { get; set; }
+        public string? ErpDbConnectionString { get; set; }
 
         private string _timesheetFolder = "";
         public string TimesheetFolder

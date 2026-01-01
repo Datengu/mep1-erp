@@ -1,4 +1,5 @@
 using Mep1.Erp.Infrastructure;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
@@ -14,7 +15,19 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     var cs = builder.Configuration.GetConnectionString("ErpDb");
-    options.UseSqlite(cs);
+    if (string.IsNullOrWhiteSpace(cs))
+        throw new InvalidOperationException("ConnectionStrings:ErpDb is missing.");
+
+    var b = new SqliteConnectionStringBuilder(cs);
+
+    // If it's a relative path, resolve it relative to the API ContentRoot (project folder)
+    if (!string.IsNullOrWhiteSpace(b.DataSource) && !Path.IsPathRooted(b.DataSource))
+    {
+        b.DataSource = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, b.DataSource));
+    }
+
+    Console.WriteLine($"[DB] Using SQLite file: {b.DataSource}");
+    options.UseSqlite(b.ToString());
 });
 
 var app = builder.Build();

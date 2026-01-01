@@ -30,15 +30,18 @@ namespace Mep1.Erp.Infrastructure
         {
             if (!optionsBuilder.IsConfigured)
             {
-                // BaseDirectory = ...\Mep1.Erp.Importer\bin\Debug\netX.X\
-                // or            = ...\Mep1.Erp.Desktop\bin\Debug\netX.X\
-                // Go up 4 levels to get to ...\repos\Mep1.Erp\
+                // 1) Prefer explicit env var to avoid accidental wrong DB.
+                var cs = Environment.GetEnvironmentVariable("MEP1_ERP_DB");
+                if (!string.IsNullOrWhiteSpace(cs))
+                {
+                    optionsBuilder.UseSqlite(cs);
+                    return;
+                }
+
+                // 2) Default fallback (dev DB in /data)
                 var baseDir = AppContext.BaseDirectory;
-                var rootDir = Path.GetFullPath(
-                    Path.Combine(baseDir, "..", "..", "..", ".."));
-
-                var dbPath = Path.Combine(rootDir, "mep1_timesheets.db");
-
+                var rootDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", ".."));
+                var dbPath = Path.Combine(rootDir, "data", "mep1_erp_dev.db");
                 optionsBuilder.UseSqlite($"Data Source={dbPath}");
             }
         }
