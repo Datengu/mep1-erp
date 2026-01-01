@@ -1,0 +1,12 @@
+{
+  "ApiBaseUrl": "https://localhost:7254",
+  "ApiKey": "",
+
+  "TimesheetFolder": "",
+  "FinanceSheetPath": "",
+  "JobSourcePath": "",
+  "InvoiceRegisterPath": "",
+  "ApplicationSchedulePath": "",
+
+  "UpcomingApplicationsDaysAhead": 30
+}
