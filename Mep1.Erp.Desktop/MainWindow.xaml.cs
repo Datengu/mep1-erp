@@ -312,7 +312,6 @@ namespace Mep1.Erp.Desktop
 
         private async void LoadData()
         {
-
             // Dashboard comes from API now
             Dashboard = await _api.GetDashboardSummaryAsync(Settings.UpcomingApplicationsDaysAhead);
 
