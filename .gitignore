@@ -1,0 +1,18 @@
+# Local secrets & machine-specific config
+settings.json
+
+# API environment configs
+appsettings.Development.json
+appsettings.Production.json
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Visual Studio / build output
+bin/
+obj/
+.vs/
+*.user
+*.suo

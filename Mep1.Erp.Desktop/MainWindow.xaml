@@ -1,0 +1,1014 @@
+﻿<Window x:Class="Mep1.Erp.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MEP1BIM ERP Dashboard"
+        Height="1080" Width="1920"
+        Background="#FF1E1E1E"
+        Foreground="#FFE0E0E0">
+
+    <Window.Resources>
+
+        <!-- Dark DataGrid style for Applications tab -->
+        <Style x:Key="DarkDataGridStyle" TargetType="DataGrid">
+            <Setter Property="Background" Value="#FF262626"/>
+            <Setter Property="Foreground" Value="#FFE0E0E0"/>
+            <Setter Property="RowBackground" Value="#FF262626"/>
+            <Setter Property="AlternatingRowBackground" Value="#FF303030"/>
+            <Setter Property="GridLinesVisibility" Value="None"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="ColumnHeaderHeight" Value="28"/>
+            <Setter Property="RowHeight" Value="26"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="Margin" Value="0"/>
+
+            <!-- Selection colors (avoid default bright blue) -->
+            <Setter Property="SelectionUnit" Value="FullRow"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+
+            <Setter Property="CellStyle">
+                <Setter.Value>
+                    <Style TargetType="DataGridCell">
+                        <Setter Property="Background" Value="{Binding RelativeSource={RelativeSource AncestorType=DataGrid}, Path=Background}"/>
+                        <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                        <Setter Property="BorderBrush" Value="#FF444444"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#FF3A3A3A"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+
+            <Setter Property="ColumnHeaderStyle">
+                <Setter.Value>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="#FF333333"/>
+                        <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                        <Setter Property="BorderBrush" Value="#FF444444"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Wrapped text style for Notes column -->
+        <Style x:Key="WrappedCellTextBlock" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="Margin" Value="0,2,0,2"/>
+        </Style>
+
+        <!-- Bolder date style -->
+        <Style x:Key="BoldDateTextBlock" TargetType="TextBlock" BasedOn="{StaticResource WrappedCellTextBlock}">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid Background="#FF1E1E1E">
+        <Grid.RowDefinitions>
+            <!-- Top bar -->
+            <RowDefinition Height="40"/>
+            <!-- Main content -->
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top bar -->
+        <Grid Grid.Row="0" Background="#FF262626">
+            <TextBlock Text="MEP1BIM ERP"
+                FontSize="16"
+                FontWeight="Bold"
+                Margin="10,0"
+                VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- Tabs -->
+        <TabControl x:Name="MainTabControl"
+            Grid.Row="1"
+            Background="#FF1E1E1E"
+            BorderThickness="0"
+            Padding="0"
+            Margin="0">
+
+            <!-- DARK TAB HEADER STYLE -->
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                    <Setter Property="Background" Value="#FF333333"/>
+                    <Setter Property="Padding" Value="10,4"/>
+                    <Setter Property="Margin" Value="2,0"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Grid>
+                                    <Border x:Name="Bd"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="#FF444444"
+                                        BorderThickness="0"
+                                        CornerRadius="4,4,0,0"/>
+                                    <ContentPresenter x:Name="Content"
+                                        ContentSource="Header"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Margin="10,4"/>
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <!-- SELECTED TAB -->
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#FF444444"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                    </Trigger>
+                                    <!-- MOUSE OVER -->
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#FF3A3A3A"/>
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TabControl.Resources>
+
+            <!-- 🔹 DASHBOARD TAB (HOME) -->
+            <TabItem Header="Dashboard">
+                <Grid Background="#FF1E1E1E">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Title / description -->
+                    <StackPanel Grid.Row="0" Margin="12,8,12,4">
+                        <TextBlock Text="Cashflow overview"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Margin="0,0,0,4"/>
+                        <TextBlock Text="Shows how much money is still owed, what is overdue, and what is due in the next 30 days."
+                       FontSize="12"
+                       Opacity="0.7"/>
+                    </StackPanel>
+
+                    <!-- Metrics cards -->
+                    <UniformGrid Grid.Row="1"
+                        Rows="2"
+                        Columns="3"
+                        Margin="8,4,8,8">
+
+                        <!-- Total outstanding (Net) -->
+                        <Border Background="#FF262626"
+                            CornerRadius="6"
+                            Padding="10"
+                            Margin="4"
+                            MouseLeftButtonUp="DashboardOutstandingCard_MouseLeftButtonUp"
+                            Cursor="Hand">
+                            <StackPanel>
+                                <TextBlock Text="Outstanding (Net)"
+                                           FontSize="12"
+                                           Opacity="0.8"/>
+                                <TextBlock Text="{Binding Dashboard.OutstandingNet, StringFormat='£{0:N2}'}"
+                                           FontSize="22"
+                                           FontWeight="Bold"
+                                           Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding Dashboard.UnpaidInvoiceCount, StringFormat='{}{0} open invoices'}"
+                                           FontSize="11"
+                                           Opacity="0.7"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Overdue invoices -->
+                        <Border Background="#FF2D1F1F"
+                            CornerRadius="6"
+                            Padding="10"
+                            Margin="4"
+                            MouseLeftButtonUp="DashboardOverdueCard_MouseLeftButtonUp"
+                            Cursor="Hand">
+                            <StackPanel>
+                                <TextBlock Text="Overdue (Net)"
+                                           FontSize="12"
+                                           Opacity="0.8"/>
+                                <TextBlock Text="{Binding Dashboard.OverdueOutstandingNet, StringFormat='£{0:N2}'}"
+                                           FontSize="22"
+                                           FontWeight="Bold"
+                                           Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding Dashboard.OverdueInvoiceCount, StringFormat='{}{0} overdue invoices'}"
+                                           FontSize="11"
+                                           Opacity="0.85"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Due in next 30 days -->
+                        <Border Background="#FF263126"
+                            CornerRadius="6"
+                            Padding="10"
+                            Margin="4"
+                            MouseLeftButtonUp="DashboardDueNext30Card_MouseLeftButtonUp"
+                            Cursor="Hand">
+                            <StackPanel>
+                                <TextBlock Text="Due in next 30 days (Net)"
+                                           FontSize="12"
+                                           Opacity="0.8"/>
+                                <TextBlock Text="{Binding Dashboard.DueNext30DaysOutstandingNet, StringFormat='£{0:N2}'}"
+                                           FontSize="22"
+                                           FontWeight="Bold"
+                                           Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding Dashboard.DueNext30DaysCount, StringFormat='{}{0} invoices due'}"
+                                           FontSize="11"
+                                           Opacity="0.7"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Next due date -->
+                        <Border Background="#FF262626"
+                            CornerRadius="6"
+                            Padding="10"
+                            Margin="4">
+                            <StackPanel>
+                                <TextBlock Text="Next due date"
+                               FontSize="12"
+                               Opacity="0.8"/>
+                                <TextBlock Text="{Binding Dashboard.NextDueDate, StringFormat='{}{0:yyyy-MM-dd}'}"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Margin="0,2,0,0"/>
+                                <TextBlock Text="Next invoice expected"
+                               FontSize="11"
+                               Opacity="0.7"
+                               Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Active projects -->
+                        <Border Background="#FF262626"
+                            CornerRadius="6"
+                            Padding="10"
+                            Margin="4">
+                            <StackPanel>
+                                <TextBlock Text="Active projects"
+                               FontSize="12"
+                               Opacity="0.8"/>
+                                <TextBlock Text="{Binding Dashboard.ActiveProjects}"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               Margin="0,2,0,0"/>
+                                <TextBlock Text="With timesheet activity"
+                               FontSize="11"
+                               Opacity="0.7"
+                               Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Data freshness -->
+                        <Border Background="#FF262626"
+                            CornerRadius="6"
+                            Padding="10"
+                            Margin="4">
+                            <StackPanel>
+                                <TextBlock Text="Data freshness"
+                               FontSize="12"
+                               Opacity="0.8"/>
+                                <TextBlock Text="{Binding Dashboard.LatestInvoiceDate, StringFormat='Last invoice: {0:yyyy-MM-dd}'}"
+                               FontSize="11"
+                               Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding Dashboard.LatestTimesheetDate, StringFormat='Last timesheet: {0:yyyy-MM-dd}'}"
+                               FontSize="11"
+                               Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <!-- Due schedule by week -->
+                    <StackPanel Grid.Row="2"
+                                Margin="12,0,12,8">
+                        <TextBlock Text="Upcoming cashflow by week"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,4"/>
+
+                        <ItemsControl ItemsSource="{Binding DueSchedule}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#FF262626"
+                                            CornerRadius="4"
+                                            Padding="6"
+                                            Margin="0,2,0,2">
+                                        <StackPanel Orientation="Horizontal"
+                                                    HorizontalAlignment="Stretch">
+                                            <TextBlock VerticalAlignment="Center">
+                                                <Run Text="Week "/>
+                                                <Run Text="{Binding WeekStart, StringFormat='{}{0:dd MMM}'}"/>
+                                                <Run Text=" - "/>
+                                                <Run Text="{Binding WeekEnd, StringFormat='{}{0:dd MMM yyyy}'}"/>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding InvoiceCount, StringFormat='{}{0} invoices'}"
+                                                Width="120"
+                                                Margin="12,0,0,0"
+                                                VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding OutstandingNet, StringFormat='£{0:N2}'}"
+                                                HorizontalAlignment="Right"
+                                                Margin="12,0,0,0"
+                                                VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- Bottom area: Run Import button -->
+                    <Grid Grid.Row="3" Margin="8">
+                        <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top">
+                            <Button x:Name="RunImportButton"
+                                Content="Run Import (Refresh Data)"
+                                Padding="12,6"
+                                Background="#FF444444"
+                                Foreground="#FFE0E0E0"
+                                BorderBrush="#FF666666"
+                                BorderThickness="1"
+                        Click="RunImportButton_Click"
+                        />
+                            <TextBlock Text="  Updates all figures after pulling the latest data from Excel."
+                               VerticalAlignment="Center"
+                               FontSize="11"
+                               Opacity="0.6"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- 🔹 PROJECTS TAB -->
+            <TabItem Header="Projects">
+                <Grid Background="#FF1E1E1E" Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="3*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- LEFT: Project list -->
+                    <DataGrid x:Name="ProjectsGrid"
+                              Grid.Column="0"
+                              ItemsSource="{Binding ProjectSummaries}"
+                              Style="{StaticResource DarkDataGridStyle}"
+                              AutoGenerateColumns="False"
+                              SelectionMode="Single"
+                              SelectionChanged="ProjectsGrid_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Job" Binding="{Binding JobNameOrNumber}" Width="*"/>
+                            <DataGridTextColumn Header="Code" Binding="{Binding BaseCode}" Width="90"/>
+                            <DataGridTextColumn Header="Labour" Binding="{Binding LabourCost, StringFormat=£{0:N2}}" Width="100"/>
+                            <DataGridTextColumn Header="Sub-Contractor" Binding="{Binding SupplierCost, StringFormat=£{0:N2}}" Width="100" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Total Cost" Binding="{Binding TotalCost, StringFormat=£{0:N2}}" Width="100" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Invoiced Net" Binding="{Binding InvoicedNet, StringFormat=£{0:N2}}" Width="100"/>
+                            <DataGridTextColumn Header="Profit Net" Binding="{Binding ProfitNet, StringFormat=£{0:N2}}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- RIGHT: Selected project details -->
+                    <Grid Grid.Column="1" Margin="12,0,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                            <TextBlock FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       Text="{Binding SelectedProject.JobNameOrNumber}"/>
+                            <TextBlock Foreground="#FFBFBFBF"
+                                       Text="{Binding SelectedProject.BaseCode, StringFormat=Code: {0}}"/>
+                            <TextBlock Foreground="#FFBFBFBF"
+                                       Text="{Binding SelectedProject.ProfitNet, StringFormat=Profit (Net): £{0:N2}}"/>
+                        </StackPanel>
+
+                        <GroupBox Grid.Row="1" Header="Labour (this month)" Foreground="White">
+                            <DataGrid ItemsSource="{Binding SelectedProjectLabourThisMonth}"
+                                      Style="{StaticResource DarkDataGridStyle}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
+                                    <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
+                                    <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <GroupBox Grid.Row="2" Header="Labour (all time)" Foreground="White" Margin="0,8,0,0">
+                            <DataGrid ItemsSource="{Binding SelectedProjectLabourAllTime}"
+                                      Style="{StaticResource DarkDataGridStyle}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
+                                    <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
+                                    <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <GroupBox Grid.Row="3" Header="Invoices (this project)" Foreground="White" Margin="0,8,0,0">
+                            <DataGrid ItemsSource="{Binding SelectedProjectInvoices}"
+                                      Style="{StaticResource DarkDataGridStyle}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="110"/>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                    <DataGridTextColumn Header="Due" Binding="{Binding DueDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                    <DataGridTextColumn Header="Net" Binding="{Binding NetAmount, StringFormat=£{0:N2}}" Width="110"/>
+                                    <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingNet, StringFormat=£{0:N2}}" Width="120"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <GroupBox Grid.Row="4" Header="Sub-Contractor costs (this project)" Foreground="White" Margin="0,8,0,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Input row -->
+                                <WrapPanel Grid.Row="0" Margin="8" VerticalAlignment="Top">
+                                    <ComboBox Width="220"
+                                              Margin="0,0,8,8"
+                                              ItemsSource="{Binding Suppliers}"
+                                              SelectedItem="{Binding NewSupplierCostSupplier}"
+                                              DisplayMemberPath="Name"/>
+
+                                    <DatePicker Width="140"
+                                                Margin="0,0,8,8"
+                                                SelectedDate="{Binding NewSupplierCostDate}"
+                                                IsEnabled="{Binding IsSupplierCostDateEnabled}"/>
+
+                                    <CheckBox Content="Unknown date"
+                                              Margin="0,0,8,8"
+                                              VerticalAlignment="Center"
+                                              IsChecked="{Binding NewSupplierCostDateUnknown}"/>
+
+                                    <TextBox Width="120"
+                                             Margin="0,0,8,8"
+                                             Text="{Binding NewSupplierCostAmountText, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Amount (net)"/>
+
+                                    <TextBox Width="260"
+                                             Margin="0,0,8,8"
+                                             Text="{Binding NewSupplierCostNote, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Note (optional)"/>
+
+                                    <!--<Button Content="Add"
+                                            Padding="14,6"
+                                            Margin="0,0,8,8"
+                                            Click="AddSupplierCost_Click"/>-->
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <Button Content="Add Cost" Margin="0,0,8,0" Click="AddSupplierCost_Click"/>
+                                        <Button Content="Edit Selected" Margin="0,0,8,0" Click="EditSelectedSupplierCost_Click"/>
+                                        <Button Content="Save Edit" Margin="0,0,8,0" Click="SaveSupplierCostEdit_Click"/>
+                                        <Button Content="Cancel" Margin="0,0,8,0" Click="CancelSupplierCostEdit_Click"/>
+                                        <Button Content="Delete Selected" Click="DeleteSelectedSupplierCost_Click"/>
+                                    </StackPanel>
+                                </WrapPanel>
+
+                                <!-- Costs grid -->
+                                <DataGrid Grid.Row="1"
+                                          ItemsSource="{Binding SelectedProjectSupplierCosts}"
+                                          SelectionMode="Single"
+                                          SelectionChanged="SupplierCostsGrid_SelectionChanged"
+                                          Style="{StaticResource DarkDataGridStyle}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/>
+                                        <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                        <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=£{0:N2}}" Width="120"/>
+                                        <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="2*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Grid.Row="5" Header="Recent labour entries" Foreground="White" Margin="0,8,0,0">
+                            <DataGrid ItemsSource="{Binding SelectedProjectRecentEntries}"
+                                      Style="{StaticResource DarkDataGridStyle}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                    <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
+                                    <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
+                                    <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
+                                    <DataGridTextColumn Header="Task" Binding="{Binding TaskDescription}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- PEOPLE & SUPPLIERS TAB -->
+            <TabItem Header="People &amp; Sub-Contractors">
+                <Border Background="#FF1E1E1E"
+                        BorderBrush="#FF333333"
+                        BorderThickness="1"
+                        Padding="6">
+                    <TabControl Background="#FF1E1E1E"
+                                BorderThickness="0"
+                                Margin="0">
+                        <!-- PEOPLE TAB -->
+                        <TabItem Header="People">
+                            <Grid Background="#FF1E1E1E" Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="3*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- LEFT: People list -->
+                                <DataGrid x:Name="PeopleGrid"
+                                Grid.Column="0"
+                                ItemsSource="{Binding People}"
+                                Style="{StaticResource DarkDataGridStyle}"
+                                AutoGenerateColumns="False"
+                                SelectionMode="Single"
+                                SelectionChanged="PeopleGrid_SelectionChanged">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Initials" Binding="{Binding Initials}" Width="90"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="220"/>
+                                        <DataGridTextColumn Header="Current Rate" Width="120"
+                                            Binding="{Binding CurrentRatePerHour, StringFormat=£{0:N2}}"/>
+                                        <DataGridTextColumn Header="Last Worked" Width="120"
+                                            Binding="{Binding LastWorkedDate, StringFormat=yyyy-MM-dd}"/>
+                                        <DataGridTextColumn Header="Hours (This Month)" Width="140"
+                                            Binding="{Binding HoursThisMonth, StringFormat={}{0:N2}}"/>
+                                        <DataGridTextColumn Header="Cost (This Month)" Width="140"
+                                            Binding="{Binding CostThisMonth, StringFormat=£{0:N2}}"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- RIGHT: Selected person details -->
+                                <Grid Grid.Column="1" Margin="12,0,0,0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Header -->
+                                    <TextBlock Grid.Row="0"
+                                    FontSize="18"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"
+                                    Text="{Binding SelectedPerson.Name}"
+                                    Margin="0,0,0,8"/>
+
+                                    <!-- Rate history -->
+                                    <GroupBox Grid.Row="1" Header="Rate history" Margin="0,0,0,8">
+                                        <DataGrid ItemsSource="{Binding SelectedPersonRates}"
+                                                Style="{StaticResource DarkDataGridStyle}"
+                                                AutoGenerateColumns="False"
+                                                IsReadOnly="True">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Valid From" Binding="{Binding ValidFrom, StringFormat=yyyy-MM-dd}" Width="120"/>
+                                                <DataGridTextColumn Header="Valid To" Binding="{Binding ValidTo, StringFormat=yyyy-MM-dd}" Width="120"/>
+                                                <DataGridTextColumn Header="Rate" Binding="{Binding RatePerHour, StringFormat=£{0:N2}}" Width="120"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </GroupBox>
+
+                                    <!-- This month by project -->
+                                    <GroupBox Grid.Row="2" Header="This month by project" Margin="0,0,0,8">
+                                        <DataGrid ItemsSource="{Binding SelectedPersonProjects}"
+                                                Style="{StaticResource DarkDataGridStyle}"
+                                                AutoGenerateColumns="False"
+                                                IsReadOnly="True">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Project" Binding="{Binding ProjectLabel}" Width="*"/>
+                                                <DataGridTextColumn Header="Code" Binding="{Binding ProjectCode}" Width="90"/>
+                                                <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
+                                                <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </GroupBox>
+
+                                    <!-- Recent entries -->
+                                    <GroupBox Grid.Row="3" Header="Recent entries">
+                                        <DataGrid ItemsSource="{Binding SelectedPersonRecentEntries}"
+                                                Style="{StaticResource DarkDataGridStyle}"
+                                                AutoGenerateColumns="False"
+                                                IsReadOnly="True">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                                <DataGridTextColumn Header="Project" Binding="{Binding ProjectLabel}" Width="*"/>
+                                                <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="80"/>
+                                                <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="100"/>
+                                                <DataGridTextColumn Header="Task" Binding="{Binding TaskDescription}" Width="240"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </GroupBox>
+                                </Grid>
+                            </Grid>
+                        </TabItem>
+                        <!-- SUPPLIERS TAB -->
+                        <TabItem Header="Sub-Contractors">
+                            <TabItem.Resources>
+
+                                <!-- Dark styles scoped ONLY to the Suppliers tab -->
+
+                                <Style TargetType="GroupBox">
+                                    <Setter Property="Background" Value="#FF242424"/>
+                                    <Setter Property="BorderBrush" Value="#FF444444"/>
+                                    <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                                </Style>
+
+                                <Style TargetType="TextBox">
+                                    <Setter Property="Background" Value="#FF262626"/>
+                                    <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                                    <Setter Property="BorderBrush" Value="#FF444444"/>
+                                    <Setter Property="CaretBrush" Value="#FFE0E0E0"/>
+                                    <Setter Property="Padding" Value="6,3"/>
+                                    <Setter Property="Height" Value="26"/>
+                                </Style>
+
+                                <Style TargetType="DatePicker">
+                                    <Setter Property="Background" Value="#FF262626"/>
+                                    <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                                    <Setter Property="BorderBrush" Value="#FF444444"/>
+                                    <Setter Property="Height" Value="26"/>
+                                </Style>
+
+                                <Style TargetType="CheckBox">
+                                    <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                                </Style>
+
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#FF303030"/>
+                                    <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                                    <Setter Property="BorderBrush" Value="#FF444444"/>
+                                    <Setter Property="Padding" Value="14,6"/>
+                                    <Setter Property="Height" Value="28"/>
+                                    <Setter Property="MinWidth" Value="90"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FF3A3A3A"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter Property="Background" Value="#FF1E1E1E"/>
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Opacity" Value="0.55"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+
+                            </TabItem.Resources>
+
+                            <Grid Margin="10" Background="#FF1E1E1E">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="3*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Left: suppliers list -->
+                                <DataGrid Grid.Column="0"
+                                        ItemsSource="{Binding Suppliers}"
+                                        SelectedItem="{Binding SelectedSupplier}"
+                                        SelectionChanged="SuppliersGrid_SelectionChanged"
+                                        Style="{StaticResource DarkDataGridStyle}"
+                                        AutoGenerateColumns="False"
+                                        IsReadOnly="True">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                        <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="80"/>
+                                        <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="2*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- Right: add/edit -->
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0">
+
+                                    <GroupBox Header="Add Sub-Contractor" Margin="0,0,0,10">
+                                        <StackPanel Margin="10">
+                                            <TextBox Margin="0,0,0,8"
+                                                    Text="{Binding NewSupplierName, UpdateSourceTrigger=PropertyChanged}"
+                                                    ToolTip="Sub-Contractor name"/>
+
+                                            <TextBox Margin="0,0,0,8"
+                                                    Text="{Binding NewSupplierNotes, UpdateSourceTrigger=PropertyChanged}"
+                                                    ToolTip="Notes (optional)"/>
+
+                                            <CheckBox Content="Active"
+                                                    IsChecked="{Binding NewSupplierIsActive}"
+                                                    Margin="0,0,0,8"/>
+
+                                            <Button Content="Add Sub-Contractor"
+                                                Click="AddSupplier_Click"/>
+                                        </StackPanel>
+                                    </GroupBox>
+
+                                    <GroupBox Header="Selected Sub-Contractor">
+                                        <StackPanel Margin="10">
+                                            <TextBox Margin="0,0,0,8"
+                                                    Text="{Binding SupplierEdit.Name, UpdateSourceTrigger=PropertyChanged}"
+                                                    ToolTip="Name"/>
+
+                                            <TextBox Margin="0,0,0,8"
+                                                    Text="{Binding SupplierEdit.Notes, UpdateSourceTrigger=PropertyChanged}"
+                                                    ToolTip="Notes"/>
+
+                                            <CheckBox Content="Active"
+                                                    IsChecked="{Binding SupplierEdit.IsActive}"
+                                                    Margin="0,0,0,8"/>
+
+                                            <WrapPanel>
+                                                <Button Content="Save"
+                                                    Margin="0,0,8,0"
+                                                    Click="SaveSupplierEdits_Click"/>
+                                                <Button Content="Deactivate"
+                                                    Click="DeactivateSupplier_Click"/>
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </GroupBox>
+
+                                </StackPanel>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                </Border>
+            </TabItem>
+            
+            <!-- 🔹 INVOICES TAB -->
+            <TabItem Header="Invoices" x:Name="InvoicesTabItem">
+                <Grid Background="#FF1E1E1E">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Filter toolbar -->
+                    <StackPanel Orientation="Horizontal"
+                                Margin="8,8,8,4"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="Filter:"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+
+                        <Button Content="All"
+                                Margin="0,0,4,0"
+                                Padding="8,3"
+                                Click="ShowAllInvoices_Click"/>
+
+                        <Button Content="Overdue"
+                                Margin="0,0,4,0"
+                                Padding="8,3"
+                                Click="ShowOverdueInvoices_Click"/>
+
+                        <Button Content="Due next 30 days"
+                                Margin="0,0,4,0"
+                                Padding="8,3"
+                                Click="ShowDueNext30Invoices_Click"/>
+
+                        <Button Content="All with outstanding"
+                                Margin="0,0,4,0"
+                                Padding="8,3"
+                                Click="ShowOpenInvoices_Click"/>
+                    </StackPanel>
+
+                    <!-- Invoices grid -->
+                    <DataGrid x:Name="InvoicesGrid"
+                              Grid.Row="1"
+                              Margin="8,0,8,8"
+                              ItemsSource="{Binding InvoiceView}"
+                              AutoGenerateColumns="True"
+                              AutoGeneratingColumn="InvoicesGrid_AutoGeneratingColumn"
+                              IsReadOnly="True"
+                              Background="#FF1E1E1E"
+                              Foreground="#FFE0E0E0"
+                              RowBackground="#FF2B2B2B"
+                              AlternatingRowBackground="#FF242424"
+                              GridLinesVisibility="None"
+                              HeadersVisibility="Column"
+                              >
+
+                        <DataGrid.Resources>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#FF2A2A2A" />
+                                <Setter Property="Foreground" Value="#FFE0E0E0" />
+                                <Setter Property="BorderBrush" Value="#FF3A3A3A" />
+                                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                            </Style>
+                        </DataGrid.Resources>
+
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 🔹 APPLICATIONS TAB -->
+            <TabItem Header="Applications" x:Name="ApplicationsTabItem">
+                <Grid Margin="8" Background="#FF1E1E1E">
+                    <DataGrid ItemsSource="{Binding UpcomingApplications}"
+                              Style="{StaticResource DarkDataGridStyle}"
+                              AutoGenerateColumns="False">
+                        <DataGrid.Columns>
+
+                            <DataGridTextColumn Header="Project" Binding="{Binding ProjectLabel}" Width="220"/>
+
+                            <DataGridTextColumn Header="Project Code" Binding="{Binding ProjectCode}" Width="90"/>
+
+                            <!-- Application Date (bold) -->
+                            <DataGridTextColumn Header="Application Date"
+                                                Binding="{Binding ApplicationDate, StringFormat=\{0:yyyy-MM-dd\}}"
+                                                Width="130">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BoldDateTextBlock}"/>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <DataGridTextColumn Header="Days"
+                                                Binding="{Binding DaysUntil}"
+                                                Width="60" />
+
+                            <DataGridTextColumn Header="Schedule Type" Binding="{Binding ScheduleType}" Width="110"/>
+
+                            <DataGridTextColumn Header="Rule Type" Binding="{Binding RuleType}" Width="110"/>
+
+                            <!-- Notes (wrap + fill remaining space) -->
+                            <DataGridTextColumn Header="Notes"
+                                                Binding="{Binding Notes}"
+                                                Width="*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource WrappedCellTextBlock}"/>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 🔹 SETTINGS TAB -->
+            <TabItem Header="Settings">
+                <ScrollViewer Background="#FF1E1E1E">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Timesheet folder -->
+                        <TextBlock Text="Timesheet folder:"
+                                   Grid.Row="0" Grid.Column="0"
+                                   Margin="0,4"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Text="{Binding Settings.TimesheetFolder, UpdateSourceTrigger=PropertyChanged}"
+                                 Grid.Row="0" Grid.Column="1"
+                                 Margin="8,4"
+                                 Background="#FF262626"
+                                 Foreground="#FFE0E0E0"/>
+                        <Button Content="Browse..."
+                                Grid.Row="0" Grid.Column="2"
+                                Margin="8,4"
+                                Padding="8,4"
+                                Click="BrowseTimesheetFolder_Click"/>
+
+                        <!-- Finance sheet -->
+                        <TextBlock Text="Finance Sheet path:"
+                                   Grid.Row="1" Grid.Column="0"
+                                   Margin="0,4"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Text="{Binding Settings.FinanceSheetPath, UpdateSourceTrigger=PropertyChanged}"
+                                 Grid.Row="1" Grid.Column="1"
+                                 Margin="8,4"
+                                 Background="#FF262626"
+                                 Foreground="#FFE0E0E0"/>
+                        <Button Content="Browse..."
+                                Grid.Row="1" Grid.Column="2"
+                                Margin="8,4"
+                                Padding="8,4"
+                                Click="BrowseFinanceSheet_Click"/>
+
+                        <!-- Job Source Info -->
+                        <TextBlock Text="Job Source Info path:"
+                                   Grid.Row="2" Grid.Column="0"
+                                   Margin="0,4"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Text="{Binding Settings.JobSourcePath, UpdateSourceTrigger=PropertyChanged}"
+                                 Grid.Row="2" Grid.Column="1"
+                                 Margin="8,4"
+                                 Background="#FF262626"
+                                 Foreground="#FFE0E0E0"/>
+                        <Button Content="Browse..."
+                                Grid.Row="2" Grid.Column="2"
+                                Margin="8,4"
+                                Padding="8,4"
+                                Click="BrowseJobSource_Click"/>
+
+                        <!-- Invoice Register -->
+                        <TextBlock Text="Invoice Register path:"
+                                   Grid.Row="3" Grid.Column="0"
+                                   Margin="0,4"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Text="{Binding Settings.InvoiceRegisterPath, UpdateSourceTrigger=PropertyChanged}"
+                                 Grid.Row="3" Grid.Column="1"
+                                 Margin="8,4"
+                                 Background="#FF262626"
+                                 Foreground="#FFE0E0E0"/>
+                        <Button Content="Browse..."
+                                Grid.Row="3" Grid.Column="2"
+                                Margin="8,4"
+                                Padding="8,4"
+                                Click="BrowseInvoiceRegister_Click"/>
+
+                        <!-- Application Schedule -->
+                        <TextBlock Text="Application Schedule path:"
+                                   Grid.Row="4" Grid.Column="0"
+                                   Margin="0,4"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Text="{Binding Settings.ApplicationSchedulePath, UpdateSourceTrigger=PropertyChanged}"
+                                 Grid.Row="4" Grid.Column="1"
+                                 Margin="8,4"
+                                 Background="#FF262626"
+                                 Foreground="#FFE0E0E0"/>
+                        <Button Content="Browse..."
+                                Grid.Row="4" Grid.Column="2"
+                                Margin="8,4"
+                                Padding="8,4"
+                                Click="BrowseApplicationSchedule_Click"/>
+
+                        <!-- Upcoming applications horizon -->
+                        <TextBlock Text="Upcoming apps (days ahead):"
+                                   Grid.Row="5" Grid.Column="0"
+                                   Margin="0,4"
+                                   VerticalAlignment="Center"/>
+
+                        <TextBox Text="{Binding Settings.UpcomingApplicationsDaysAhead, UpdateSourceTrigger=PropertyChanged}"
+                                 Grid.Row="5" Grid.Column="1"
+                                 Margin="8,4"
+                                 Background="#FF262626"
+                                 Foreground="#FFE0E0E0"/>
+
+                        <TextBlock Text="How far ahead to generate application reminders (e.g. 30, 60, 90)."
+                                   Grid.Row="5" Grid.Column="2"
+                                   Margin="8,4"
+                                   VerticalAlignment="Center"
+                                   Opacity="0.6"
+                                   FontSize="11"/>
+
+                        <!-- Save button -->
+                        <Button Content="Save settings"
+                                Grid.Row="6" Grid.Column="0"
+                                Grid.ColumnSpan="3"
+                                Margin="0,16,0,0"
+                                Padding="10,5"
+                                HorizontalAlignment="Left"
+                                Background="#FF444444"
+                                Foreground="#FFE0E0E0"
+                                BorderBrush="#FF666666"
+                                BorderThickness="1"
+                                Click="SaveSettingsButton_Click"/>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>
