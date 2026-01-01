@@ -9,6 +9,10 @@ appsettings.Production.json
 *.db
 *.db-shm
 *.db-wal
+data/
+*.db
+*.db-shm
+*.db-wal
 
 # Visual Studio / build output
 bin/
