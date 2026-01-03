@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mep1.Erp.Infrastructure", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mep1.Erp.Application", "Mep1.Erp.Application\Mep1.Erp.Application.csproj", "{F5D17986-15A5-4C12-8CEB-C5805D634309}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mep1.Erp.TimesheetWeb", "Mep1.Erp.TimesheetWeb\Mep1.Erp.TimesheetWeb.csproj", "{8C69E6DA-8222-46EE-8B39-FC6E5F1B88F4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{F5D17986-15A5-4C12-8CEB-C5805D634309}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F5D17986-15A5-4C12-8CEB-C5805D634309}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F5D17986-15A5-4C12-8CEB-C5805D634309}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C69E6DA-8222-46EE-8B39-FC6E5F1B88F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C69E6DA-8222-46EE-8B39-FC6E5F1B88F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C69E6DA-8222-46EE-8B39-FC6E5F1B88F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C69E6DA-8222-46EE-8B39-FC6E5F1B88F4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
