@@ -40,10 +40,18 @@ public class ProjectsController : ControllerBase
     {
         var rows = Reporting.GetProjectCostVsInvoiced(_db);
 
+        // map JobNameOrNumber -> IsActive from DB
+        var activeByJob = _db.Projects
+            .AsNoTracking()
+            .Where(p => p.IsRealProject)
+            .Select(p => new { p.JobNameOrNumber, p.IsActive })
+            .ToDictionary(x => x.JobNameOrNumber, x => x.IsActive);
+
         var dto = rows.Select(p => new ProjectSummaryDto
         {
             JobNameOrNumber = p.JobNameOrNumber,
             BaseCode = p.BaseCode,
+            IsActive = activeByJob.TryGetValue(p.JobNameOrNumber, out var isActive) && isActive,
             LabourCost = p.LabourCost,
             SupplierCost = p.SupplierCost,
             TotalCost = p.TotalCost,
@@ -178,4 +186,21 @@ public class ProjectsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPatch("{jobKey}/active")]
+    public async Task<IActionResult> SetProjectActive([FromRoute] string jobKey, [FromBody] SetProjectActiveDto dto)
+    {
+        var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
+
+        if (project == null) 
+            return NotFound();
+
+        // prevent disabling non-real/system rows
+        if (!project.IsRealProject)
+            return BadRequest("System projects cannot be activated/deactivated.");
+
+        project.IsActive = dto.IsActive;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
 }

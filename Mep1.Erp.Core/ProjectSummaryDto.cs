@@ -5,6 +5,8 @@
         public string JobNameOrNumber { get; init; } = "";
         public string? BaseCode { get; init; }
 
+        public bool IsActive { get; init; }
+
         public decimal LabourCost { get; init; }
         public decimal SupplierCost { get; init; }
         public decimal TotalCost { get; init; }

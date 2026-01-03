@@ -88,6 +88,19 @@ namespace Mep1.Erp.Desktop
             return result;
         }
 
+        public async Task SetProjectActiveAsync(string jobKey, bool isActive)
+        {
+            var url = $"api/projects/{Uri.EscapeDataString(jobKey)}/active";
+
+            var request = new HttpRequestMessage(HttpMethod.Patch, url)
+            {
+                Content = JsonContent.Create(new { isActive })
+            };
+
+            var response = await _http.SendAsync(request);
+            response.EnsureSuccessStatusCode(); // expects 204 NoContent
+        }
+
         public async Task<SupplierCostRowDto> AddProjectSupplierCostAsync(string jobKey, UpsertSupplierCostDto dto)
         {
             var url = $"api/projects/{Uri.EscapeDataString(jobKey)}/supplier-costs";

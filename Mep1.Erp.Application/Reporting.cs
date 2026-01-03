@@ -24,6 +24,7 @@ namespace Mep1.Erp.Application
     public record ProjectSummary(
         string JobNameOrNumber,
         string? BaseCode,
+        bool IsActive,
         decimal LabourCost,
         decimal SupplierCost,
         decimal TotalCost,
@@ -145,6 +146,7 @@ namespace Mep1.Erp.Application
                 result.Add(new ProjectSummary(
                     project.JobNameOrNumber,
                     baseCode,
+                    project.IsActive,
                     totalLabourCost,
                     totalSupplierCost,
                     totalCost,

@@ -82,6 +82,26 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _selectedProjectInvoices, value, nameof(SelectedProjectInvoices));
         }
 
+        private ICollectionView _projectView = null!;
+        public ICollectionView ProjectView
+        {
+            get => _projectView;
+            set => SetField(ref _projectView, value, nameof(ProjectView));
+        }
+
+        private ProjectActiveFilter _projectFilter = ProjectActiveFilter.All;
+        public ProjectActiveFilter ProjectFilter
+        {
+            get => _projectFilter;
+            set
+            {
+                if (SetField(ref _projectFilter, value, nameof(ProjectFilter)))
+                {
+                    ProjectView?.Refresh();
+                }
+            }
+        }
+
         private List<PeopleSummaryRowDto> _people = new();
         public List<PeopleSummaryRowDto> People
         {
@@ -267,6 +287,17 @@ namespace Mep1.Erp.Desktop
         private Func<InvoiceListEntryDto, bool>? _invoiceFilterPredicate;
 
         // ---------------------------------------------
+        // Project filtering
+        // ---------------------------------------------
+
+        public enum ProjectActiveFilter
+        {
+            All = 0,
+            ActiveOnly = 1,
+            InactiveOnly = 2
+        }
+
+        // ---------------------------------------------
         // Lifetime
         // ---------------------------------------------
 
@@ -317,6 +348,10 @@ namespace Mep1.Erp.Desktop
 
             // ProjectSummaries comes from API now
             ProjectSummaries = await _api.GetProjectSummariesAsync();
+            // quick debug:
+            System.Diagnostics.Debug.WriteLine(
+                string.Join(", ", ProjectSummaries.Take(5).Select(p => $"{p.JobNameOrNumber}:{p.IsActive}"))
+            );
 
             // Invoices comes from API now
             Invoices = await _api.GetInvoicesAsync();
@@ -331,6 +366,7 @@ namespace Mep1.Erp.Desktop
             UpcomingApplications = await _api.GetUpcomingApplicationsAsync(Settings.UpcomingApplicationsDaysAhead);
 
             EnsureInvoiceView();
+            EnsureProjectView();
             LoadSuppliers();
             EnsureInitialSelections();
         }
@@ -344,6 +380,25 @@ namespace Mep1.Erp.Desktop
                     return false;
 
                 return _invoiceFilterPredicate == null || _invoiceFilterPredicate(inv);
+            };
+        }
+
+        private void EnsureProjectView()
+        {
+            ProjectView = CollectionViewSource.GetDefaultView(ProjectSummaries);
+
+            ProjectView.Filter = obj =>
+            {
+                if (obj is not ProjectSummaryDto p)
+                    return false;
+
+                return ProjectFilter switch
+                {
+                    ProjectActiveFilter.All => true,
+                    ProjectActiveFilter.ActiveOnly => p.IsActive,
+                    ProjectActiveFilter.InactiveOnly => !p.IsActive,
+                    _ => true
+                };
             };
         }
 
@@ -630,6 +685,70 @@ namespace Mep1.Erp.Desktop
         {
             NavigateToInvoicesTab();
             SetInvoiceFilter(FilterDueInNextDays(DateTime.Today, 30));
+        }
+
+        // ---------------------------------------------
+        // Projects: filtering
+        // ---------------------------------------------
+
+        private void SetProjectFilter(ProjectActiveFilter filter)
+        {
+            ProjectFilter = filter; // this already triggers ProjectView.Refresh() in the setter
+        }
+
+        private void ShowAllProjects_Click(object sender, RoutedEventArgs e)
+            => SetProjectFilter(ProjectActiveFilter.All);
+
+        private void ShowActiveProjects_Click(object sender, RoutedEventArgs e)
+            => SetProjectFilter(ProjectActiveFilter.ActiveOnly);
+
+        private void ShowInactiveProjects_Click(object sender, RoutedEventArgs e)
+            => SetProjectFilter(ProjectActiveFilter.InactiveOnly);
+
+        // ---------------------------------------------
+        // Projects
+        // ---------------------------------------------
+
+        private async void ToggleProjectActive_Click(object sender, RoutedEventArgs e)
+        {
+            var proj = SelectedProject;
+            if (proj == null)
+                return;
+
+            var jobKey = proj.JobNameOrNumber;
+
+            // Toggle the current state
+            var newIsActive = !proj.IsActive;
+
+            var confirmText = newIsActive
+                ? $"Activate project '{jobKey}'?"
+                : $"Deactivate project '{jobKey}'?\n\nIt will disappear from the Timesheet project dropdown.";
+
+            var result = WpfMessageBox.Show(
+                confirmText,
+                "Confirm",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                // Calls your API to set active flag
+                await _api.SetProjectActiveAsync(jobKey, newIsActive);
+
+                // Refresh list + keep selection so UI updates
+                RefreshProjects(keepSelection: true);
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    "Failed to change project active status:\n\n" + ex.Message,
+                    "API error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
         // ---------------------------------------------
@@ -1135,6 +1254,7 @@ namespace Mep1.Erp.Desktop
             var selectedJob = keepSelection ? SelectedProject?.JobNameOrNumber : null;
 
             ProjectSummaries = await _api.GetProjectSummariesAsync();
+            EnsureProjectView();
 
             if (keepSelection && selectedJob != null)
             {
