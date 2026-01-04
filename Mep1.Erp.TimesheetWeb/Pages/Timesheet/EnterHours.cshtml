@@ -1,34 +1,80 @@
 ﻿@page
 @model Mep1.Erp.TimesheetWeb.Pages.Timesheet.EnterHoursModel
+@{
+    ViewData["Title"] = "Hours Worked";
+}
 
-<h2>Enter Hours</h2>
+<h2>Hours Worked</h2>
+
+@if (TempData["Message"] is string msg)
+{
+    <div class="alert alert-success">@msg</div>
+}
 
 <form method="post">
-    <div style="margin-bottom:10px;">
-        <label>Project</label><br />
-        <select asp-for="Input.JobKey" asp-items="Model.ProjectOptions"></select>
-    </div>
+    <div class="row g-3" style="max-width: 900px;">
 
-    <div style="margin-bottom:10px;">
-        <label>Code</label><br />
-        <select asp-for="Input.Code" asp-items="Model.CodeOptions" id="codeSelect"></select>
-    </div>
+        <div class="col-md-4">
+            <label class="form-label">Date (Required)</label>
+            <input class="form-control" type="date" asp-for="Input.Date" />
+            <span class="text-danger" asp-validation-for="Input.Date"></span>
+        </div>
 
-    <div id="ccfRefRow" style="margin-bottom:10px; display:none;">
-        <label>CCF Ref (only for VO)</label><br />
-        <input asp-for="Input.CcfRef" />
-    </div>
+        <div class="col-md-4">
+            <label class="form-label">Hours (Required)</label>
+            <input class="form-control" asp-for="Input.Hours" />
+            <span class="text-danger" asp-validation-for="Input.Hours"></span>
+        </div>
 
-    <button type="submit">Continue</button>
+        <div class="col-md-8">
+            <label class="form-label">Job (Required)</label>
+            <select class="form-select" asp-for="Input.JobKey" asp-items="Model.ProjectOptions">
+                <option value="">-- Select a job --</option>
+            </select>
+            <span class="text-danger" asp-validation-for="Input.JobKey"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Code</label>
+            <select class="form-select" asp-for="Input.Code" asp-items="Model.CodeOptions"></select>
+            <span class="text-danger" asp-validation-for="Input.Code"></span>
+        </div>
+
+        <div class="col-md-12">
+            <label class="form-label">Job Task Description</label>
+            <textarea class="form-control" rows="5" asp-for="Input.TaskDescription"></textarea>
+            <span class="text-danger" asp-validation-for="Input.TaskDescription"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">CCF Ref (only when Code = VO)</label>
+            <input class="form-control" asp-for="Input.CcfRef" />
+            <span class="text-danger" asp-validation-for="Input.CcfRef"></span>
+        </div>
+
+        <div class="col-12">
+            <button class="btn btn-primary" type="submit">Submit</button>
+        </div>
+    </div>
 </form>
 
-<script>
-    (function () {
-        function toggleCcf() {
-            var code = document.getElementById("codeSelect").value;
-            document.getElementById("ccfRefRow").style.display = (code === "VO") ? "block" : "none";
-        }
-        document.getElementById("codeSelect").addEventListener("change", toggleCcf);
-        toggleCcf();
-    })();
-</script>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Optional: simple client-side hide/show of CCF ref
+        (function () {
+            const codeSel = document.querySelector('[name="Input.Code"]');
+            const ccfInput = document.querySelector('[name="Input.CcfRef"]');
+            if (!codeSel || !ccfInput) return;
+
+            const wrapper = ccfInput.closest('.col-md-6');
+            function refresh() {
+                const isVO = (codeSel.value || '').toUpperCase() === 'VO';
+                if (wrapper) wrapper.style.display = isVO ? '' : 'none';
+                if (!isVO) ccfInput.value = '';
+            }
+            codeSel.addEventListener('change', refresh);
+            refresh();
+        })();
+    </script>
+}
