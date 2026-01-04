@@ -1,6 +1,7 @@
 using Mep1.Erp.Infrastructure;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using System;
 using System.IO;
 
@@ -9,7 +10,33 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Mep1 ERP API", Version = "v1" });
+
+    c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+    {
+        Description = "API Key needed to access the endpoints. Add it as: X-Api-Key: {your key}",
+        In = ParameterLocation.Header,
+        Name = "X-Api-Key",
+        Type = SecuritySchemeType.ApiKey
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "ApiKey"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 // EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -53,7 +80,8 @@ app.Use(async (context, next) =>
     // Allow swagger in dev without a key (optional)
     if (app.Environment.IsDevelopment() &&
         (context.Request.Path.StartsWithSegments("/swagger") ||
-         context.Request.Path.StartsWithSegments("/favicon.ico")))
+         context.Request.Path.StartsWithSegments("/favicon.ico") ||
+         context.Request.Path.StartsWithSegments("/api/health")))
     {
         await next();
         return;

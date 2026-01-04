@@ -1,4 +1,17 @@
+using Mep1.Erp.TimesheetWeb;
+using Mep1.Erp.TimesheetWeb.Services;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ErpApiSettings>(builder.Configuration.GetSection("ErpApi"));
+
+builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
+{
+    var cfg = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ErpApiSettings>>().Value;
+
+    http.BaseAddress = new Uri(cfg.BaseUrl);
+    http.DefaultRequestHeaders.Add("X-API-KEY", cfg.ApiKey);
+});
 
 // Add services to the container.
 builder.Services.AddRazorPages();

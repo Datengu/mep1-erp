@@ -10,7 +10,7 @@ namespace Mep1.Erp.Core
         public string Name { get; set; } = "";
         public List<TimesheetEntry> TimesheetEntries { get; set; } = new();
 
-        // NEW: rate history
+        // rate history
         public List<WorkerRate> Rates { get; set; } = new();
     }
 
@@ -33,7 +33,7 @@ namespace Mep1.Erp.Core
     public class TimesheetEntry
     {
         public int Id { get; set; }
-        // NEW: stable identity per worker
+        // stable identity per worker
         public int EntryId { get; set; }
         public DateTime Date { get; set; }
         public decimal Hours { get; set; }
