@@ -16,6 +16,8 @@ public sealed class EnterHoursModel : PageModel
         _api = api;
     }
 
+    private List<TimesheetProjectOptionDto> _projectsCache = new();
+
     private static readonly (string Code, string Description)[] TimesheetCodeList =
     {
         ("P", "Programmed Drawing Input"),
@@ -49,11 +51,11 @@ public sealed class EnterHoursModel : PageModel
     {
         public DateTime Date { get; set; } = DateTime.Today;
 
-        public decimal Hours { get; set; } = 0;
+        public decimal Hours { get; set; } = 0.00m;
 
         public string JobKey { get; set; } = "";
 
-        public string Code { get; set; } = "BU";
+        public string Code { get; set; } = "P";
 
         public string? CcfRef { get; set; }
 
@@ -83,21 +85,90 @@ public sealed class EnterHoursModel : PageModel
 
         await LoadOptionsAsync();
 
-        // ---- Validation (minimal but solid) ----
+        // ---- Enforce Job <-> Code rules based on selected "job" ----
+        var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
+
+        if (selected is null)
+        {
+            ModelState.AddModelError("Input.JobKey", "Please select a valid job.");
+        }
+        else
+        {
+            // Match on the internal-job names you have in the Projects table:
+            var jobName = (selected.Label ?? selected.JobKey ?? "").Trim();
+
+            bool isHoliday = jobName.Equals("Holiday", StringComparison.OrdinalIgnoreCase)
+                          || jobName.Equals("Bank Holiday", StringComparison.OrdinalIgnoreCase);
+
+            bool isSick = jobName.Equals("Sick", StringComparison.OrdinalIgnoreCase);
+            bool isFeeProposal = jobName.Equals("Fee Proposal", StringComparison.OrdinalIgnoreCase);
+            bool isTender = jobName.Equals("Tender Presentation", StringComparison.OrdinalIgnoreCase);
+
+            if (isHoliday)
+            {
+                // must be HOL + no hours
+                Input.Code = "HOL";
+                Input.Hours = 0;
+            }
+            else if (isSick)
+            {
+                Input.Code = "SI";
+                Input.Hours = 0;
+            }
+            else if (isFeeProposal)
+            {
+                Input.Code = "FP";
+            }
+            else if (isTender)
+            {
+                Input.Code = "TP";
+            }
+        }
+
+        // ---- Validation ----
+        var today = DateTime.Today;
+
+        if (Input.Date.Date > today)
+        {
+            ModelState.AddModelError("Input.Date", "You cannot submit hours for a future date.");
+            await LoadOptionsAsync();
+            return Page();
+        }
+
         if (string.IsNullOrWhiteSpace(Input.JobKey))
             ModelState.AddModelError("Input.JobKey", "Please select a job.");
 
-        if (Input.Hours <= 0 || Input.Hours > 24)
-            ModelState.AddModelError("Input.Hours", "Hours must be between 0 and 24.");
+        // Allow 0 hours ONLY for HOL / SI (holiday/sick jobs)
+        var allowZeroHours = Input.Code == "HOL" || Input.Code == "SI";
 
+        if ((!allowZeroHours && (Input.Hours <= 0 || Input.Hours > 24)) ||
+            (allowZeroHours && (Input.Hours < 0 || Input.Hours > 24)))
+        {
+            ModelState.AddModelError("Input.Hours", "Hours must be between 0 and 24.");
+        }
+
+        // ensure hours is in 0.5 increments
+        if (Input.Hours % 0.5m != 0)
+        {
+            ModelState.AddModelError("Input.Hours", "Hours must be in 0.5 increments.");
+            await LoadOptionsAsync();
+            return Page();
+        }
+
+        // Require code
         if (string.IsNullOrWhiteSpace(Input.Code))
             ModelState.AddModelError("Input.Code", "Please select a code.");
 
+        // Force CCF Ref when VO is selected code
         if (Input.Code == "VO" && string.IsNullOrWhiteSpace(Input.CcfRef))
             ModelState.AddModelError("Input.CcfRef", "CCF Ref is required when Code is VO.");
 
-        if (string.IsNullOrWhiteSpace(Input.TaskDescription))
-            ModelState.AddModelError("Input.TaskDescription", "Please enter a task description.");
+        // Only require description for non-holiday/sick
+        if (Input.Code != "HOL" && Input.Code != "SI")
+        {
+            if (string.IsNullOrWhiteSpace(Input.TaskDescription))
+                ModelState.AddModelError("Input.TaskDescription", "Please enter a task description.");
+        }
 
         if (!ModelState.IsValid)
             return Page();
@@ -137,9 +208,9 @@ public sealed class EnterHoursModel : PageModel
 
     private async Task LoadOptionsAsync()
     {
-        var projects = await _api.GetActiveProjectsAsync() ?? new List<TimesheetProjectOptionDto>();
+        _projectsCache = await _api.GetActiveProjectsAsync() ?? new List<TimesheetProjectOptionDto>();
 
-        ProjectOptions = projects
+        ProjectOptions = _projectsCache
             .Select(p => new SelectListItem(p.Label, p.JobKey))
             .ToList();
 

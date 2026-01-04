@@ -2,5 +2,8 @@
 
 public sealed record TimesheetProjectOptionDto(
     string JobKey,
-    string Label
+    string Label,
+    string Company,
+    string Category,
+    bool IsRealProject
 );

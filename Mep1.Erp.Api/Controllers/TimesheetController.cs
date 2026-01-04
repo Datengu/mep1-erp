@@ -44,17 +44,22 @@ public sealed class TimesheetController : ControllerBase
         );
     }
 
-    // Active projects for dropdown (only real projects)
+    // Active projects for dropdown (real projects + internal jobs)
     [HttpGet("projects")]
     public async Task<ActionResult<List<TimesheetProjectOptionDto>>> GetActiveProjects()
     {
         var items = await _db.Projects
             .AsNoTracking()
-            .Where(p => p.IsRealProject && p.IsActive)
-            .OrderBy(p => p.JobNameOrNumber)
+            .Where(p => p.IsActive) // ✅ include internal rows too
+            .OrderBy(p => p.IsRealProject) // real projects first
+            .ThenBy(p => p.Category)
+            .ThenBy(p => p.JobNameOrNumber)
             .Select(p => new TimesheetProjectOptionDto(
                 p.JobNameOrNumber,
-                p.JobNameOrNumber
+                p.JobNameOrNumber,
+                p.Company,
+                p.Category,
+                p.IsRealProject
             ))
             .ToListAsync();
 
@@ -65,16 +70,25 @@ public sealed class TimesheetController : ControllerBase
     [HttpPost("entries")]
     public async Task<ActionResult> CreateEntry([FromBody] CreateTimesheetEntryDto dto)
     {
-        if (dto.WorkerId <= 0) return BadRequest("WorkerId is required.");
-        if (string.IsNullOrWhiteSpace(dto.JobKey)) return BadRequest("JobKey is required.");
-        if (dto.Hours <= 0 || dto.Hours > 24) return BadRequest("Hours must be between 0 and 24.");
-
+        // Trim/normalize first so validation uses the final Code
         dto = dto with
         {
             Code = (dto.Code ?? "").Trim().ToUpperInvariant(),
             CcfRef = dto.CcfRef?.Trim(),
             TaskDescription = dto.TaskDescription?.Trim()
         };
+
+        if (dto.WorkerId <= 0) return BadRequest("WorkerId is required.");
+        if (string.IsNullOrWhiteSpace(dto.JobKey)) return BadRequest("JobKey is required.");
+
+        // Allow 0 hours ONLY for HOL / SI
+        var allowZeroHours = dto.Code == "HOL" || dto.Code == "SI";
+
+        if ((!allowZeroHours && (dto.Hours <= 0 || dto.Hours > 24)) ||
+            (allowZeroHours && (dto.Hours < 0 || dto.Hours > 24)))
+        {
+            return BadRequest("Hours must be between 0 and 24.");
+        }
 
         // Minimal validation for now (v0.1): enforce a known set
         var allowedCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -99,8 +113,8 @@ public sealed class TimesheetController : ControllerBase
             .FirstOrDefaultAsync(p => p.JobNameOrNumber == dto.JobKey);
 
         if (project is null) return BadRequest("Project not found.");
-        if (!project.IsRealProject) return BadRequest("Project is not a real project.");
         if (!project.IsActive) return BadRequest("Project is inactive.");
+        //  internal jobs (IsRealProject == false) are allowed for timesheets
 
         var nextEntryId = await _db.TimesheetEntries
             .Where(e => e.WorkerId == dto.WorkerId)

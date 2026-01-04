@@ -16,19 +16,29 @@
 
         <div class="col-md-4">
             <label class="form-label">Date (Required)</label>
-            <input class="form-control" type="date" asp-for="Input.Date" />
+            <input class="form-control" type="date" asp-for="Input.Date" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
             <span class="text-danger" asp-validation-for="Input.Date"></span>
         </div>
 
         <div class="col-md-4">
             <label class="form-label">Hours (Required)</label>
-            <input class="form-control" asp-for="Input.Hours" />
+            <input id="hoursInput" class="form-control" type="number" step="0.5" min="0" max="24" list="hourOptions" asp-for="Input.Hours" />
+            <datalist id="hourOptions">
+                @for (decimal h = 0; h <= 24; h += 0.5m)
+                {
+                    <option value="@h.ToString("0.00")"></option>
+                }
+            </datalist>
+            @if (Model.Input.Code == "HOL" || Model.Input.Code == "SI")
+            {
+                <div class="text-muted small">Holiday/Sick entries submit with 0 hours.</div>
+            }
             <span class="text-danger" asp-validation-for="Input.Hours"></span>
         </div>
 
         <div class="col-md-8">
             <label class="form-label">Job (Required)</label>
-            <select class="form-select" asp-for="Input.JobKey" asp-items="Model.ProjectOptions">
+            <select id="jobSelect" class="form-select" asp-for="Input.JobKey" asp-items="Model.ProjectOptions">
                 <option value="">-- Select a job --</option>
             </select>
             <span class="text-danger" asp-validation-for="Input.JobKey"></span>
@@ -36,13 +46,13 @@
 
         <div class="col-md-4">
             <label class="form-label">Code</label>
-            <select class="form-select" asp-for="Input.Code" asp-items="Model.CodeOptions"></select>
+            <select id="codeSelect" class="form-select" asp-for="Input.Code" asp-items="Model.CodeOptions"></select>
             <span class="text-danger" asp-validation-for="Input.Code"></span>
         </div>
 
         <div class="col-md-12">
             <label class="form-label">Job Task Description</label>
-            <textarea class="form-control" rows="5" asp-for="Input.TaskDescription"></textarea>
+            <textarea id="taskDescription" class="form-control" rows="5" asp-for="Input.TaskDescription"></textarea>
             <span class="text-danger" asp-validation-for="Input.TaskDescription"></span>
         </div>
 
@@ -75,6 +85,102 @@
             }
             codeSel.addEventListener('change', refresh);
             refresh();
+        })();
+    </script>
+
+    <script>
+        (function () {
+            const jobSelect = document.getElementById("jobSelect");
+            const codeSelect = document.getElementById("codeSelect");
+            const hoursInput = document.getElementById("hoursInput");
+            const taskDescription = document.getElementById("taskDescription");
+
+            // Make them look "greyed out" when locked
+            function setLocked(el, locked) {
+                if (!el) return;
+                if (locked) {
+                    el.classList.add("bg-light");
+                } else {
+                    el.classList.remove("bg-light");
+                }
+            }
+
+            let lockedCode = null; // null = not locked, otherwise forced value e.g. "SI"
+
+            function applyRules() {
+                const jobText = (jobSelect?.options[jobSelect.selectedIndex]?.text || "").trim().toLowerCase();
+
+                const isHoliday = jobText === "holiday" || jobText === "bank holiday";
+                const isSick = jobText === "sick";
+                const isFeeProposal = jobText === "fee proposal";
+                const isTender = jobText === "tender presentation";
+
+                if (isHoliday) {
+                    lockedCode = "HOL";
+                    codeSelect.value = "HOL";
+                    hoursInput.value = "0";
+                    hoursInput.readOnly = true;
+                    taskDescription.value = "";
+                    taskDescription.readOnly = true;
+
+                    setLocked(codeSelect, true);
+                    setLocked(hoursInput, true);
+                    setLocked(taskDescription, true);
+                }
+                else if (isSick) {
+                    lockedCode = "SI";
+                    codeSelect.value = "SI";
+                    hoursInput.value = "0";
+                    hoursInput.readOnly = true;
+                    taskDescription.value = "";
+                    taskDescription.readOnly = true;
+
+                    setLocked(codeSelect, true);
+                    setLocked(hoursInput, true);
+                    setLocked(taskDescription, true);
+                }
+                else if (isFeeProposal) {
+                    lockedCode = "FP";
+                    codeSelect.value = "FP";
+                    hoursInput.readOnly = false;
+                    taskDescription.readOnly = false;
+
+                    setLocked(codeSelect, true);
+                    setLocked(hoursInput, false);
+                    setLocked(taskDescription, false);
+                }
+                else if (isTender) {
+                    lockedCode = "TP";
+                    codeSelect.value = "TP";
+                    hoursInput.readOnly = false;
+                    taskDescription.readOnly = false;
+
+                    setLocked(codeSelect, true);
+                    setLocked(hoursInput, false);
+                    setLocked(taskDescription, false);
+                }
+                else {
+                    lockedCode = null;
+                    hoursInput.readOnly = false;
+                    taskDescription.readOnly = false;
+
+                    setLocked(codeSelect, false);
+                    setLocked(hoursInput, false);
+                    setLocked(taskDescription, false);
+                }
+            }
+
+            // Prevent changing Code when it's locked (but keep it enabled so it still posts)
+            codeSelect?.addEventListener("change", function () {
+                if (lockedCode && codeSelect.value !== lockedCode) {
+                    codeSelect.value = lockedCode;
+                }
+            });
+
+            jobSelect?.addEventListener("change", applyRules);
+
+            // Apply on initial page load too
+            applyRules();
         })();
     </script>
 }
