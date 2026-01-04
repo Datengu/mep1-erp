@@ -16,6 +16,34 @@ public sealed class TimesheetController : ControllerBase
         _db = db;
     }
 
+    [HttpPost("login")]
+    public async Task<ActionResult<TimesheetLoginResultDto>> Login(
+        LoginTimesheetDto dto)
+    {
+        var user = await _db.TimesheetUsers
+            .FirstOrDefaultAsync(x =>
+                x.Username == dto.Username &&
+                x.IsActive);
+
+        if (user == null)
+            return Unauthorized();
+
+        if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            return Unauthorized();
+
+        var worker = await _db.Workers
+            .FirstOrDefaultAsync(w => w.Id == user.WorkerId);
+
+        if (worker == null)
+            return Unauthorized(); // data integrity issue
+
+        return new TimesheetLoginResultDto(
+            worker.Id,
+            worker.Name,
+            worker.Initials
+        );
+    }
+
     // Active projects for dropdown (only real projects)
     [HttpGet("projects")]
     public async Task<ActionResult<List<TimesheetProjectOptionDto>>> GetActiveProjects()

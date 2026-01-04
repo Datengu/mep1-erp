@@ -24,6 +24,20 @@ public sealed class ErpTimesheetApiClient
         return payload?.Id ?? 0;
     }
 
+    public async Task<TimesheetLoginResultDto?> LoginAsync(
+    string username, string password)
+    {
+        var res = await _http.PostAsJsonAsync(
+            "api/timesheet/login",
+            new LoginTimesheetDto(username, password));
+
+        if (!res.IsSuccessStatusCode)
+            return null;
+
+        return await res.Content
+            .ReadFromJsonAsync<TimesheetLoginResultDto>();
+    }
+
     private sealed class CreateEntryResponse
     {
         public int Id { get; set; }
