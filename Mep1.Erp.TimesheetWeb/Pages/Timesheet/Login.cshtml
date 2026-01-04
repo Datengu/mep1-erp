@@ -1,0 +1,28 @@
+﻿@page
+@model Mep1.Erp.TimesheetWeb.Pages.Timesheet.LoginModel
+@{
+    ViewData["Title"] = "Login";
+}
+
+<h2>Login</h2>
+
+<form method="post">
+    <div class="mb-3">
+        <label class="form-label">Username</label>
+        <input class="form-control" asp-for="Input.Username" />
+        <span class="text-danger" asp-validation-for="Input.Username"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input class="form-control" asp-for="Input.Password" type="password" />
+        <span class="text-danger" asp-validation-for="Input.Password"></span>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="text-danger mb-3">@Model.ErrorMessage</div>
+    }
+
+    <button class="btn btn-primary" type="submit">Login</button>
+</form>

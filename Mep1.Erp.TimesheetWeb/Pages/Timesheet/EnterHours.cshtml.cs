@@ -28,13 +28,25 @@ public sealed class EnterHoursModel : PageModel
         public string? CcfRef { get; set; }
     }
 
-    public async Task OnGet()
+    public async Task<IActionResult> OnGet()
     {
+        var workerId = HttpContext.Session.GetInt32("WorkerId");
+        if (workerId is null)
+            return RedirectToPage("/Timesheet/Login");
+
         await LoadOptionsAsync();
+
+        return Page();
     }
 
     public async Task<IActionResult> OnPost()
     {
+        var workerId = HttpContext.Session.GetInt32("WorkerId");
+        if (workerId is null)
+        {
+            return RedirectToPage("/Timesheet/Login");
+        }
+
         await LoadOptionsAsync();
 
         // For now: just validate and stay on page.

@@ -13,6 +13,13 @@ builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
     http.DefaultRequestHeaders.Add("X-API-KEY", cfg.ApiKey);
 });
 
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(12);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 // Add services to the container.
 builder.Services.AddRazorPages();
 
@@ -32,6 +39,8 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthorization();
+
+app.UseSession();
 
 app.MapRazorPages();
 
