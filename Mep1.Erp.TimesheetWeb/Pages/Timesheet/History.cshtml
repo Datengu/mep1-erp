@@ -1,0 +1,93 @@
+﻿@page
+@model Mep1.Erp.TimesheetWeb.Pages.Timesheet.HistoryModel
+
+<h2>Timesheet History</h2>
+
+@if (!string.IsNullOrWhiteSpace(Model.WorkerName))
+{
+    <p>Worker: <strong>@Model.WorkerName</strong></p>
+}
+
+<p>
+    <a asp-page="/Timesheet/EnterHours">Back to Enter Hours</a>
+</p>
+
+@if (Model.Entries.Count == 0)
+{
+    <p>No entries found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="white-space:nowrap;">Date</th>
+                <th>Job</th>
+                <th style="white-space:nowrap;">Code</th>
+                <th style="white-space:nowrap;">Hours</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var e in Model.Entries)
+            {
+                <tr>
+                    <td style="white-space:nowrap;">@e.Date.ToString("yyyy-MM-dd")</td>
+                    <td>
+                        <div><strong>@e.JobKey</strong></div>
+                        @if (!string.IsNullOrWhiteSpace(e.ProjectCompany) || !string.IsNullOrWhiteSpace(e.ProjectCategory))
+                        {
+                            <div style="font-size:0.9em; opacity:0.85;">
+                                @e.ProjectCompany @if (!string.IsNullOrWhiteSpace(e.ProjectCompany) && !string.IsNullOrWhiteSpace(e.ProjectCategory)) {
+                                <text>•</text>
+                            }
+         @e.ProjectCategory
+                            @if (!e.IsRealProject)
+                            {
+                                <text> • Internal</text>
+                            }
+                        </div>
+                    }
+                </td>
+                <td style="white-space:nowrap;">@e.Code</td>
+                <td style="white-space:nowrap;">@e.Hours.ToString("0.00")</td>
+                <td>
+                    @if (!string.IsNullOrWhiteSpace(e.TaskDescription))
+                    {
+                        <div>@e.TaskDescription</div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(e.CcfRef))
+                    {
+                        <div style="font-size:0.9em; opacity:0.85;">
+                            CCF: @e.CcfRef
+                        </div>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div style="display:flex; gap:12px; align-items:center;">
+    @if (Model.HasPrev)
+    {
+        <a class="btn btn-secondary"
+           asp-page="/Timesheet/History"
+           asp-route-skip="@Model.PrevSkip"
+           asp-route-take="@Model.Take">Previous</a>
+    }
+
+    @if (Model.HasNext)
+    {
+        <a class="btn btn-secondary"
+           asp-page="/Timesheet/History"
+           asp-route-skip="@Model.NextSkip"
+           asp-route-take="@Model.Take">Next</a>
+    }
+
+    <span style="opacity:0.85;">
+        Showing @Model.Entries.Count entries (skip @Model.Skip)
+    </span>
+</div>
+}
