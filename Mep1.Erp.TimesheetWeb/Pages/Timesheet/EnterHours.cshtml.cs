@@ -65,6 +65,7 @@ public sealed class EnterHoursModel : PageModel
     public async Task<IActionResult> OnGet()
     {
         var workerId = HttpContext.Session.GetInt32("WorkerId");
+
         if (workerId is null)
             return RedirectToPage("/Timesheet/Login");
 

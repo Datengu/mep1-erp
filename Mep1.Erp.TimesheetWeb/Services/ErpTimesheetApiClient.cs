@@ -68,4 +68,20 @@ public sealed class ErpTimesheetApiClient
         using var res = await _http.SendAsync(req);
         res.EnsureSuccessStatusCode();
     }
+
+    public async Task<List<TimesheetEntrySummaryDto>?> GetTimesheetEntriesAsync(
+    int workerId,
+    int skip = 0,
+    int take = 100)
+    {
+        var url = $"/api/timesheet/entries?workerId={workerId}&skip={skip}&take={take}";
+
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        res.EnsureSuccessStatusCode();
+
+        return await res.Content.ReadFromJsonAsync<List<TimesheetEntrySummaryDto>>();
+    }
 }
