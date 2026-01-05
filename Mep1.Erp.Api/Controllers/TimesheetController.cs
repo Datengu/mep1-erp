@@ -142,4 +142,46 @@ public sealed class TimesheetController : ControllerBase
 
         return Ok(new { entry.Id });
     }
+
+    // Fetch a worker's submitted timesheet entries (newest first)
+    [HttpGet("entries")]
+    public async Task<ActionResult<List<TimesheetEntrySummaryDto>>> GetEntries(
+        [FromQuery] int workerId,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 100)
+    {
+        if (workerId <= 0)
+            return BadRequest("workerId is required.");
+
+        if (skip < 0) skip = 0;
+
+        // hard cap to keep things safe
+        if (take <= 0) take = 100;
+        if (take > 500) take = 500;
+
+        var items = await _db.TimesheetEntries
+            .AsNoTracking()
+            .Where(e => e.WorkerId == workerId)
+            .OrderByDescending(e => e.Date)
+            .ThenByDescending(e => e.EntryId)
+            .Select(e => new TimesheetEntrySummaryDto(
+                e.Id,
+                e.EntryId,
+                e.Date,
+                e.Hours,
+                e.Code,
+                e.Project.JobNameOrNumber,
+                e.Project.Company,
+                e.Project.Category,
+                e.Project.IsRealProject,
+                e.TaskDescription,
+                e.CcfRef
+            ))
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+
+        return Ok(items);
+    }
+
 }
