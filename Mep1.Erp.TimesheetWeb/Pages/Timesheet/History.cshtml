@@ -21,13 +21,15 @@ else
     <table class="table">
         <thead>
             <tr>
-                <th style="white-space:nowrap;">Date</th>
-                <th>Job</th>
-                <th style="white-space:nowrap;">Code</th>
-                <th style="white-space:nowrap;">Hours</th>
+                <th style="width:110px;">Date</th>
+                <th style="min-width:220px;">Job</th>
+                <th style="width:90px;">Code</th>
+                <th style="width:80px; text-align:right;">Hours</th>
                 <th>Description</th>
+                <th style="width:90px;">Actions</th>
             </tr>
         </thead>
+
         <tbody>
             @foreach (var e in Model.Entries)
             {
@@ -41,53 +43,67 @@ else
                                 @e.ProjectCompany @if (!string.IsNullOrWhiteSpace(e.ProjectCompany) && !string.IsNullOrWhiteSpace(e.ProjectCategory)) {
                                 <text>•</text>
                             }
-         @e.ProjectCategory
-                            @if (!e.IsRealProject)
-                            {
-                                <text> • Internal</text>
-                            }
-                        </div>
-                    }
-                </td>
-                <td style="white-space:nowrap;">@e.Code</td>
-                <td style="white-space:nowrap;">@e.Hours.ToString("0.00")</td>
-                <td>
-                    @if (!string.IsNullOrWhiteSpace(e.TaskDescription))
-                    {
-                        <div>@e.TaskDescription</div>
-                    }
+             @e.ProjectCategory
+                                @if (!e.IsRealProject)
+                                {
+                                    <text> • Internal</text>
+                                }
+                            </div>
+                        }
+                    </td>
+                    <td style="white-space:nowrap;">@e.Code</td>
+                    <td style="white-space:nowrap;">@e.Hours.ToString("0.00")</td>
+                    <td style="
+                   max-width:400px;
+                   white-space:nowrap;
+                   overflow:hidden;
+                   text-overflow:ellipsis;"
+                        title="@e.TaskDescription">
 
-                    @if (!string.IsNullOrWhiteSpace(e.CcfRef))
-                    {
-                        <div style="font-size:0.9em; opacity:0.85;">
-                            CCF: @e.CcfRef
-                        </div>
-                    }
-                </td>
-            </tr>
+                        @if (!string.IsNullOrWhiteSpace(e.TaskDescription))
+                        {
+                            @e.TaskDescription
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(e.CcfRef))
+                        {
+                            <div style="font-size:0.9em; opacity:0.85;">
+                                CCF: @e.CcfRef
+                            </div>
+                        }
+                    </td>
+
+                    <td style="white-space:nowrap;">
+                        <a class="btn btn-sm btn-secondary"
+                           asp-page="/Timesheet/Edit"
+                           asp-route-id="@e.Id">
+                            Edit
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div style="display:flex; gap:12px; align-items:center;">
+        @if (Model.HasPrev)
+        {
+            <a class="btn btn-secondary"
+               asp-page="/Timesheet/History"
+               asp-route-skip="@Model.PrevSkip"
+               asp-route-take="@Model.Take">Previous</a>
         }
-    </tbody>
-</table>
 
-<div style="display:flex; gap:12px; align-items:center;">
-    @if (Model.HasPrev)
-    {
-        <a class="btn btn-secondary"
-           asp-page="/Timesheet/History"
-           asp-route-skip="@Model.PrevSkip"
-           asp-route-take="@Model.Take">Previous</a>
-    }
+        @if (Model.HasNext)
+        {
+            <a class="btn btn-secondary"
+               asp-page="/Timesheet/History"
+               asp-route-skip="@Model.NextSkip"
+               asp-route-take="@Model.Take">Next</a>
+        }
 
-    @if (Model.HasNext)
-    {
-        <a class="btn btn-secondary"
-           asp-page="/Timesheet/History"
-           asp-route-skip="@Model.NextSkip"
-           asp-route-take="@Model.Take">Next</a>
-    }
-
-    <span style="opacity:0.85;">
-        Showing @Model.Entries.Count entries (skip @Model.Skip)
-    </span>
-</div>
+        <span style="opacity:0.85;">
+            Showing @Model.Entries.Count entries (skip @Model.Skip)
+        </span>
+    </div>
 }

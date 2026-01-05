@@ -134,7 +134,10 @@ public sealed class TimesheetController : ControllerBase
             // When Code = VO (Variations/Variation Order), there should be additional input for CcfRef. CcfRef shouldn't show unless Code = VO.
             CcfRef = string.Equals(dto.Code, "VO", StringComparison.OrdinalIgnoreCase)
                 ? (dto.CcfRef ?? "")
-                : ""
+                : "",
+            CreatedAtUtc = DateTime.UtcNow,
+            IsDeleted = false
+
         };
 
         _db.TimesheetEntries.Add(entry);
@@ -161,7 +164,7 @@ public sealed class TimesheetController : ControllerBase
 
         var items = await _db.TimesheetEntries
             .AsNoTracking()
-            .Where(e => e.WorkerId == workerId)
+            .Where(e => e.WorkerId == workerId && !e.IsDeleted)
             .OrderByDescending(e => e.Date)
             .ThenByDescending(e => e.EntryId)
             .Select(e => new TimesheetEntrySummaryDto(
@@ -183,5 +186,93 @@ public sealed class TimesheetController : ControllerBase
 
         return Ok(items);
     }
+
+    [HttpPut("entries/{id:int}")]
+    public async Task<IActionResult> UpdateEntry(int id, [FromBody] UpdateTimesheetEntryDto dto)
+    {
+        if (id <= 0) return BadRequest("Invalid id.");
+        if (dto.WorkerId <= 0) return BadRequest("WorkerId is required.");
+
+        // Basic validation
+        if (dto.Date.Date > DateTime.Today)
+            return BadRequest("Future dates are not allowed.");
+
+        // Ensure 0.5 increments (robust)
+        var halfHours = dto.Hours * 2m;
+        if (halfHours != decimal.Truncate(halfHours))
+            return BadRequest("Hours must be in 0.5 increments.");
+
+        // Fetch entry
+        var entry = await _db.TimesheetEntries
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        if (entry is null)
+            return NotFound();
+
+        // Ownership check
+        if (entry.WorkerId != dto.WorkerId)
+            return StatusCode(StatusCodes.Status403Forbidden, "You can only edit your own entries.");
+
+        if (entry.IsDeleted)
+            return BadRequest("Cannot edit a deleted entry.");
+
+        // Validate project exists (and active if you want that rule)
+        var project = await _db.Projects
+            .FirstOrDefaultAsync(p => p.JobNameOrNumber == dto.JobKey);
+
+        if (project is null)
+            return BadRequest("Invalid job.");
+
+        // Business rules: HOL/SI/BH => hours 0, description optional
+        var code = (dto.Code ?? "").Trim().ToUpperInvariant();
+
+        decimal hours = dto.Hours;
+        string taskDescription = (dto.TaskDescription ?? "").Trim();
+        string ccfRef = (dto.CcfRef ?? "").Trim();
+
+        if (code is "HOL" or "SI" or "BH")
+        {
+            hours = 0m;
+            // taskDescription can be left empty
+        }
+
+        // Apply updates
+        entry.Date = dto.Date.Date;
+        entry.Hours = hours;
+        entry.Code = code;
+        entry.ProjectId = project.Id;
+        entry.TaskDescription = taskDescription;
+        entry.CcfRef = ccfRef;
+
+        entry.UpdatedAtUtc = DateTime.UtcNow;
+        entry.UpdatedByWorkerId = dto.WorkerId;
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpGet("entries/{id:int}")]
+    public async Task<ActionResult<TimesheetEntryEditDto>> GetEntry(int id, [FromQuery] int workerId)
+    {
+        if (workerId <= 0) return BadRequest("workerId is required.");
+
+        var dto = await _db.TimesheetEntries
+            .Where(e => e.Id == id && e.WorkerId == workerId && !e.IsDeleted)
+            .Select(e => new TimesheetEntryEditDto(
+                e.Id,
+                e.WorkerId,
+                e.Project.JobNameOrNumber,
+                e.Date,
+                e.Hours,
+                e.Code,
+                e.TaskDescription,
+                e.CcfRef
+            ))
+            .FirstOrDefaultAsync();
+
+        if (dto is null) return NotFound();
+        return dto;
+    }
+
 
 }

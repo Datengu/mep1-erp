@@ -48,6 +48,16 @@ namespace Mep1.Erp.Core
 
         public int ProjectId { get; set; }
         public Project Project { get; set; } = null!;
+
+        // --- Audit / lifecycle metadata (Option A) ---
+        public DateTime CreatedAtUtc { get; set; }
+        public DateTime? UpdatedAtUtc { get; set; }
+        public int? UpdatedByWorkerId { get; set; }
+
+        // --- Soft delete ---
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAtUtc { get; set; }
+        public int? DeletedByWorkerId { get; set; }
     }
 
     public class WorkerRate

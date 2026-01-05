@@ -69,6 +69,19 @@ public sealed class ErpTimesheetApiClient
         res.EnsureSuccessStatusCode();
     }
 
+    public async Task<TimesheetEntryEditDto?> GetTimesheetEntryAsync(int id, int workerId)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/timesheet/entries/{id}?workerId={workerId}");
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadFromJsonAsync<TimesheetEntryEditDto>();
+    }
+
     public async Task<List<TimesheetEntrySummaryDto>?> GetTimesheetEntriesAsync(
     int workerId,
     int skip = 0,
@@ -84,4 +97,17 @@ public sealed class ErpTimesheetApiClient
 
         return await res.Content.ReadFromJsonAsync<List<TimesheetEntrySummaryDto>>();
     }
+
+    public async Task UpdateTimesheetEntryAsync(int id, UpdateTimesheetEntryDto dto)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Put, $"/api/timesheet/entries/{id}")
+        {
+            Content = JsonContent.Create(dto)
+        };
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        res.EnsureSuccessStatusCode();
+    }
+
 }
