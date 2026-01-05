@@ -49,4 +49,16 @@ public sealed class HistoryModel : PageModel
 
     public int PrevSkip => Math.Max(0, Skip - Take);
     public int NextSkip => Skip + Take;
+
+    public async Task<IActionResult> OnPostDeleteAsync(int id, int skip = 0, int take = 100)
+    {
+        var workerId = HttpContext.Session.GetInt32("WorkerId");
+        if (workerId is null)
+            return RedirectToPage("/Timesheet/Login");
+
+        await _api.DeleteTimesheetEntryAsync(id, workerId.Value);
+
+        // return to same page of results
+        return RedirectToPage("/Timesheet/History", new { skip, take });
+    }
 }
