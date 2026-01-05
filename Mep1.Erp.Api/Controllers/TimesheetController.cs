@@ -187,4 +187,66 @@ public sealed class TimesheetController : ControllerBase
         return Ok(items);
     }
 
+    [HttpPut("entries/{id:int}")]
+    public async Task<IActionResult> UpdateEntry(int id, [FromBody] UpdateTimesheetEntryDto dto)
+    {
+        if (id <= 0) return BadRequest("Invalid id.");
+        if (dto.WorkerId <= 0) return BadRequest("WorkerId is required.");
+
+        // Basic validation
+        if (dto.Date.Date > DateTime.Today)
+            return BadRequest("Future dates are not allowed.");
+
+        // Ensure 0.5 increments (robust)
+        var halfHours = dto.Hours * 2m;
+        if (halfHours != decimal.Truncate(halfHours))
+            return BadRequest("Hours must be in 0.5 increments.");
+
+        // Fetch entry
+        var entry = await _db.TimesheetEntries
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        if (entry is null)
+            return NotFound();
+
+        // Ownership check
+        if (entry.WorkerId != dto.WorkerId)
+            return StatusCode(StatusCodes.Status403Forbidden, "You can only edit your own entries.");
+
+        if (entry.IsDeleted)
+            return BadRequest("Cannot edit a deleted entry.");
+
+        // Validate project exists (and active if you want that rule)
+        var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == dto.ProjectId);
+        if (project is null)
+            return BadRequest("Invalid project.");
+
+        // Business rules: HOL/SI/BH => hours 0, description optional
+        var code = (dto.Code ?? "").Trim().ToUpperInvariant();
+
+        decimal hours = dto.Hours;
+        string taskDescription = (dto.TaskDescription ?? "").Trim();
+        string ccfRef = (dto.CcfRef ?? "").Trim();
+
+        if (code is "HOL" or "SI" or "BH")
+        {
+            hours = 0m;
+            // taskDescription can be left empty
+        }
+
+        // Apply updates
+        entry.Date = dto.Date.Date;
+        entry.Hours = hours;
+        entry.Code = code;
+        entry.ProjectId = dto.ProjectId;
+        entry.TaskDescription = taskDescription;
+        entry.CcfRef = ccfRef;
+
+        entry.UpdatedAtUtc = DateTime.UtcNow;
+        entry.UpdatedByWorkerId = dto.WorkerId;
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
 }
