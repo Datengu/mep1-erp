@@ -217,9 +217,11 @@ public sealed class TimesheetController : ControllerBase
             return BadRequest("Cannot edit a deleted entry.");
 
         // Validate project exists (and active if you want that rule)
-        var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == dto.ProjectId);
+        var project = await _db.Projects
+            .FirstOrDefaultAsync(p => p.JobNameOrNumber == dto.JobKey);
+
         if (project is null)
-            return BadRequest("Invalid project.");
+            return BadRequest("Invalid job.");
 
         // Business rules: HOL/SI/BH => hours 0, description optional
         var code = (dto.Code ?? "").Trim().ToUpperInvariant();
@@ -238,7 +240,7 @@ public sealed class TimesheetController : ControllerBase
         entry.Date = dto.Date.Date;
         entry.Hours = hours;
         entry.Code = code;
-        entry.ProjectId = dto.ProjectId;
+        entry.ProjectId = project.Id;
         entry.TaskDescription = taskDescription;
         entry.CcfRef = ccfRef;
 
@@ -248,5 +250,29 @@ public sealed class TimesheetController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpGet("entries/{id:int}")]
+    public async Task<ActionResult<TimesheetEntryEditDto>> GetEntry(int id, [FromQuery] int workerId)
+    {
+        if (workerId <= 0) return BadRequest("workerId is required.");
+
+        var dto = await _db.TimesheetEntries
+            .Where(e => e.Id == id && e.WorkerId == workerId && !e.IsDeleted)
+            .Select(e => new TimesheetEntryEditDto(
+                e.Id,
+                e.WorkerId,
+                e.Project.JobNameOrNumber,
+                e.Date,
+                e.Hours,
+                e.Code,
+                e.TaskDescription,
+                e.CcfRef
+            ))
+            .FirstOrDefaultAsync();
+
+        if (dto is null) return NotFound();
+        return dto;
+    }
+
 
 }

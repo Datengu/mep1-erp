@@ -1,0 +1,219 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Mep1.Erp.Core;
+using Mep1.Erp.TimesheetWeb.Services;
+using Microsoft.AspNetCore.Mvc.Rendering;
+
+namespace Mep1.Erp.TimesheetWeb.Pages.Timesheet;
+
+public sealed class EditModel : PageModel
+{
+    private readonly ErpTimesheetApiClient _api;
+
+    public EditModel(ErpTimesheetApiClient api)
+    {
+        _api = api;
+    }
+
+    private List<TimesheetProjectOptionDto> _projectsCache = new();
+
+    private static readonly (string Code, string Description)[] TimesheetCodeList =
+    {
+        ("P", "Programmed Drawing Input"),
+        ("IC", "Updating to Internal Comments"),
+        ("EC", "Updating to External Comments"),
+        ("GM", "General Management"),
+        ("M", "Meetings"),
+        ("RD", "Record Drawings"),
+        ("S", "Surveys"),
+        ("T", "Training"),
+        ("BIM", "BIM Works"),
+        ("DC", "Document Control"),
+        ("FP", "Fee Proposal"),
+        ("BU", "Business Works"),
+        ("QA", "Drawing QA Check"),
+        ("TP", "Tender Presentation"),
+        ("VO", "Variations"),
+        ("SI", "Sick"),
+        ("HOL", "Holiday")
+    };
+
+    [BindProperty(SupportsGet = true)]
+    public int Id { get; set; }
+
+    public List<SelectListItem> ProjectOptions { get; private set; } = new();
+    public List<SelectListItem> CodeOptions { get; private set; } = new();
+
+    [BindProperty]
+    public InputModel Input { get; set; } = new();
+
+    public sealed class InputModel
+    {
+        public DateTime Date { get; set; }
+        public decimal Hours { get; set; }
+        public string JobKey { get; set; } = "";
+        public string Code { get; set; } = "";
+        public string? CcfRef { get; set; }
+        public string? TaskDescription { get; set; }
+    }
+
+    public async Task<IActionResult> OnGet()
+    {
+        var workerId = HttpContext.Session.GetInt32("WorkerId");
+        if (workerId is null)
+            return RedirectToPage("/Timesheet/Login");
+
+        if (Id <= 0)
+            return RedirectToPage("/Timesheet/History");
+
+        await LoadOptionsAsync(workerId.Value);
+
+        var entry = await _api.GetTimesheetEntryAsync(Id, workerId.Value);
+        if (entry is null)
+            return RedirectToPage("/Timesheet/History");
+
+        Input = new InputModel
+        {
+            Date = entry.Date.Date,
+            Hours = entry.Hours,
+            JobKey = entry.JobKey,
+            Code = entry.Code,
+            TaskDescription = entry.TaskDescription,
+            CcfRef = entry.CcfRef
+        };
+
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPost()
+    {
+        var workerId = HttpContext.Session.GetInt32("WorkerId");
+        if (workerId is null)
+            return RedirectToPage("/Timesheet/Login");
+
+        await LoadOptionsAsync(workerId.Value);
+
+        if (Id <= 0)
+            return RedirectToPage("/Timesheet/History");
+
+        // ---- Enforce Job <-> Code rules based on selected "job" ----
+        var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
+
+        if (selected is null)
+        {
+            ModelState.AddModelError("Input.JobKey", "Please select a valid job.");
+        }
+        else
+        {
+            // Match on the internal-job names you have in the Projects table:
+            var jobName = (selected.Label ?? selected.JobKey ?? "").Trim();
+
+            bool isHoliday = jobName.Equals("Holiday", StringComparison.OrdinalIgnoreCase)
+                          || jobName.Equals("Bank Holiday", StringComparison.OrdinalIgnoreCase);
+
+            bool isSick = jobName.Equals("Sick", StringComparison.OrdinalIgnoreCase);
+            bool isFeeProposal = jobName.Equals("Fee Proposal", StringComparison.OrdinalIgnoreCase);
+            bool isTender = jobName.Equals("Tender Presentation", StringComparison.OrdinalIgnoreCase);
+
+            if (isHoliday)
+            {
+                // must be HOL + no hours
+                Input.Code = "HOL";
+                Input.Hours = 0;
+            }
+            else if (isSick)
+            {
+                Input.Code = "SI";
+                Input.Hours = 0;
+            }
+            else if (isFeeProposal)
+            {
+                Input.Code = "FP";
+            }
+            else if (isTender)
+            {
+                Input.Code = "TP";
+            }
+        }
+
+        // ---- Validation ----
+        var today = DateTime.Today;
+
+        if (Input.Date.Date > today)
+        {
+            ModelState.AddModelError("Input.Date", "You cannot submit hours for a future date.");
+            await LoadOptionsAsync(workerId.Value);
+            return Page();
+        }
+
+        if (string.IsNullOrWhiteSpace(Input.JobKey))
+            ModelState.AddModelError("Input.JobKey", "Please select a job.");
+
+        // Allow 0 hours ONLY for HOL / SI (holiday/sick jobs)
+        var allowZeroHours = Input.Code == "HOL" || Input.Code == "SI";
+
+        if ((!allowZeroHours && (Input.Hours <= 0 || Input.Hours > 24)) ||
+            (allowZeroHours && (Input.Hours < 0 || Input.Hours > 24)))
+        {
+            ModelState.AddModelError("Input.Hours", "Hours must be between 0 and 24.");
+        }
+
+        // ensure hours is in 0.5 increments
+        var halfHours = Input.Hours * 2m;
+        if (halfHours != decimal.Truncate(halfHours))
+        {
+            ModelState.AddModelError("Input.Hours", "Hours must be in 0.5 increments.");
+            await LoadOptionsAsync(workerId.Value);
+            return Page();
+        }
+
+        // Require code
+        if (string.IsNullOrWhiteSpace(Input.Code))
+            ModelState.AddModelError("Input.Code", "Please select a code.");
+
+        // Force CCF Ref when VO is selected code
+        if (Input.Code == "VO" && string.IsNullOrWhiteSpace(Input.CcfRef))
+            ModelState.AddModelError("Input.CcfRef", "CCF Ref is required when Code is VO.");
+
+        // Only require description for non-holiday/sick
+        if (Input.Code != "HOL" && Input.Code != "SI")
+        {
+            if (string.IsNullOrWhiteSpace(Input.TaskDescription))
+                ModelState.AddModelError("Input.TaskDescription", "Please enter a task description.");
+        }
+
+        if (!ModelState.IsValid)
+            return Page();
+
+        // ---- Build DTO & POST to API ----
+        var cleanedCcf = string.IsNullOrWhiteSpace(Input.CcfRef) ? null : Input.CcfRef.Trim();
+        var cleanedTask = string.IsNullOrWhiteSpace(Input.TaskDescription) ? null : Input.TaskDescription.Trim();
+
+        var dto = new UpdateTimesheetEntryDto(
+            WorkerId: workerId.Value,
+            JobKey: Input.JobKey,
+            Date: Input.Date.Date,
+            Hours: Input.Hours,
+            Code: Input.Code,
+            TaskDescription: Input.TaskDescription,
+            CcfRef: Input.CcfRef
+        );
+
+        await _api.UpdateTimesheetEntryAsync(Id, dto);
+
+        return RedirectToPage("/Timesheet/History");
+    }
+
+    private async Task LoadOptionsAsync(int workerId)
+    {
+        _projectsCache = await _api.GetActiveProjectsAsync() ?? new List<TimesheetProjectOptionDto>();
+
+        ProjectOptions = _projectsCache
+            .Select(p => new SelectListItem(p.Label, p.JobKey))
+            .ToList();
+
+        CodeOptions = TimesheetCodeList
+            .Select(c => new SelectListItem($"{c.Code} - {c.Description}", c.Code))
+            .ToList();
+    }
+}
