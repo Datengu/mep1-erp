@@ -84,4 +84,17 @@ public sealed class ErpTimesheetApiClient
 
         return await res.Content.ReadFromJsonAsync<List<TimesheetEntrySummaryDto>>();
     }
+
+    public async Task UpdateTimesheetEntryAsync(int id, UpdateTimesheetEntryDto dto)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Put, $"/api/timesheet/entries/{id}")
+        {
+            Content = JsonContent.Create(dto)
+        };
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        res.EnsureSuccessStatusCode();
+    }
+
 }
