@@ -134,7 +134,10 @@ public sealed class TimesheetController : ControllerBase
             // When Code = VO (Variations/Variation Order), there should be additional input for CcfRef. CcfRef shouldn't show unless Code = VO.
             CcfRef = string.Equals(dto.Code, "VO", StringComparison.OrdinalIgnoreCase)
                 ? (dto.CcfRef ?? "")
-                : ""
+                : "",
+            CreatedAtUtc = DateTime.UtcNow,
+            IsDeleted = false
+
         };
 
         _db.TimesheetEntries.Add(entry);
@@ -161,7 +164,7 @@ public sealed class TimesheetController : ControllerBase
 
         var items = await _db.TimesheetEntries
             .AsNoTracking()
-            .Where(e => e.WorkerId == workerId)
+            .Where(e => e.WorkerId == workerId && !e.IsDeleted)
             .OrderByDescending(e => e.Date)
             .ThenByDescending(e => e.EntryId)
             .Select(e => new TimesheetEntrySummaryDto(
