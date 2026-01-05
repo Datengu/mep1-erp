@@ -301,4 +301,51 @@ public sealed class TimesheetController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("workers/{workerId:int}/signature")]
+    public async Task<IActionResult> GetWorkerSignature(int workerId)
+    {
+        if (workerId <= 0) return BadRequest("Invalid workerId.");
+
+        var worker = await _db.Workers
+            .Where(w => w.Id == workerId)
+            .Select(w => new
+            {
+                w.Id,
+                w.Name,
+                w.SignatureName,
+                w.SignatureCapturedAtUtc
+            })
+            .FirstOrDefaultAsync();
+
+        if (worker is null)
+            return NotFound();
+
+        return Ok(worker);
+    }
+
+    [HttpPut("workers/{workerId:int}/signature")]
+    public async Task<IActionResult> UpdateWorkerSignature(int workerId, [FromBody] UpdateWorkerSignatureDto dto)
+    {
+        if (workerId <= 0) return BadRequest("Invalid workerId.");
+        if (dto is null) return BadRequest("Body required.");
+
+        var signature = dto.SignatureName?.Trim();
+        if (string.IsNullOrWhiteSpace(signature))
+            return BadRequest("SignatureName is required.");
+
+        // Optional safety: keep it simple
+        if (signature.Length > 80)
+            return BadRequest("SignatureName too long.");
+
+        var worker = await _db.Workers.FirstOrDefaultAsync(w => w.Id == workerId);
+        if (worker is null)
+            return NotFound();
+
+        worker.SignatureName = signature;
+        worker.SignatureCapturedAtUtc ??= DateTime.UtcNow; // only set first time (optional)
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
 }
