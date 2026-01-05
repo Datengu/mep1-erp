@@ -21,10 +21,10 @@ else
     <table class="table">
         <thead>
             <tr>
-                <th style="white-space:nowrap;">Date</th>
-                <th>Job</th>
-                <th style="white-space:nowrap;">Code</th>
-                <th style="white-space:nowrap;">Hours</th>
+                <th style="width:110px;">Date</th>
+                <th style="min-width:220px;">Job</th>
+                <th style="width:90px;">Code</th>
+                <th style="width:80px; text-align:right;">Hours</th>
                 <th>Description</th>
             </tr>
         </thead>
@@ -51,10 +51,16 @@ else
                 </td>
                 <td style="white-space:nowrap;">@e.Code</td>
                 <td style="white-space:nowrap;">@e.Hours.ToString("0.00")</td>
-                <td>
+                <td style="
+                           max-width:400px;
+                           white-space:nowrap;
+                           overflow:hidden;
+                           text-overflow:ellipsis;"
+                    title="@e.TaskDescription">
+
                     @if (!string.IsNullOrWhiteSpace(e.TaskDescription))
                     {
-                        <div>@e.TaskDescription</div>
+                        @e.TaskDescription
                     }
 
                     @if (!string.IsNullOrWhiteSpace(e.CcfRef))
