@@ -26,7 +26,7 @@
             <datalist id="hourOptions">
                 @for (decimal h = 0; h <= 24; h += 0.5m)
                 {
-                    <option value="@h.ToString("0.00")"></option>
+                    <option value="@h.ToString("0.##")"></option>
                 }
             </datalist>
             @if (Model.Input.Code == "HOL" || Model.Input.Code == "SI")

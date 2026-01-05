@@ -51,7 +51,7 @@ public sealed class EnterHoursModel : PageModel
     {
         public DateTime Date { get; set; } = DateTime.Today;
 
-        public decimal Hours { get; set; } = 0.00m;
+        public decimal Hours { get; set; } = 0;
 
         public string JobKey { get; set; } = "";
 
@@ -149,7 +149,8 @@ public sealed class EnterHoursModel : PageModel
         }
 
         // ensure hours is in 0.5 increments
-        if (Input.Hours % 0.5m != 0)
+        var halfHours = Input.Hours * 2m;
+        if (halfHours != decimal.Truncate(halfHours))
         {
             ModelState.AddModelError("Input.Hours", "Hours must be in 0.5 increments.");
             await LoadOptionsAsync();
