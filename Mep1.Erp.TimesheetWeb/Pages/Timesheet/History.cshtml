@@ -79,6 +79,19 @@ else
                            asp-route-id="@e.Id">
                             Edit
                         </a>
+
+                        <form method="post"
+                              asp-page-handler="Delete"
+                              asp-route-id="@e.Id"
+                              asp-route-skip="@Model.Skip"
+                              asp-route-take="@Model.Take"
+                              style="display:inline;">
+                            <button type="submit"
+                                    class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Delete this entry?');">
+                                Delete
+                            </button>
+                        </form>
                     </td>
                 </tr>
             }

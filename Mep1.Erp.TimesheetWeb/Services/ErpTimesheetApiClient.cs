@@ -110,4 +110,13 @@ public sealed class ErpTimesheetApiClient
         res.EnsureSuccessStatusCode();
     }
 
+    public async Task DeleteTimesheetEntryAsync(int id, int workerId)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/timesheet/entries/{id}?workerId={workerId}");
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        res.EnsureSuccessStatusCode();
+    }
+
 }

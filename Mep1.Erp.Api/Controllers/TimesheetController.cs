@@ -274,5 +274,31 @@ public sealed class TimesheetController : ControllerBase
         return dto;
     }
 
+    [HttpDelete("entries/{id:int}")]
+    public async Task<IActionResult> DeleteEntry(int id, [FromQuery] int workerId)
+    {
+        if (id <= 0) return BadRequest("Invalid id.");
+        if (workerId <= 0) return BadRequest("workerId is required.");
+
+        var entry = await _db.TimesheetEntries
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        if (entry is null)
+            return NotFound();
+
+        // Ownership check
+        if (entry.WorkerId != workerId)
+            return StatusCode(StatusCodes.Status403Forbidden, "You can only delete your own entries.");
+
+        if (entry.IsDeleted)
+            return NoContent(); // idempotent delete
+
+        entry.IsDeleted = true;
+        entry.DeletedAtUtc = DateTime.UtcNow;
+        entry.DeletedByWorkerId = workerId;
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
 
 }
