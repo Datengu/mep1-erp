@@ -195,8 +195,8 @@ public sealed class EditModel : PageModel
             Date: Input.Date.Date,
             Hours: Input.Hours,
             Code: Input.Code,
-            TaskDescription: Input.TaskDescription,
-            CcfRef: Input.CcfRef
+            CcfRef: cleanedCcf,
+            TaskDescription: cleanedTask
         );
 
         await _api.UpdateTimesheetEntryAsync(Id, dto);
