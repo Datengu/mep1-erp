@@ -17,7 +17,7 @@ public sealed class TimesheetAuthController : ControllerBase
     }
 
     public sealed record LoginRequest(string Username, string Password);
-    public sealed record LoginResponse(int WorkerId, string Username);
+    public sealed record LoginResponse(int WorkerId, string Username, string Role);
 
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request)
@@ -35,7 +35,8 @@ public sealed class TimesheetAuthController : ControllerBase
 
         return Ok(new LoginResponse(
             user.WorkerId,
-            user.Username
+            user.Username,
+            user.Role.ToString()
         ));
     }
 }
