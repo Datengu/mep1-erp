@@ -9,5 +9,8 @@ public sealed record CreateTimesheetEntryDto(
     decimal Hours,
     string Code,
     string? CcfRef,
-    string? TaskDescription
+    string? TaskDescription,
+    string WorkType,
+    List<string> Levels,
+    List<string> Areas
 );

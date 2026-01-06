@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Mep1.Erp.Core;
+﻿using Mep1.Erp.Core;
 using Mep1.Erp.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace Mep1.Erp.Api.Controllers;
 
@@ -14,6 +15,22 @@ public sealed class TimesheetController : ControllerBase
     public TimesheetController(AppDbContext db)
     {
         _db = db;
+    }
+
+    private static List<string> ParseJsonList(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return new List<string>();
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+        }
+        catch
+        {
+            // if old/bad data ever exists, don't crash the endpoint
+            return new List<string>();
+        }
     }
 
     [HttpPost("login")]
@@ -136,8 +153,10 @@ public sealed class TimesheetController : ControllerBase
                 ? (dto.CcfRef ?? "")
                 : "",
             CreatedAtUtc = DateTime.UtcNow,
-            IsDeleted = false
-
+            IsDeleted = false,
+            WorkType = dto.WorkType is "S" or "M" ? dto.WorkType : "M",
+            LevelsJson = JsonSerializer.Serialize(dto.Levels ?? new List<string>()),
+            AreasJson = JsonSerializer.Serialize(dto.Areas ?? new List<string>())
         };
 
         _db.TimesheetEntries.Add(entry);
@@ -162,27 +181,49 @@ public sealed class TimesheetController : ControllerBase
         if (take <= 0) take = 100;
         if (take > 500) take = 500;
 
-        var items = await _db.TimesheetEntries
+        var rows = await _db.TimesheetEntries
             .AsNoTracking()
             .Where(e => e.WorkerId == workerId && !e.IsDeleted)
             .OrderByDescending(e => e.Date)
             .ThenByDescending(e => e.EntryId)
-            .Select(e => new TimesheetEntrySummaryDto(
+            .Select(e => new
+            {
                 e.Id,
                 e.EntryId,
                 e.Date,
                 e.Hours,
                 e.Code,
-                e.Project.JobNameOrNumber,
-                e.Project.Company,
-                e.Project.Category,
+                JobKey = e.Project.JobNameOrNumber,
+                ProjectCompany = e.Project.Company,
+                ProjectCategory = e.Project.Category,
                 e.Project.IsRealProject,
                 e.TaskDescription,
-                e.CcfRef
-            ))
+                e.CcfRef,
+                e.WorkType,
+                e.LevelsJson,
+                e.AreasJson
+            })
             .Skip(skip)
             .Take(take)
             .ToListAsync();
+
+        var items = rows.Select(e => new TimesheetEntrySummaryDto(
+                e.Id,
+                e.EntryId,
+                e.Date,
+                e.Hours,
+                e.Code,
+                e.JobKey,
+                e.ProjectCompany,
+                e.ProjectCategory,
+                e.IsRealProject,
+                e.TaskDescription,
+                e.CcfRef,
+                e.WorkType,
+                ParseJsonList(e.LevelsJson),
+                ParseJsonList(e.AreasJson)
+            ))
+            .ToList();
 
         return Ok(items);
     }
@@ -247,6 +288,11 @@ public sealed class TimesheetController : ControllerBase
         entry.UpdatedAtUtc = DateTime.UtcNow;
         entry.UpdatedByWorkerId = dto.WorkerId;
 
+        entry.WorkType = dto.WorkType is "S" or "M" ? dto.WorkType : "M";
+
+        entry.LevelsJson = JsonSerializer.Serialize(dto.Levels ?? new List<string>());
+        entry.AreasJson = JsonSerializer.Serialize(dto.Areas ?? new List<string>());
+
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -256,21 +302,41 @@ public sealed class TimesheetController : ControllerBase
     {
         if (workerId <= 0) return BadRequest("workerId is required.");
 
-        var dto = await _db.TimesheetEntries
+        var row = await _db.TimesheetEntries
+            .AsNoTracking()
             .Where(e => e.Id == id && e.WorkerId == workerId && !e.IsDeleted)
-            .Select(e => new TimesheetEntryEditDto(
+            .Select(e => new
+            {
                 e.Id,
                 e.WorkerId,
-                e.Project.JobNameOrNumber,
+                JobKey = e.Project.JobNameOrNumber,
                 e.Date,
                 e.Hours,
                 e.Code,
                 e.TaskDescription,
-                e.CcfRef
-            ))
+                e.CcfRef,
+                e.WorkType,
+                e.LevelsJson,
+                e.AreasJson
+            })
             .FirstOrDefaultAsync();
 
-        if (dto is null) return NotFound();
+        if (row is null) return NotFound();
+
+        var dto = new TimesheetEntryEditDto(
+            row.Id,
+            row.WorkerId,
+            row.JobKey,
+            row.Date,
+            row.Hours,
+            row.Code,
+            row.TaskDescription,
+            row.CcfRef,
+            row.WorkType,
+            ParseJsonList(row.LevelsJson),
+            ParseJsonList(row.AreasJson)
+        );
+
         return dto;
     }
 

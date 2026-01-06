@@ -60,6 +60,14 @@ namespace Mep1.Erp.Core
         public bool IsDeleted { get; set; }
         public DateTime? DeletedAtUtc { get; set; }
         public int? DeletedByWorkerId { get; set; }
+
+        // --- New for tracking hours worked more specifically on what ---
+        public string WorkType { get; set; } = "M";   // "S" or "M"
+
+        // Stored as JSON in DB
+        public string LevelsJson { get; set; } = "[]";
+        public string AreasJson { get; set; } = "[]";
+
     }
 
     public class WorkerRate

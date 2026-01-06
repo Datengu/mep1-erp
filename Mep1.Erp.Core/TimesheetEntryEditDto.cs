@@ -8,5 +8,8 @@ public sealed record TimesheetEntryEditDto(
     decimal Hours,
     string Code,
     string? TaskDescription,
-    string? CcfRef
+    string? CcfRef,
+    string WorkType,
+    List<string> Levels,
+    List<string> Areas
 );

@@ -13,5 +13,8 @@ public sealed record TimesheetEntrySummaryDto(
     string ProjectCategory,
     bool IsRealProject,
     string TaskDescription,
-    string CcfRef
+    string CcfRef,
+    string WorkType,
+    List<string> Levels,
+    List<string> Areas
 );
