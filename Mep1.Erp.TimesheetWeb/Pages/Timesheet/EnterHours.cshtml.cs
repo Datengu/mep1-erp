@@ -42,6 +42,11 @@ public sealed class EnterHoursModel : PageModel
     public List<SelectListItem> ProjectOptions { get; private set; } = new();
     public List<SelectListItem> CodeOptions { get; private set; } = new();
 
+    public static readonly string[] LevelOptions =
+    Enumerable.Range(0, 31).Select(i => $"L{i:00}").ToArray();
+
+    public List<SelectListItem> LevelSelectItems { get; private set; } = new();
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
@@ -60,6 +65,11 @@ public sealed class EnterHoursModel : PageModel
         public string? CcfRef { get; set; }
 
         public string? TaskDescription { get; set; }
+
+        public string WorkType { get; set; } = "M";      // "S" or "M"
+        public List<string> Levels { get; set; } = new(); // multi-select
+        public string? AreasRaw { get; set; }             // comma-separated input
+
     }
 
     public async Task<IActionResult> OnGet()
@@ -172,6 +182,12 @@ public sealed class EnterHoursModel : PageModel
                 ModelState.AddModelError("Input.TaskDescription", "Please enter a task description.");
         }
 
+        if (Input.WorkType != "S" && Input.WorkType != "M")
+            ModelState.AddModelError("Input.WorkType", "Please select Sheet or Modelling.");
+
+        if (Input.Levels.Any(l => !LevelOptions.Contains(l)))
+            ModelState.AddModelError("Input.Levels", "Please select valid level(s).");
+
         if (!ModelState.IsValid)
             return Page();
 
@@ -184,6 +200,18 @@ public sealed class EnterHoursModel : PageModel
             ? null
             : Input.TaskDescription.Trim();
 
+        static List<string> ParseTags(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return new();
+            return raw.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                      .Select(x => x.Trim())
+                      .Where(x => x.Length > 0)
+                      .Distinct(StringComparer.OrdinalIgnoreCase)
+                      .ToList();
+        }
+
+        var areas = ParseTags(Input.AreasRaw);
+
         // Your DTO constructor is: (int WorkerId, string JobKey, DateTime Date, decimal Hours, string Code, string? TaskDescription, string? CcfRef)
         var dto = new CreateTimesheetEntryDto(
             WorkerId: workerId.Value,
@@ -192,7 +220,10 @@ public sealed class EnterHoursModel : PageModel
             Hours: Input.Hours,
             Code: Input.Code,
             CcfRef: cleanedCcf,
-            TaskDescription: cleanedTask
+            TaskDescription: cleanedTask,
+            WorkType: Input.WorkType,
+            Levels: Input.Levels,
+            Areas: areas
         );
 
         await _api.CreateTimesheetEntryAsync(dto);
@@ -218,6 +249,10 @@ public sealed class EnterHoursModel : PageModel
 
         CodeOptions = TimesheetCodeList
             .Select(c => new SelectListItem($"{c.Code} - {c.Description}", c.Code))
+            .ToList();
+
+        LevelSelectItems = LevelOptions
+            .Select(l => new SelectListItem(l, l))
             .ToList();
     }
 }

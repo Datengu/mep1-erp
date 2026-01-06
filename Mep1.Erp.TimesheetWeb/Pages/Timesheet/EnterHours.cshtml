@@ -50,6 +50,73 @@
             <span class="text-danger" asp-validation-for="Input.Code"></span>
         </div>
 
+        <div class="mb-2"></div>
+
+        <div class="row mb-3">
+
+            <!-- Sheet / Modelling -->
+            <div class="col-md-4">
+                <label class="form-label">Sheet / Modelling</label>
+                <div class="form-control">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input"
+                               type="radio"
+                               name="Input.WorkType"
+                               value="S"
+                               id="workTypeSheet"
+                               @(Model.Input.WorkType == "S" ? "checked" : null) />
+                        <label class="form-check-label" for="workTypeSheet">Sheet</label>
+                    </div>
+
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input"
+                               type="radio"
+                               name="Input.WorkType"
+                               value="M"
+                               id="workTypeModelling"
+                               @(Model.Input.WorkType == "M" ? "checked" : null) />
+                        <label class="form-check-label" for="workTypeModelling">Modelling</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Levels -->
+            <div class="col-md-3">
+                <label class="form-label">Level(s)</label>
+                <div class="form-control level-scroll">
+                    <div class="level-grid">
+                        @foreach (var level in Mep1.Erp.TimesheetWeb.Pages.Timesheet.EnterHoursModel.LevelOptions)
+                        {
+                            var isChecked = Model.Input.Levels.Contains(level);
+                            var id = $"lvl_{level}";
+
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="@id"
+                                       name="Input.Levels"
+                                       value="@level"
+                                       @(isChecked ? "checked" : null) />
+                                <label class="form-check-label" for="@id">@level</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Areas -->
+            <div class="col-md-5">
+                <label class="form-label">Area(s)</label>
+                <input type="text"
+                       class="form-control"
+                       name="Input.AreasRaw"
+                       value="@Model.Input.AreasRaw"
+                       placeholder="e.g. Core, East Wing, Plantroom" />
+                <div class="form-text">Comma-separated.</div>
+            </div>
+
+        </div>
+
         <div class="col-md-12">
             <label class="form-label">Job Task Description</label>
             <textarea id="taskDescription" class="form-control" rows="5" asp-for="Input.TaskDescription"></textarea>
