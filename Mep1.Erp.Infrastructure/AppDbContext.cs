@@ -112,6 +112,8 @@ namespace Mep1.Erp.Infrastructure
                  .HasMaxLength(16)
                  .HasDefaultValue(TimesheetUserRole.Worker);
 
+                e.Property(x => x.MustChangePassword)
+                 .HasDefaultValue(false);
             });
         }
     }

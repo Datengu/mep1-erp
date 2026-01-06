@@ -21,4 +21,9 @@ public sealed class TimesheetUser
     public bool IsActive { get; set; } = true;
 
     public TimesheetUserRole Role { get; set; } = TimesheetUserRole.Worker;
+
+    public bool MustChangePassword { get; set; } = false;
+
+    public DateTime? PasswordChangedAtUtc { get; set; }
+
 }
