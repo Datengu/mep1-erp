@@ -52,6 +52,8 @@ public sealed class LoginModel : PageModel
         HttpContext.Session.SetInt32("WorkerId", login.WorkerId);
         HttpContext.Session.SetString("WorkerName", login.Name ?? "");
         HttpContext.Session.SetString("WorkerInitials", login.Initials ?? "");
+        HttpContext.Session.SetString("UserRole", login.Role ?? "Worker");
+        HttpContext.Session.SetString("Username", login.Username ?? "");
 
         return RedirectToPage("/Timesheet/EnterHours");
     }

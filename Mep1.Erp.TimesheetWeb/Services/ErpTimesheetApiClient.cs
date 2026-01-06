@@ -45,13 +45,19 @@ public sealed class ErpTimesheetApiClient
 
     public sealed record TimesheetLoginRequest(string Username, string Password);
 
-    public sealed record TimesheetLoginResponse(int WorkerId, string Name, string Initials);
+    public sealed record TimesheetLoginResponse(
+        int WorkerId,
+        string Username,
+        string Role,
+        string Name,
+        string Initials
+    );
 
     public async Task<TimesheetLoginResponse?> LoginAsync(string username, string password)
     {
         var body = new TimesheetLoginRequest(username, password);
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/timesheet/login")
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/timesheet/auth/login")
         {
             Content = JsonContent.Create(body)
         };
