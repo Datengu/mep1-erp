@@ -1,0 +1,36 @@
+﻿@page
+@model Mep1.Erp.TimesheetWeb.Pages.Timesheet.EvidencePackModel
+
+<h2>Download Evidence Pack</h2>
+
+@if (!string.IsNullOrWhiteSpace(Model.WorkerName))
+{
+    <p>Worker: <strong>@Model.WorkerName</strong></p>
+}
+
+<form method="post">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label">From</label>
+            <input class="form-control" asp-for="Input.From" type="date" />
+            <span class="text-danger" asp-validation-for="Input.From"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">To</label>
+            <input class="form-control" asp-for="Input.To" type="date" />
+            <span class="text-danger" asp-validation-for="Input.To"></span>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Download ZIP</button>
+        <a class="btn btn-secondary" asp-page="/Timesheet/History">Cancel</a>
+    </div>
+
+    <div class="text-danger mt-2" asp-validation-summary="All"></div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

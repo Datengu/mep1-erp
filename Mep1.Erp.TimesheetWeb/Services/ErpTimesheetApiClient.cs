@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Mep1.Erp.Core;
+using System.Text.Json;
 
 namespace Mep1.Erp.TimesheetWeb.Services;
 
@@ -8,6 +9,11 @@ public sealed class ErpTimesheetApiClient
 {
     private readonly HttpClient _http;
     private readonly string _apiKey;
+
+    private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     public ErpTimesheetApiClient(HttpClient http, IConfiguration config)
     {
@@ -113,6 +119,33 @@ public sealed class ErpTimesheetApiClient
     public async Task DeleteTimesheetEntryAsync(int id, int workerId)
     {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/timesheet/entries/{id}?workerId={workerId}");
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        res.EnsureSuccessStatusCode();
+    }
+
+    public async Task<WorkerSignatureDto?> GetWorkerSignatureAsync(int workerId)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/timesheet/workers/{workerId}/signature");
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadFromJsonAsync<WorkerSignatureDto>(_jsonOptions);
+    }
+
+    public async Task SetWorkerSignatureAsync(int workerId, string signatureName)
+    {
+        var dto = new UpdateWorkerSignatureDto { SignatureName = signatureName };
+
+        using var req = new HttpRequestMessage(HttpMethod.Put, $"/api/timesheet/workers/{workerId}/signature")
+        {
+            Content = JsonContent.Create(dto, options: _jsonOptions)
+        };
         AddApiKeyHeader(req);
 
         using var res = await _http.SendAsync(req);

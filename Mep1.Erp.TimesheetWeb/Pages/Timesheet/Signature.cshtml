@@ -1,0 +1,23 @@
+﻿@page
+@model Mep1.Erp.TimesheetWeb.Pages.Timesheet.SignatureModel
+
+<h2>Set your signature</h2>
+
+<p>This will be used on your weekly “Technical Diary” evidence PDFs.</p>
+
+<form method="post">
+    <div class="mb-3">
+        <label class="form-label">Type your name</label>
+        <input class="form-control" asp-for="Input.SignatureName" />
+        <span class="text-danger" asp-validation-for="Input.SignatureName"></span>
+    </div>
+
+    <input type="hidden" name="returnTo" value="@ViewData["ReturnTo"]" />
+
+    <button class="btn btn-primary" type="submit">Save signature</button>
+    <a class="btn btn-secondary" href="@ViewData["ReturnTo"]">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
