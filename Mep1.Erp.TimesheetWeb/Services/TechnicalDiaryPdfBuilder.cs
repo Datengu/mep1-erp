@@ -44,7 +44,7 @@ public sealed class TechnicalDiaryPdfBuilder
                     {
                         table.ColumnsDefinition(cols =>
                         {
-                            cols.ConstantColumn(60);   // Date
+                            cols.ConstantColumn(72);   // Date
                             cols.ConstantColumn(40);   // Day
                             cols.ConstantColumn(45);   // Hours
                             cols.RelativeColumn(1.2f); // Company

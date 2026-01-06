@@ -113,7 +113,9 @@ public class EvidencePackModel : PageModel
             .OrderBy(g => g.Key)
             .ToList();
 
-        var initials = sig.Initials.ToUpperInvariant();
+        var initials = string.IsNullOrWhiteSpace(sig.Initials)
+            ? "??"
+            : sig.Initials;
 
         // Create ZIP in-memory
         using var zipStream = new MemoryStream();
