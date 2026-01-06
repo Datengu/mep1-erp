@@ -23,7 +23,8 @@ public sealed class TimesheetAuthController : ControllerBase
         string Username,
         string Role,
         string Name,
-        string Initials
+        string Initials,
+        bool MustChangePassword
     );
 
     [HttpPost("login")]
@@ -54,7 +55,39 @@ public sealed class TimesheetAuthController : ControllerBase
             user.Username,
             user.Role.ToString(),
             worker.Name,
-            worker.Initials
+            worker.Initials,
+            user.MustChangePassword
         ));
+    }
+
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Username) ||
+            string.IsNullOrWhiteSpace(request.CurrentPassword) ||
+            string.IsNullOrWhiteSpace(request.NewPassword))
+            return BadRequest("Invalid request.");
+
+        if (request.NewPassword.Length < 8)
+            return BadRequest("Password must be at least 8 characters.");
+
+        var user = await _db.TimesheetUsers
+            .FirstOrDefaultAsync(u =>
+                u.Username == request.Username &&
+                u.IsActive);
+
+        if (user is null)
+            return Unauthorized("Invalid login.");
+
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            return Unauthorized("Invalid login.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.MustChangePassword = false;
+        user.PasswordChangedAtUtc = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        return Ok();
     }
 }
