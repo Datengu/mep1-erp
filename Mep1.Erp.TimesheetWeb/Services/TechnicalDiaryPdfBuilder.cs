@@ -10,7 +10,7 @@ public sealed class TechnicalDiaryPdfBuilder
     public byte[] BuildWeekPdf(
         string workerName,
         string workerSignatureName,
-        DateTime weekEndingSunday,
+        DateTime weekEndingFriday,
         IReadOnlyList<TimesheetEntrySummaryDto> entries)
     {
         // Defensive: ensure only the week’s rows are passed in
@@ -32,7 +32,7 @@ public sealed class TechnicalDiaryPdfBuilder
                     col.Item().PaddingTop(8).Row(row =>
                     {
                         row.RelativeItem().Text($"Name: {workerName}");
-                        row.RelativeItem().AlignRight().Text($"Week Ending: {weekEndingSunday:dd/MM/yyyy}");
+                        row.RelativeItem().AlignRight().Text($"Week Ending: {weekEndingFriday:dd/MM/yyyy}");
                     });
 
                     col.Item().PaddingTop(8).LineHorizontal(1);

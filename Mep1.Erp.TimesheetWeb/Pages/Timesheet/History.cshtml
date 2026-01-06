@@ -21,87 +21,110 @@
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th style="width:110px;">Date</th>
-                <th style="min-width:220px;">Job</th>
-                <th style="width:90px;">Code</th>
-                <th style="width:80px; text-align:right;">Hours</th>
-                <th>Description</th>
-                <th style="width:90px;">Actions</th>
-            </tr>
-        </thead>
+    @foreach (var w in Model.Weeks)
+    {
+        <div class="week-block"> 
+            <div class="week-header" style="display:flex; justify-content:space-between; align-items:baseline; margin-top:18px;">
+                <h5 style="margin:0;">
+                    Week ending @w.WeekEndingFriday.ToString("dd/MM/yyyy")
+                    <span class="text-muted" style="font-size:0.9em;">
+                        (Sat @w.WeekStartSaturday.ToString("dd/MM") – Fri @w.WeekEndingFriday.ToString("dd/MM"))
+                    </span>
+                </h5>
 
-        <tbody>
-            @foreach (var e in Model.Entries)
-            {
-                <tr>
-                    <td style="white-space:nowrap;">@e.Date.ToString("yyyy-MM-dd")</td>
-                    <td>
-                        <div><strong>@e.JobKey</strong></div>
-                        @if (!string.IsNullOrWhiteSpace(e.ProjectCompany) || !string.IsNullOrWhiteSpace(e.ProjectCategory))
-                        {
-                            <div style="font-size:0.9em; opacity:0.85;">
-                                @e.ProjectCompany @if (!string.IsNullOrWhiteSpace(e.ProjectCompany) && !string.IsNullOrWhiteSpace(e.ProjectCategory)) {
-                                <text>•</text>
-                            }
-             @e.ProjectCategory
-                                @if (!e.IsRealProject)
+                <div class="text-muted" style="font-size:0.95em;">
+                    Total: <strong>@w.TotalHours.ToString("0.00")</strong>
+                </div>
+            </div>
+
+            <table class="table" style="margin-top:8px;">
+                <thead>
+                    <tr>
+                        <th style="width:110px;">Date</th>
+                        <th style="min-width:220px;">Job</th>
+                        <th style="width:90px;">Code</th>
+                        <th style="width:80px; text-align:right;">Hours</th>
+                        <th>Description</th>
+                        <th style="width:90px;">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var e in w.Entries)
+                    {
+                        <tr>
+                            <td style="white-space:nowrap;">@e.Date.ToString("yyyy-MM-dd")</td>
+
+                            <td>
+                                <div><strong>@e.JobKey</strong></div>
+                                @if (!string.IsNullOrWhiteSpace(e.ProjectCompany) || !string.IsNullOrWhiteSpace(e.ProjectCategory))
                                 {
-                                    <text> • Internal</text>
+                                    <div style="font-size:0.9em; opacity:0.85;">
+                                        @e.ProjectCompany
+                                        @if (!string.IsNullOrWhiteSpace(e.ProjectCompany) && !string.IsNullOrWhiteSpace(e.ProjectCategory))
+                                        {
+                                            <text>•</text>
+                                        }
+                                        @e.ProjectCategory
+                                        @if (!e.IsRealProject)
+                                        {
+                                            <text> • Internal</text>
+                                        }
+                                    </div>
                                 }
-                            </div>
-                        }
-                    </td>
-                    <td style="white-space:nowrap;">@e.Code</td>
-                    <td style="white-space:nowrap;">@e.Hours.ToString("0.00")</td>
-                    <td style="
-                   max-width:400px;
-                   white-space:nowrap;
-                   overflow:hidden;
-                   text-overflow:ellipsis;"
-                        title="@e.TaskDescription">
+                            </td>
 
-                        @if (!string.IsNullOrWhiteSpace(e.TaskDescription))
-                        {
-                            @e.TaskDescription
-                        }
+                            <td style="white-space:nowrap;">@e.Code</td>
+                            <td style="white-space:nowrap; text-align:right;">@e.Hours.ToString("0.00")</td>
 
-                        @if (!string.IsNullOrWhiteSpace(e.CcfRef))
-                        {
-                            <div style="font-size:0.9em; opacity:0.85;">
-                                CCF: @e.CcfRef
-                            </div>
-                        }
-                    </td>
+                            <td style="
+                                               max-width:400px;
+                                               white-space:nowrap;
+                                               overflow:hidden;
+                                               text-overflow:ellipsis;"
+                                title="@e.TaskDescription">
 
-                    <td style="white-space:nowrap;">
-                        <a class="btn btn-sm btn-secondary"
-                           asp-page="/Timesheet/Edit"
-                           asp-route-id="@e.Id">
-                            Edit
-                        </a>
+                                @if (!string.IsNullOrWhiteSpace(e.TaskDescription))
+                                {
+                                    @e.TaskDescription
+                                }
 
-                        <form method="post"
-                              asp-page-handler="Delete"
-                              asp-route-id="@e.Id"
-                              asp-route-skip="@Model.Skip"
-                              asp-route-take="@Model.Take"
-                              style="display:inline;">
-                            <button type="submit"
-                                    class="btn btn-sm btn-danger"
-                                    onclick="return confirm('Delete this entry?');">
-                                Delete
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                                @if (!string.IsNullOrWhiteSpace(e.CcfRef))
+                                {
+                                    <div style="font-size:0.9em; opacity:0.85;">
+                                        CCF: @e.CcfRef
+                                    </div>
+                                }
+                            </td>
 
-    <div style="display:flex; gap:12px; align-items:center;">
+                            <td style="white-space:nowrap;">
+                                <a class="btn btn-sm btn-secondary"
+                                   asp-page="/Timesheet/Edit"
+                                   asp-route-id="@e.Id">
+                                    Edit
+                                </a>
+
+                                <form method="post"
+                                      asp-page-handler="Delete"
+                                      asp-route-id="@e.Id"
+                                      asp-route-skip="@Model.Skip"
+                                      asp-route-take="@Model.Take"
+                                      style="display:inline;">
+                                    <button type="submit"
+                                            class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Delete this entry?');">
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+         </div>
+    }
+
+    <div style="display:flex; gap:12px; align-items:center; margin-top:12px;">
         @if (Model.HasPrev)
         {
             <a class="btn btn-secondary"

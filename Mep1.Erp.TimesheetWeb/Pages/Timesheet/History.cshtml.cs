@@ -41,6 +41,16 @@ public sealed class HistoryModel : PageModel
         Entries = await _api.GetTimesheetEntriesAsync(WorkerId.Value, Skip, Take)
                   ?? new List<TimesheetEntrySummaryDto>();
 
+        Weeks = Entries
+            .GroupBy(e => GetWeekEndingFriday(e.Date))
+            .OrderByDescending(g => g.Key) // most recent week first
+            .Select(g => new WeekGroup
+            {
+                WeekEndingFriday = g.Key,
+                Entries = g.OrderByDescending(e => e.Date).ToList()
+            })
+            .ToList();
+
         return Page();
     }
 
@@ -61,4 +71,22 @@ public sealed class HistoryModel : PageModel
         // return to same page of results
         return RedirectToPage("/Timesheet/History", new { skip, take });
     }
+
+    private static DateTime GetWeekEndingFriday(DateTime date)
+    {
+        var d = date.Date;
+        var daysUntilFriday = ((int)DayOfWeek.Friday - (int)d.DayOfWeek + 7) % 7;
+        return d.AddDays(daysUntilFriday);
+    }
+
+    public sealed class WeekGroup
+    {
+        public DateTime WeekEndingFriday { get; init; }
+        public DateTime WeekStartSaturday => WeekEndingFriday.AddDays(-6);
+        public List<TimesheetEntrySummaryDto> Entries { get; init; } = new();
+        public decimal TotalHours => Entries.Sum(e => e.Hours);
+    }
+
+    public List<WeekGroup> Weeks { get; private set; } = new();
+
 }

@@ -20,3 +20,18 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+.week-block {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    background-color: #f8f9fa; /* subtle grey */
+    border-radius: 4px;
+}
+
+.week-header {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #999;
+}

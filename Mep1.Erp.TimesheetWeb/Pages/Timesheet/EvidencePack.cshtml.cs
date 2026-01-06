@@ -33,11 +33,11 @@ public class EvidencePackModel : PageModel
         public DateTime To { get; set; }
     }
 
-    private static DateTime GetWeekEndingSunday(DateTime date)
+    private static DateTime GetWeekEndingFriday(DateTime date)
     {
         var d = date.Date;
-        var daysUntilSunday = (7 - (int)d.DayOfWeek) % 7; // Sunday=0 => 0
-        return d.AddDays(daysUntilSunday);
+        var daysUntilFriday = ((int)DayOfWeek.Friday - (int)d.DayOfWeek + 7) % 7;
+        return d.AddDays(daysUntilFriday);
     }
 
     public async Task<IActionResult> OnGetAsync()
@@ -59,14 +59,23 @@ public class EvidencePackModel : PageModel
             return RedirectToPage("/Timesheet/Signature", new { returnTo = "/Timesheet/EvidencePack" });
         }
 
-        // sensible default period: last full week ending Sunday
+        // sensible default period: last full week ending Friday (Sat -> Fri)
         var today = DateTime.Today;
-        var daysSinceSunday = (int)today.DayOfWeek; // Sunday=0
-        var lastSunday = today.AddDays(-daysSinceSunday);
-        var weekStart = lastSunday.AddDays(-6);
+        var thisWeeksFriday = GetWeekEndingFriday(today);
+
+        // If today is before/at Friday, we want the previous Friday as the last completed week end
+        var lastFriday = thisWeeksFriday;
+        if (today.Date <= thisWeeksFriday.Date)
+        {
+            // if today is Fri, the week is ending today - decide if you consider that "complete"
+            // to be safe, treat it as NOT complete until the day has passed:
+            lastFriday = thisWeeksFriday.AddDays(-7);
+        }
+
+        var weekStart = lastFriday.AddDays(-6);
 
         Input.From = weekStart;
-        Input.To = lastSunday;
+        Input.To = lastFriday;
 
         return Page();
     }
@@ -109,7 +118,7 @@ public class EvidencePackModel : PageModel
 
         // group by week ending Sunday
         var grouped = entries
-            .GroupBy(e => GetWeekEndingSunday(e.Date))
+            .GroupBy(e => GetWeekEndingFriday(e.Date))
             .OrderBy(g => g.Key)
             .ToList();
 
@@ -129,7 +138,7 @@ public class EvidencePackModel : PageModel
                 var pdfBytes = _pdf.BuildWeekPdf(
                     workerName: sig.Name,
                     workerSignatureName: sig.SignatureName!,
-                    weekEndingSunday: weekEnding,
+                    weekEndingFriday: weekEnding,
                     entries: weekEntries);
 
                 var fileName =

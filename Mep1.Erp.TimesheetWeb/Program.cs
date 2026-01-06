@@ -26,6 +26,8 @@ builder.Services.AddRazorPages();
 
 builder.Services.AddSingleton<Mep1.Erp.TimesheetWeb.Services.TechnicalDiaryPdfBuilder>();
 
+builder.WebHost.UseUrls("http://0.0.0.0:5292");
+
 var app = builder.Build();
 
 QuestPDF.Settings.License = LicenseType.Community;
