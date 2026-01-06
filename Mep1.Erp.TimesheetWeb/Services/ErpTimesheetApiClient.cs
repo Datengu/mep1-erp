@@ -158,4 +158,17 @@ public sealed class ErpTimesheetApiClient
         res.EnsureSuccessStatusCode();
     }
 
+    public async Task<WorkerSignatureDto?> GetOwnerSignatureAsync()
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/timesheet/owner-signature");
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadFromJsonAsync<WorkerSignatureDto>(_jsonOptions);
+    }
+
 }

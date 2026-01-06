@@ -415,4 +415,33 @@ public sealed class TimesheetController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("owner-signature")]
+    public async Task<ActionResult<WorkerSignatureDto>> GetOwnerSignature()
+    {
+        var ownerUser = await _db.TimesheetUsers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.IsActive && u.Role == TimesheetUserRole.Owner);
+
+        if (ownerUser is null)
+            return NotFound("Owner user not configured.");
+
+        var ownerWorker = await _db.Workers
+            .AsNoTracking()
+            .Where(w => w.Id == ownerUser.WorkerId)
+            .Select(w => new WorkerSignatureDto
+            {
+                Id = w.Id,
+                Name = w.Name,
+                Initials = w.Initials,
+                SignatureName = w.SignatureName,
+                SignatureCapturedAtUtc = w.SignatureCapturedAtUtc
+            })
+            .FirstOrDefaultAsync();
+
+        if (ownerWorker is null)
+            return NotFound("Owner worker not found.");
+
+        return Ok(ownerWorker);
+    }
+
 }

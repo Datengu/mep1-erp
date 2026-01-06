@@ -10,6 +10,7 @@ public sealed class TechnicalDiaryPdfBuilder
     public byte[] BuildWeekPdf(
         string workerName,
         string workerSignatureName,
+        string checkedBySignatureName,
         DateTime weekEndingFriday,
         IReadOnlyList<TimesheetEntrySummaryDto> entries)
     {
@@ -105,7 +106,11 @@ public sealed class TechnicalDiaryPdfBuilder
                             txt.Span(workerSignatureName).Italic();
                         });
 
-                        row.RelativeItem().AlignRight().Text("Checked: ____________________");
+                        row.RelativeItem().AlignRight().Text(txt =>
+                        {
+                            txt.Span("Checked: ");
+                            txt.Span(checkedBySignatureName).Italic();
+                        });
                     });
 
                     col.Item().PaddingTop(10).LineHorizontal(1);

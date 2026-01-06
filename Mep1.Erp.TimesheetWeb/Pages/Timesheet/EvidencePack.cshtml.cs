@@ -126,6 +126,16 @@ public class EvidencePackModel : PageModel
             ? "??"
             : sig.Initials;
 
+        var ownerSig = await _api.GetOwnerSignatureAsync();
+        var checkedBySignatureName = ownerSig?.SignatureName?.Trim();
+
+        if (string.IsNullOrWhiteSpace(checkedBySignatureName))
+        {
+            // fail hard:
+            ModelState.AddModelError(string.Empty, "Owner signature is not configured yet. Please contact admin.");
+            return Page();
+        }
+
         // Create ZIP in-memory
         using var zipStream = new MemoryStream();
         using (var archive = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
@@ -138,6 +148,7 @@ public class EvidencePackModel : PageModel
                 var pdfBytes = _pdf.BuildWeekPdf(
                     workerName: sig.Name,
                     workerSignatureName: sig.SignatureName!,
+                    checkedBySignatureName: checkedBySignatureName,
                     weekEndingFriday: weekEnding,
                     entries: weekEntries);
 
