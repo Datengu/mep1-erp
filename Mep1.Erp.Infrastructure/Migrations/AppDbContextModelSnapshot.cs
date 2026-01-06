@@ -229,6 +229,10 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AreasJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("CcfRef")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -258,6 +262,10 @@ namespace Mep1.Erp.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("LevelsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("ProjectId")
                         .HasColumnType("INTEGER");
 
@@ -270,6 +278,10 @@ namespace Mep1.Erp.Infrastructure.Migrations
 
                     b.Property<int?>("UpdatedByWorkerId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("WorkType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("WorkerId")
                         .HasColumnType("INTEGER");
