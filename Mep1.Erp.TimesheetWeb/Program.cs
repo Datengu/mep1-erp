@@ -1,5 +1,6 @@
 using Mep1.Erp.TimesheetWeb;
 using Mep1.Erp.TimesheetWeb.Services;
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,8 @@ builder.Services.AddSession(options =>
 builder.Services.AddRazorPages();
 
 var app = builder.Build();
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
