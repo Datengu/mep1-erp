@@ -24,6 +24,8 @@ builder.Services.AddSession(options =>
 // Add services to the container.
 builder.Services.AddRazorPages();
 
+builder.Services.AddSingleton<Mep1.Erp.TimesheetWeb.Services.TechnicalDiaryPdfBuilder>();
+
 var app = builder.Build();
 
 QuestPDF.Settings.License = LicenseType.Community;

@@ -312,6 +312,7 @@ public sealed class TimesheetController : ControllerBase
             {
                 w.Id,
                 w.Name,
+                w.Initials,
                 w.SignatureName,
                 w.SignatureCapturedAtUtc
             })
