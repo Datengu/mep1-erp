@@ -1,4 +1,5 @@
-﻿using QuestPDF.Fluent;
+﻿using Mep1.Erp.Core;
+using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
@@ -114,11 +115,12 @@ public sealed class TechnicalDiaryPdfBuilder
                     col.Item().Text("VO = Variation Order, ME = Markups / Existing, M = Meetings");
                 });
 
-                page.Footer().AlignRight().Text(x =>
+                page.Footer().AlignRight().Text(text =>
                 {
-                    x.Span("Generated: ");
-                    x.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
-                }).FontSize(8);
+                    text.DefaultTextStyle(x => x.FontSize(8));
+                    text.Span("Generated: ");
+                    text.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                });
             });
         });
 
