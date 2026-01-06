@@ -110,9 +110,32 @@ public sealed class TechnicalDiaryPdfBuilder
 
                     col.Item().PaddingTop(10).LineHorizontal(1);
 
-                    col.Item().PaddingTop(8).Text("NB: Drawing codes to be detailed for all drawings produced and checked etc:");
-                    col.Item().Text("WP = Work in Progress, F = For Approval / Comment, C = Construction, AB = As Built,");
-                    col.Item().Text("VO = Variation Order, ME = Markups / Existing, M = Meetings");
+                    col.Item().PaddingTop(8).Text("Codes:").SemiBold();
+
+                    col.Item().Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn();
+                            columns.RelativeColumn();
+                        });
+
+                        void Row(string left, string right = "")
+                        {
+                            table.Cell().Text(left);
+                            table.Cell().Text(right);
+                        }
+
+                        Row("P   = Programmed Drawing Input", "RD  = Record Drawings");
+                        Row("IC  = Updating to Internal Comments", "S   = Surveys");
+                        Row("EC  = Updating to External Comments", "T   = Training");
+                        Row("GM  = General Management", "BIM = BIM Works");
+                        Row("M   = Meetings", "DC  = Document Control");
+                        Row("FP  = Fee Proposal", "BU  = Business Works");
+                        Row("QA  = Drawing QA Check", "TP  = Tender Presentation");
+                        Row("VO  = Variations", "SI  = Sick");
+                        Row("HOL = Holiday", "");
+                    });
                 });
 
                 page.Footer().AlignRight().Text(text =>
