@@ -391,10 +391,37 @@ public sealed class TimesheetController : ControllerBase
     }
 
     [HttpPut("workers/{workerId:int}/signature")]
-    public async Task<IActionResult> UpdateWorkerSignature(int workerId, [FromBody] UpdateWorkerSignatureDto dto)
+    public async Task<IActionResult> UpdateWorkerSignature(
+        int workerId,
+        [FromQuery] int actorWorkerId,
+        [FromBody] UpdateWorkerSignatureDto dto)
     {
+        if (actorWorkerId <= 0)
+            return BadRequest("actorWorkerId is required.");
+
         if (workerId <= 0) return BadRequest("Invalid workerId.");
         if (dto is null) return BadRequest("Body required.");
+
+        // Who is the Owner?
+        var ownerUser = await _db.TimesheetUsers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.IsActive && u.Role == TimesheetUserRole.Owner);
+
+        if (ownerUser is null)
+            return StatusCode(StatusCodes.Status500InternalServerError, "Owner user not configured.");
+
+        // If attempting to update OWNER signature => only OWNER can do it
+        if (workerId == ownerUser.WorkerId)
+        {
+            if (actorWorkerId != ownerUser.WorkerId)
+                return StatusCode(StatusCodes.Status403Forbidden, "Only the Owner can update the Owner signature.");
+        }
+        else
+        {
+            // Otherwise, only self can update
+            if (actorWorkerId != workerId)
+                return StatusCode(StatusCodes.Status403Forbidden, "You can only update your own signature.");
+        }
 
         var signature = dto.SignatureName?.Trim();
         if (string.IsNullOrWhiteSpace(signature))

@@ -144,11 +144,13 @@ public sealed class ErpTimesheetApiClient
         return await res.Content.ReadFromJsonAsync<WorkerSignatureDto>(_jsonOptions);
     }
 
-    public async Task SetWorkerSignatureAsync(int workerId, string signatureName)
+    public async Task SetWorkerSignatureAsync(int workerId, int actorWorkerId, string signatureName)
     {
         var dto = new UpdateWorkerSignatureDto { SignatureName = signatureName };
 
-        using var req = new HttpRequestMessage(HttpMethod.Put, $"/api/timesheet/workers/{workerId}/signature")
+        using var req = new HttpRequestMessage(
+            HttpMethod.Put,
+            $"/api/timesheet/workers/{workerId}/signature?actorWorkerId={actorWorkerId}")
         {
             Content = JsonContent.Create(dto, options: _jsonOptions)
         };

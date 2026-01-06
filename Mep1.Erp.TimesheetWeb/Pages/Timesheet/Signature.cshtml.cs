@@ -53,6 +53,7 @@ public class SignatureModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(string? returnTo = null)
     {
+        var actorWorkerId = HttpContext.Session.GetInt32("WorkerId");
         var workerId = HttpContext.Session.GetInt32("WorkerId");
         if (workerId is null)
             return RedirectToPage("/Timesheet/Login");
@@ -63,7 +64,7 @@ public class SignatureModel : PageModel
             return Page();
         }
 
-        await _api.SetWorkerSignatureAsync(workerId.Value, Input.SignatureName);
+        await _api.SetWorkerSignatureAsync(workerId.Value, actorWorkerId.Value, Input.SignatureName);
 
         return Redirect(returnTo ?? "/Timesheet/History");
     }
