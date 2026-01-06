@@ -1,5 +1,12 @@
 ﻿namespace Mep1.Erp.Core;
 
+public enum TimesheetUserRole
+{
+    Worker = 0,
+    Admin = 1,
+    Owner = 2
+}
+
 public sealed class TimesheetUser
 {
     public int Id { get; set; }
@@ -12,4 +19,6 @@ public sealed class TimesheetUser
     public int WorkerId { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public TimesheetUserRole Role { get; set; } = TimesheetUserRole.Worker;
 }

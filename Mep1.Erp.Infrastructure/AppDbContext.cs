@@ -106,6 +106,12 @@ namespace Mep1.Erp.Infrastructure
                 e.Property(x => x.IsActive).HasDefaultValue(true);
 
                 e.Property(x => x.WorkerId).IsRequired();
+
+                e.Property(x => x.Role)
+                 .HasConversion<string>()
+                 .HasMaxLength(16)
+                 .HasDefaultValue(TimesheetUserRole.Worker);
+
             });
         }
     }
