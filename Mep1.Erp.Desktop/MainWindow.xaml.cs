@@ -137,6 +137,34 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _selectedPersonRates, value, nameof(SelectedPersonRates));
         }
 
+        private PortalAccessDto? _portalAccess;
+
+        public bool HasPortalAccount => _portalAccess?.Exists == true;
+
+        public string PortalAccessStatusText
+        {
+            get
+            {
+                if (SelectedPerson == null) return "Select a person.";
+                if (_portalAccess == null) return "Loading...";
+                if (!_portalAccess.Exists) return "No portal account exists for this worker.";
+                return $"Account exists. MustChangePassword: {_portalAccess.MustChangePassword}";
+            }
+        }
+
+        public string PortalUsernameText { get; set; } = "";
+        public bool CanEditPortalUsername => !HasPortalAccount; // v1: only set username at create
+
+        public List<string> PortalRoleOptions { get; } = new() { "Worker", "Admin", "Owner" };
+
+        public string SelectedPortalRole { get; set; } = "Worker";
+
+        public bool PortalIsActive { get; set; } = true;
+
+        public string PortalTempPasswordText { get; set; } = "";
+
+        public bool CanCreatePortalAccount => SelectedPerson != null && !HasPortalAccount;
+
         private List<InvoiceListEntryDto> _invoices = new();
         public List<InvoiceListEntryDto> Invoices
         {
@@ -402,7 +430,7 @@ namespace Mep1.Erp.Desktop
             };
         }
 
-        private void EnsureInitialSelections()
+        private async void EnsureInitialSelections()
         {
             if (ProjectSummaries.Count > 0 && SelectedProject == null)
             {
@@ -413,7 +441,7 @@ namespace Mep1.Erp.Desktop
             if (People.Count > 0 && SelectedPerson == null)
             {
                 SelectedPerson = People[0];
-                LoadSelectedPersonDetails(SelectedPerson.WorkerId);
+                await LoadSelectedPersonDetails(SelectedPerson.WorkerId);
             }
         }
 
@@ -755,7 +783,7 @@ namespace Mep1.Erp.Desktop
         // Selection: People + Projects
         // ---------------------------------------------
 
-        private async void LoadSelectedPersonDetails(int workerId)
+        private async Task LoadSelectedPersonDetails(int workerId)
         {
             try
             {
@@ -802,7 +830,7 @@ namespace Mep1.Erp.Desktop
             }
         }
 
-        private void PeopleGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void PeopleGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (sender is not DataGrid grid)
                 return;
@@ -811,7 +839,8 @@ namespace Mep1.Erp.Desktop
                 return;
 
             SelectedPerson = person;
-            LoadSelectedPersonDetails(person.WorkerId);
+            await LoadSelectedPersonDetails(person.WorkerId);
+            await LoadPortalAccessAsync(person.WorkerId);
         }
 
         private async void LoadSelectedProjectDetails(ProjectSummaryDto projSummary)
@@ -1304,6 +1333,123 @@ namespace Mep1.Erp.Desktop
             BeginSupplierEditFromSelection();
         }
 
+        private async Task LoadPortalAccessAsync(int workerId)
+        {
+            try
+            {
+                _portalAccess = await _api.GetPortalAccessAsync(workerId);
 
+                PortalTempPasswordText = "";
+
+                if (_portalAccess.Exists)
+                {
+                    PortalUsernameText = _portalAccess.Username ?? "";
+                    SelectedPortalRole = _portalAccess.Role ?? "Worker";
+                    PortalIsActive = _portalAccess.IsActive;
+                }
+                else
+                {
+                    PortalUsernameText = "";
+                    SelectedPortalRole = "Worker";
+                    PortalIsActive = true;
+                }
+
+                OnPropertyChanged(nameof(HasPortalAccount));
+                OnPropertyChanged(nameof(CanCreatePortalAccount));
+                OnPropertyChanged(nameof(CanEditPortalUsername));
+                OnPropertyChanged(nameof(PortalAccessStatusText));
+                OnPropertyChanged(nameof(PortalUsernameText));
+                OnPropertyChanged(nameof(SelectedPortalRole));
+                OnPropertyChanged(nameof(PortalIsActive));
+                OnPropertyChanged(nameof(PortalTempPasswordText));
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    "Failed to load portal access:\n\n" + ex.Message,
+                    "API error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void CreatePortalAccount_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedPerson == null) return;
+
+            if (string.IsNullOrWhiteSpace(PortalUsernameText))
+            {
+                WpfMessageBox.Show("Enter a username first.", "Portal Access", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var created = await _api.CreatePortalAccessAsync(
+                    SelectedPerson.WorkerId,
+                    new CreatePortalAccessRequest(PortalUsernameText.Trim(), SelectedPortalRole));
+
+                PortalTempPasswordText = "Temporary password: " + created.TemporaryPassword;
+
+                WpfMessageBox.Show(
+                    "Portal account created.\n\nCopy the temporary password now (it won't be shown again).",
+                    "Portal Access",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                await LoadPortalAccessAsync(SelectedPerson.WorkerId);
+                OnPropertyChanged(nameof(PortalTempPasswordText));
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show("Create failed:\n\n" + ex.Message, "Portal Access", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void SavePortalAccess_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedPerson == null) return;
+
+            try
+            {
+                await _api.UpdatePortalAccessAsync(
+                    SelectedPerson.WorkerId,
+                    new UpdatePortalAccessRequest(
+                        Role: SelectedPortalRole,
+                        IsActive: PortalIsActive));
+
+                WpfMessageBox.Show("Saved.", "Portal Access", MessageBoxButton.OK, MessageBoxImage.Information);
+                await LoadPortalAccessAsync(SelectedPerson.WorkerId);
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show("Save failed:\n\n" + ex.Message, "Portal Access", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void ResetPortalPassword_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedPerson == null) return;
+
+            try
+            {
+                var result = await _api.ResetPortalPasswordAsync(SelectedPerson.WorkerId);
+
+                PortalTempPasswordText = "Temporary password: " + result.TemporaryPassword;
+
+                WpfMessageBox.Show(
+                    "Password reset.\n\nCopy the temporary password now (it won't be shown again).",
+                    "Portal Access",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                OnPropertyChanged(nameof(PortalTempPasswordText));
+                await LoadPortalAccessAsync(SelectedPerson.WorkerId);
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show("Reset failed:\n\n" + ex.Message, "Portal Access", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }
