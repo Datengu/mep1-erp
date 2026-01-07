@@ -176,22 +176,26 @@ public sealed class ErpTimesheetApiClient
 
     public sealed record ChangePasswordRequest(string Username, string CurrentPassword, string NewPassword);
 
-    public async Task<bool> ChangePasswordAsync(string username, string currentPassword, string newPassword)
+    public async Task<(bool ok, string? error)> ChangePasswordAsync(string username, string currentPassword, string newPassword)
     {
         var body = new ChangePasswordRequest(username, currentPassword, newPassword);
 
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/timesheet/auth/change-password")
         {
-            Content = JsonContent.Create(body)
+            Content = JsonContent.Create(body, options: _jsonOptions)
         };
         AddApiKeyHeader(req);
 
         using var res = await _http.SendAsync(req);
 
         if (res.IsSuccessStatusCode)
-            return true;
+            return (true, null);
 
-        // Optional: you can read res.Content for debugging later
-        return false;
+        var msg = await res.Content.ReadAsStringAsync();
+        if (string.IsNullOrWhiteSpace(msg))
+            msg = $"HTTP {(int)res.StatusCode} {res.StatusCode}";
+
+        return (false, msg);
     }
+
 }

@@ -57,11 +57,13 @@ public class ProfileModel : PageModel
         if (string.IsNullOrWhiteSpace(username))
             return RedirectToPage("/Timesheet/Login");
 
-        var result = await _api.ChangePasswordAsync(username, CurrentPassword, NewPassword);
+        var (ok, error) = await _api.ChangePasswordAsync(username, CurrentPassword, NewPassword);
 
-        if (!result)
+        if (!ok)
         {
-            ErrorMessage = "Password change failed.";
+            ErrorMessage = error ?? "Password change failed.";
+            Username = HttpContext.Session.GetString("Username") ?? "";
+            MustChangePassword = HttpContext.Session.GetString("MustChangePassword") == "true";
             await LoadSignatureForPageAsync();
             return Page();
         }
@@ -83,6 +85,11 @@ public class ProfileModel : PageModel
         if (string.IsNullOrWhiteSpace(sig))
         {
             ErrorMessage = "Signature cannot be empty.";
+
+            // rehydrate state for re-render
+            Username = HttpContext.Session.GetString("Username") ?? "";
+            MustChangePassword = HttpContext.Session.GetString("MustChangePassword") == "true";
+
             await LoadSignatureForPageAsync();
             return Page();
         }

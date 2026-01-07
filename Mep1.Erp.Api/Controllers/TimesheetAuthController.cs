@@ -63,6 +63,7 @@ public sealed class TimesheetAuthController : ControllerBase
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
     {
+        var username = request.Username.Trim();
         if (string.IsNullOrWhiteSpace(request.Username) ||
             string.IsNullOrWhiteSpace(request.CurrentPassword) ||
             string.IsNullOrWhiteSpace(request.NewPassword))
