@@ -60,14 +60,20 @@ public sealed class ErpTimesheetApiClient
 
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/timesheet/auth/login")
         {
-            Content = JsonContent.Create(body)
+            Content = JsonContent.Create(body, options: _jsonOptions)
         };
         AddApiKeyHeader(req);
 
         using var res = await _http.SendAsync(req);
+
+        // Wrong password/username should be a normal "null" result, not an exception
+        if (res.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            return null;
+
+        // If something else goes wrong, still fail loudly
         res.EnsureSuccessStatusCode();
 
-        return await res.Content.ReadFromJsonAsync<TimesheetLoginResponse>();
+        return await res.Content.ReadFromJsonAsync<TimesheetLoginResponse>(_jsonOptions);
     }
 
     public async Task CreateTimesheetEntryAsync(CreateTimesheetEntryDto dto)
