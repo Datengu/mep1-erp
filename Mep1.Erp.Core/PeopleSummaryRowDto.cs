@@ -13,6 +13,6 @@ namespace Mep1.Erp.Core
 
         public decimal HoursThisMonth { get; init; }
         public decimal CostThisMonth { get; init; }
-        bool IsActive { get; init; }
+        public bool IsActive { get; init; }
     }
 }
