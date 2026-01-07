@@ -645,6 +645,7 @@
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="*"/>
                                         <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
                                     <!-- Header -->
@@ -698,6 +699,54 @@
                                                 <DataGridTextColumn Header="Task" Binding="{Binding TaskDescription}" Width="240"/>
                                             </DataGrid.Columns>
                                         </DataGrid>
+                                    </GroupBox>
+                                    
+                                    <!-- Portal access -->
+                                    <GroupBox Grid.Row="4" Header="Portal Access" Margin="0,8,0,0">
+                                        <StackPanel Margin="10">
+
+                                            <TextBlock Text="{Binding PortalAccessStatusText}" Opacity="0.8" Margin="0,0,0,8"/>
+
+                                            <WrapPanel Margin="0,0,0,8">
+                                                <TextBlock Text="Username:" Width="80" VerticalAlignment="Center"/>
+                                                <TextBox Width="220"
+                                                         Text="{Binding PortalUsernameText, UpdateSourceTrigger=PropertyChanged}"
+                                                         IsEnabled="{Binding CanEditPortalUsername}"/>
+                                            </WrapPanel>
+
+                                            <WrapPanel Margin="0,0,0,8">
+                                                <TextBlock Text="Role:" Width="80" VerticalAlignment="Center"/>
+                                                <ComboBox Width="220"
+                                                          ItemsSource="{Binding PortalRoleOptions}"
+                                                          SelectedItem="{Binding SelectedPortalRole}"
+                                                          IsEnabled="{Binding HasPortalAccount}"/>
+                                            </WrapPanel>
+
+                                            <WrapPanel Margin="0,0,0,12">
+                                                <TextBlock Text="Active:" Width="80" VerticalAlignment="Center"/>
+                                                <CheckBox IsChecked="{Binding PortalIsActive}"
+                                                          IsEnabled="{Binding HasPortalAccount}"
+                                                          VerticalAlignment="Center"/>
+                                            </WrapPanel>
+
+                                            <WrapPanel>
+                                                <Button Content="Create Account"
+                                                        Margin="0,0,8,0"
+                                                        Click="CreatePortalAccount_Click"
+                                                        IsEnabled="{Binding CanCreatePortalAccount}"/>
+                                                <Button Content="Save Changes"
+                                                        Margin="0,0,8,0"
+                                                        Click="SavePortalAccess_Click"
+                                                        IsEnabled="{Binding HasPortalAccount}"/>
+                                                <Button Content="Reset Password"
+                                                        Click="ResetPortalPassword_Click"
+                                                        IsEnabled="{Binding HasPortalAccount}"/>
+                                            </WrapPanel>
+
+                                            <TextBlock Text="{Binding PortalTempPasswordText}"
+                                                       Margin="0,10,0,0"
+                                                       FontWeight="SemiBold"/>
+                                        </StackPanel>
                                     </GroupBox>
                                 </Grid>
                             </Grid>
