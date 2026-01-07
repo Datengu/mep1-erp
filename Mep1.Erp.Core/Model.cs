@@ -12,8 +12,11 @@ namespace Mep1.Erp.Core
 
         // rate history
         public List<WorkerRate> Rates { get; set; } = new();
+
         public string? SignatureName { get; set; }              // typed name used as “signature”
         public DateTime? SignatureCapturedAtUtc { get; set; }   // when they first set it
+
+        public bool IsActive { get; set; } = true;
     }
 
     public class Project
