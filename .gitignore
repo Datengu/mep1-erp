@@ -5,6 +5,18 @@ settings.json
 appsettings.Development.json
 appsettings.Production.json
 
+# ASP.NET Core appsettings
+**/appsettings.json
+**/appsettings.Development.json
+**/appsettings.Production.json
+
+# Desktop app settings
+settings.json
+
+# local overrides
+settings.local.json
+appsettings.local.json
+
 # SQLite databases
 *.db
 *.db-shm
