@@ -1,6 +1,6 @@
 {
   "ApiBaseUrl": "https://localhost:7254",
-  "ApiKey": "",
+  "ApiKey": "dev-admin-key-change-me",
 
   "TimesheetFolder": "",
   "FinanceSheetPath": "",
