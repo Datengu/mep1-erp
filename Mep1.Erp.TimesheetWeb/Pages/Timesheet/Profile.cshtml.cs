@@ -1,3 +1,4 @@
+using Mep1.Erp.Core;
 using Mep1.Erp.TimesheetWeb.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -10,6 +11,8 @@ public class ProfileModel : PageModel
     {
         _api = api;
     }
+
+    public int? WorkerId { get; private set; }
 
     public string Username { get; private set; } = "";
     public bool MustChangePassword { get; private set; }
@@ -30,6 +33,10 @@ public class ProfileModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        WorkerId = HttpContext.Session.GetInt32("WorkerId");
+        if (WorkerId is null)
+            return RedirectToPage("/Timesheet/Login");
+
         var username = HttpContext.Session.GetString("Username");
         if (string.IsNullOrWhiteSpace(username))
             return RedirectToPage("/Login");
