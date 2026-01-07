@@ -23,15 +23,31 @@ public class ProfileModel : PageModel
     [BindProperty]
     public string NewPassword { get; set; } = "";
 
+    public WorkerSignatureDto? Signature { get; private set; }
+
+    [BindProperty]
+    public string SignatureName { get; set; } = "";
+
+    public string? SuccessMessage { get; private set; }
+
     public string? ErrorMessage { get; private set; }
 
-    public void OnGet()
+    public async Task<IActionResult> OnGetAsync()
     {
+        WorkerId = HttpContext.Session.GetInt32("WorkerId");
+        if (WorkerId is null)
+            return RedirectToPage("/Timesheet/Login");
+
         Username = HttpContext.Session.GetString("Username") ?? "";
         MustChangePassword = HttpContext.Session.GetString("MustChangePassword") == "true";
+
+        Signature = await _api.GetWorkerSignatureAsync(WorkerId.Value);
+        SignatureName = Signature?.SignatureName ?? "";
+
+        return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostChangePasswordAsync()
     {
         WorkerId = HttpContext.Session.GetInt32("WorkerId");
         if (WorkerId is null)
@@ -39,20 +55,54 @@ public class ProfileModel : PageModel
 
         var username = HttpContext.Session.GetString("Username");
         if (string.IsNullOrWhiteSpace(username))
-            return RedirectToPage("/Login");
+            return RedirectToPage("/Timesheet/Login");
 
-        var result = await _api.ChangePasswordAsync(
-            username,
-            CurrentPassword,
-            NewPassword);
+        var result = await _api.ChangePasswordAsync(username, CurrentPassword, NewPassword);
 
         if (!result)
         {
             ErrorMessage = "Password change failed.";
+            await LoadSignatureForPageAsync();
             return Page();
         }
 
         HttpContext.Session.SetString("MustChangePassword", "false");
         return RedirectToPage("/Timesheet/History");
     }
+
+    public async Task<IActionResult> OnPostSaveSignatureAsync()
+    {
+        WorkerId = HttpContext.Session.GetInt32("WorkerId");
+        if (WorkerId is null)
+            return RedirectToPage("/Timesheet/Login");
+
+        MustChangePassword = HttpContext.Session.GetString("MustChangePassword") == "true";
+        Username = HttpContext.Session.GetString("Username") ?? "";
+
+        var sig = (SignatureName ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(sig))
+        {
+            ErrorMessage = "Signature cannot be empty.";
+            await LoadSignatureForPageAsync();
+            return Page();
+        }
+
+        await _api.SetWorkerSignatureAsync(
+            workerId: WorkerId.Value,
+            actorWorkerId: WorkerId.Value,
+            signatureName: sig);
+
+        SuccessMessage = "Signature updated.";
+        await LoadSignatureForPageAsync(); // reload to show saved value
+        return Page();
+    }
+
+    private async Task LoadSignatureForPageAsync()
+    {
+        if (WorkerId is null) return;
+
+        Signature = await _api.GetWorkerSignatureAsync(WorkerId.Value);
+        SignatureName = Signature?.SignatureName ?? "";
+    }
+
 }

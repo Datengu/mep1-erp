@@ -14,9 +14,32 @@
 
 <hr />
 
+<h3>Signature</h3>
+
+@if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<form method="post" asp-page-handler="SaveSignature">
+    <div>
+        <label>Signature name (used on PDFs)</label>
+        <input type="text" name="SignatureName" value="@Model.SignatureName" required />
+    </div>
+
+    <button type="submit">Save signature</button>
+</form>
+
+<hr />
+
 <h3>Change Password</h3>
 
-<form method="post">
+<form method="post" asp-page-handler="ChangePassword">
     <div>
         <label>Current password</label>
         <input type="password" name="CurrentPassword" required />
