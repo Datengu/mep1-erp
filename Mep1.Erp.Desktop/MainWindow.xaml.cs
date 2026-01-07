@@ -137,6 +137,33 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _selectedPersonRates, value, nameof(SelectedPersonRates));
         }
 
+        private ICollectionView _peopleView = null!;
+        public ICollectionView PeopleView
+        {
+            get => _peopleView;
+            set => SetField(ref _peopleView, value, nameof(PeopleView));
+        }
+
+        public enum PeopleActiveFilter
+        {
+            All = 0,
+            ActiveOnly = 1,
+            InactiveOnly = 2
+        }
+
+        private PeopleActiveFilter _peopleFilter = PeopleActiveFilter.All;
+        public PeopleActiveFilter PeopleFilter
+        {
+            get => _peopleFilter;
+            set
+            {
+                if (SetField(ref _peopleFilter, value, nameof(PeopleFilter)))
+                {
+                    PeopleView?.Refresh();
+                }
+            }
+        }
+
         private PortalAccessDto? _portalAccess;
 
         public bool HasPortalAccount => _portalAccess?.Exists == true;
@@ -393,6 +420,7 @@ namespace Mep1.Erp.Desktop
             // Upcoming Applications comes from API now
             UpcomingApplications = await _api.GetUpcomingApplicationsAsync(Settings.UpcomingApplicationsDaysAhead);
 
+            EnsurePeopleView();
             EnsureInvoiceView();
             EnsureProjectView();
             LoadSuppliers();
@@ -1460,5 +1488,40 @@ namespace Mep1.Erp.Desktop
         {
             return string.IsNullOrWhiteSpace(fullName) ? "" : fullName.Trim();
         }
+
+        private void EnsurePeopleView()
+        {
+            PeopleView = CollectionViewSource.GetDefaultView(People);
+
+            PeopleView.Filter = obj =>
+            {
+                if (obj is not PeopleSummaryRowDto p)
+                    return false;
+
+                return PeopleFilter switch
+                {
+                    PeopleActiveFilter.All => true,
+                    PeopleActiveFilter.ActiveOnly => p.IsActive,
+                    PeopleActiveFilter.InactiveOnly => !p.IsActive,
+                    _ => true
+                };
+            };
+        }
+
+        private void SetPeopleFilter(PeopleActiveFilter filter)
+        {
+            PeopleFilter = filter; // triggers PeopleView.Refresh() in setter
+        }
+
+        private void ShowAllPeople_Click(object sender, RoutedEventArgs e)
+            => SetPeopleFilter(PeopleActiveFilter.All);
+
+        private void ShowActivePeople_Click(object sender, RoutedEventArgs e)
+            => SetPeopleFilter(PeopleActiveFilter.ActiveOnly);
+
+        private void ShowInactivePeople_Click(object sender, RoutedEventArgs e)
+            => SetPeopleFilter(PeopleActiveFilter.InactiveOnly);
+
+
     }
 }
