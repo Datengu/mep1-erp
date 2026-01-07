@@ -67,17 +67,26 @@ if (app.Environment.IsDevelopment())
 }
 
 // --- API Key auth (minimal) ---
-var apiKey = builder.Configuration["Security:ApiKey"];
+var portalApiKey = builder.Configuration["Security:PortalApiKey"];
+var adminApiKey = builder.Configuration["Security:AdminApiKey"];
+
+// Backward compat (optional): if you still have Security:ApiKey set, treat it as admin key
+var legacyApiKey = builder.Configuration["Security:ApiKey"];
+if (!string.IsNullOrWhiteSpace(legacyApiKey) && string.IsNullOrWhiteSpace(adminApiKey))
+    adminApiKey = legacyApiKey;
 
 if (!app.Environment.IsDevelopment())
 {
-    if (string.IsNullOrWhiteSpace(apiKey))
-        throw new InvalidOperationException("Security:ApiKey must be set in Production.");
+    if (string.IsNullOrWhiteSpace(portalApiKey))
+        throw new InvalidOperationException("Security:PortalApiKey must be set in Production.");
+
+    if (string.IsNullOrWhiteSpace(adminApiKey))
+        throw new InvalidOperationException("Security:AdminApiKey must be set in Production.");
 }
 
 app.Use(async (context, next) =>
 {
-    // Allow swagger in dev without a key (optional)
+    // Allow swagger + health in dev without a key (optional)
     if (app.Environment.IsDevelopment() &&
         (context.Request.Path.StartsWithSegments("/swagger") ||
          context.Request.Path.StartsWithSegments("/favicon.ico") ||
@@ -87,22 +96,40 @@ app.Use(async (context, next) =>
         return;
     }
 
-    // If no key configured (dev), allow all (optional)
-    if (string.IsNullOrWhiteSpace(apiKey))
+    // If no keys configured (dev), allow all (optional)
+    if (string.IsNullOrWhiteSpace(portalApiKey) && string.IsNullOrWhiteSpace(adminApiKey))
     {
         await next();
         return;
     }
 
-    if (!context.Request.Headers.TryGetValue("X-Api-Key", out var provided) ||
-        !string.Equals(provided.ToString(), apiKey, StringComparison.Ordinal))
+    if (!context.Request.Headers.TryGetValue("X-Api-Key", out var provided))
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        await context.Response.WriteAsync("Missing or invalid API key.");
+        await context.Response.WriteAsync("Missing API key.");
         return;
     }
 
-    await next();
+    var key = provided.ToString();
+
+    if (!string.IsNullOrWhiteSpace(adminApiKey) &&
+        string.Equals(key, adminApiKey, StringComparison.Ordinal))
+    {
+        context.Items["ApiKeyKind"] = "Admin";
+        await next();
+        return;
+    }
+
+    if (!string.IsNullOrWhiteSpace(portalApiKey) &&
+        string.Equals(key, portalApiKey, StringComparison.Ordinal))
+    {
+        context.Items["ApiKeyKind"] = "Portal";
+        await next();
+        return;
+    }
+
+    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+    await context.Response.WriteAsync("Invalid API key.");
 });
 // --- end API Key auth ---
 
