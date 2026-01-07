@@ -28,6 +28,11 @@ public sealed class HistoryModel : PageModel
 
     public async Task<IActionResult> OnGet()
     {
+        if (HttpContext.Session.GetString("MustChangePassword") == "true")
+        {
+            return RedirectToPage("/Timesheet/Profile");
+        }
+
         WorkerId = HttpContext.Session.GetInt32("WorkerId");
         if (WorkerId is null)
             return RedirectToPage("/Timesheet/Login");
@@ -62,6 +67,11 @@ public sealed class HistoryModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteAsync(int id, int skip = 0, int take = 100)
     {
+        if (HttpContext.Session.GetString("MustChangePassword") == "true")
+        {
+            return RedirectToPage("/Timesheet/Profile");
+        }
+
         var workerId = HttpContext.Session.GetInt32("WorkerId");
         if (workerId is null)
             return RedirectToPage("/Timesheet/Login");

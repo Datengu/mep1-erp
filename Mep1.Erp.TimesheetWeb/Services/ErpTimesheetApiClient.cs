@@ -50,7 +50,8 @@ public sealed class ErpTimesheetApiClient
         string Username,
         string Role,
         string Name,
-        string Initials
+        string Initials,
+        bool MustChangePassword
     );
 
     public async Task<TimesheetLoginResponse?> LoginAsync(string username, string password)
@@ -173,4 +174,24 @@ public sealed class ErpTimesheetApiClient
         return await res.Content.ReadFromJsonAsync<WorkerSignatureDto>(_jsonOptions);
     }
 
+    public sealed record ChangePasswordRequest(string Username, string CurrentPassword, string NewPassword);
+
+    public async Task<bool> ChangePasswordAsync(string username, string currentPassword, string newPassword)
+    {
+        var body = new ChangePasswordRequest(username, currentPassword, newPassword);
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/timesheet/auth/change-password")
+        {
+            Content = JsonContent.Create(body)
+        };
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+
+        if (res.IsSuccessStatusCode)
+            return true;
+
+        // Optional: you can read res.Content for debugging later
+        return false;
+    }
 }

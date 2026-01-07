@@ -1,0 +1,31 @@
+﻿@page
+@model ProfileModel
+
+<h2>Profile</h2>
+
+@if (Model.MustChangePassword)
+{
+    <div class="alert alert-warning">
+        You must change your password before continuing.
+    </div>
+}
+
+<p><strong>Username:</strong> @Model.Username</p>
+
+<hr />
+
+<h3>Change Password</h3>
+
+<form method="post">
+    <div>
+        <label>Current password</label>
+        <input type="password" name="CurrentPassword" required />
+    </div>
+
+    <div>
+        <label>New password</label>
+        <input type="password" name="NewPassword" required />
+    </div>
+
+    <button type="submit">Change password</button>
+</form>

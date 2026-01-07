@@ -82,6 +82,11 @@ public class EvidencePackModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (HttpContext.Session.GetString("MustChangePassword") == "true")
+        {
+            return RedirectToPage("/Timesheet/Profile");
+        }
+
         var workerId = HttpContext.Session.GetInt32("WorkerId");
         if (workerId is null)
             return RedirectToPage("/Timesheet/Login");

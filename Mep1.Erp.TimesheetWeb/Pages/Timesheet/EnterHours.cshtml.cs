@@ -74,6 +74,11 @@ public sealed class EnterHoursModel : PageModel
 
     public async Task<IActionResult> OnGet()
     {
+        if (HttpContext.Session.GetString("MustChangePassword") == "true")
+        {
+            return RedirectToPage("/Timesheet/Profile");
+        }
+
         var workerId = HttpContext.Session.GetInt32("WorkerId");
 
         if (workerId is null)
@@ -90,6 +95,11 @@ public sealed class EnterHoursModel : PageModel
 
     public async Task<IActionResult> OnPost()
     {
+        if (HttpContext.Session.GetString("MustChangePassword") == "true")
+        {
+            return RedirectToPage("/Timesheet/Profile");
+        }
+
         var workerId = HttpContext.Session.GetInt32("WorkerId");
         if (workerId is null)
             return RedirectToPage("/Timesheet/Login");

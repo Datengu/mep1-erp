@@ -28,6 +28,11 @@ public class SignatureModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? returnTo = null)
     {
+        if (HttpContext.Session.GetString("MustChangePassword") == "true")
+        {
+            return RedirectToPage("/Timesheet/Profile");
+        }
+
         var workerId = HttpContext.Session.GetInt32("WorkerId");
         if (workerId is null)
             return RedirectToPage("/Timesheet/Login");
@@ -53,6 +58,11 @@ public class SignatureModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(string? returnTo = null)
     {
+        if (HttpContext.Session.GetString("MustChangePassword") == "true")
+        {
+            return RedirectToPage("/Timesheet/Profile");
+        }
+
         var actorWorkerId = HttpContext.Session.GetInt32("WorkerId");
         var workerId = HttpContext.Session.GetInt32("WorkerId");
         if (workerId is null)
