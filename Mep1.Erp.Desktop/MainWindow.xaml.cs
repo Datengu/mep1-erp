@@ -1339,8 +1339,6 @@ namespace Mep1.Erp.Desktop
             {
                 _portalAccess = await _api.GetPortalAccessAsync(workerId);
 
-                PortalTempPasswordText = "";
-
                 if (_portalAccess.Exists)
                 {
                     PortalUsernameText = _portalAccess.Username ?? "";
@@ -1349,7 +1347,9 @@ namespace Mep1.Erp.Desktop
                 }
                 else
                 {
-                    PortalUsernameText = "";
+                    // Prefill username to speed up account creation
+                    PortalUsernameText = BuildSuggestedUsername(SelectedPerson?.Name);
+
                     SelectedPortalRole = "Worker";
                     PortalIsActive = true;
                 }
@@ -1389,15 +1389,18 @@ namespace Mep1.Erp.Desktop
                     SelectedPerson.WorkerId,
                     new CreatePortalAccessRequest(PortalUsernameText.Trim(), SelectedPortalRole));
 
+                System.Windows.Clipboard.SetText(created.TemporaryPassword);
                 PortalTempPasswordText = "Temporary password: " + created.TemporaryPassword;
 
                 WpfMessageBox.Show(
-                    "Portal account created.\n\nCopy the temporary password now (it won't be shown again).",
+                    "Portal account created.\n\nPassword copied to clipboard and shown on page (it won't be shown again).",
                     "Portal Access",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
 
                 await LoadPortalAccessAsync(SelectedPerson.WorkerId);
+
+                PortalTempPasswordText = "Temporary password: " + created.TemporaryPassword;
                 OnPropertyChanged(nameof(PortalTempPasswordText));
             }
             catch (Exception ex)
@@ -1435,10 +1438,11 @@ namespace Mep1.Erp.Desktop
             {
                 var result = await _api.ResetPortalPasswordAsync(SelectedPerson.WorkerId);
 
+                System.Windows.Clipboard.SetText(result.TemporaryPassword);
                 PortalTempPasswordText = "Temporary password: " + result.TemporaryPassword;
 
                 WpfMessageBox.Show(
-                    "Password reset.\n\nCopy the temporary password now (it won't be shown again).",
+                    "Password reset.\n\nPassword copied to clipboard and shown on page (it won't be shown again).",
                     "Portal Access",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -1450,6 +1454,11 @@ namespace Mep1.Erp.Desktop
             {
                 WpfMessageBox.Show("Reset failed:\n\n" + ex.Message, "Portal Access", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private static string BuildSuggestedUsername(string? fullName)
+        {
+            return string.IsNullOrWhiteSpace(fullName) ? "" : fullName.Trim();
         }
     }
 }
