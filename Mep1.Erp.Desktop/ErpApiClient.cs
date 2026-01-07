@@ -71,6 +71,19 @@ namespace Mep1.Erp.Desktop
             return result;
         }
 
+        public async Task SetWorkerActiveAsync(int workerId, bool isActive)
+        {
+            var url = $"api/people/{workerId}/active";
+
+            var request = new HttpRequestMessage(HttpMethod.Patch, url)
+            {
+                Content = JsonContent.Create(new { isActive })
+            };
+
+            var response = await _http.SendAsync(request);
+            response.EnsureSuccessStatusCode(); // expects 204 NoContent
+        }
+
         public async Task<PortalAccessDto> GetPortalAccessAsync(int workerId)
         {
             var result = await _http.GetFromJsonAsync<PortalAccessDto>($"api/people/{workerId}/portal-access");

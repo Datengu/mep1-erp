@@ -1522,6 +1522,61 @@ namespace Mep1.Erp.Desktop
         private void ShowInactivePeople_Click(object sender, RoutedEventArgs e)
             => SetPeopleFilter(PeopleActiveFilter.InactiveOnly);
 
+        private async void TogglePersonActive_Click(object sender, RoutedEventArgs e)
+        {
+            var person = SelectedPerson;
+            if (person == null)
+                return;
+
+            var newIsActive = !person.IsActive;
+
+            var confirmText = newIsActive
+                ? $"Activate '{person.Name}'?"
+                : $"Deactivate '{person.Name}'?\n\nThey will be hidden from the Timesheet worker dropdown (if you filter to active workers).";
+
+            var result = WpfMessageBox.Show(
+                confirmText,
+                "Confirm",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                await _api.SetWorkerActiveAsync(person.WorkerId, newIsActive);
+
+                RefreshPeople(keepSelection: true);
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    "Failed to change worker active status:\n\n" + ex.Message,
+                    "API error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void RefreshPeople(bool keepSelection)
+        {
+            var selectedWorkerId = keepSelection ? SelectedPerson?.WorkerId : null;
+
+            People = await _api.GetPeopleSummaryAsync();
+            EnsurePeopleView();
+
+            if (keepSelection && selectedWorkerId.HasValue)
+            {
+                var match = People.FirstOrDefault(p => p.WorkerId == selectedWorkerId.Value);
+                if (match != null)
+                {
+                    SelectedPerson = match;
+                    await LoadSelectedPersonDetails(match.WorkerId);
+                    await LoadPortalAccessAsync(match.WorkerId);
+                }
+            }
+        }
 
     }
 }

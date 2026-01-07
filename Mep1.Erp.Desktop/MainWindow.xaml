@@ -685,12 +685,39 @@
                                     </Grid.RowDefinitions>
 
                                     <!-- Header -->
-                                    <TextBlock Grid.Row="0"
-                                                FontSize="18"
-                                                FontWeight="SemiBold"
-                                                Foreground="White"
-                                                Text="{Binding SelectedPerson.Name}"
-                                                Margin="0,0,0,8"/>
+                                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0"
+                                                   FontSize="18"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="White"
+                                                   Text="{Binding SelectedPerson.Name}"
+                                                   VerticalAlignment="Center"/>
+
+                                        <Button Grid.Column="1"
+                                                Padding="12,6"
+                                                Margin="12,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Click="TogglePersonActive_Click">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Content" Value="Deactivate"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedPerson.IsActive}" Value="False">
+                                                            <Setter Property="Content" Value="Activate"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding SelectedPerson}" Value="{x:Null}">
+                                                            <Setter Property="IsEnabled" Value="False"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </Grid>
 
                                     <!-- Rate history -->
                                     <GroupBox Grid.Row="1" Header="Rate history" Margin="0,0,0,8">
