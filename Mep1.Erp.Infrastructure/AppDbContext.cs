@@ -25,7 +25,7 @@ namespace Mep1.Erp.Infrastructure
         public DbSet<Invoice> Invoices => Set<Invoice>();
         public DbSet<ApplicationSchedule> ApplicationSchedules => Set<ApplicationSchedule>();
         public DbSet<TimesheetUser> TimesheetUsers => Set<TimesheetUser>();
-
+        public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -115,6 +115,19 @@ namespace Mep1.Erp.Infrastructure
                 e.Property(x => x.MustChangePassword)
                  .HasDefaultValue(false);
             });
+
+            modelBuilder.Entity<AuditLog>(e =>
+            {
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.ActorRole).HasMaxLength(32);
+                e.Property(x => x.ActorSource).HasMaxLength(32);
+
+                e.Property(x => x.Action).IsRequired().HasMaxLength(128);
+                e.Property(x => x.EntityType).IsRequired().HasMaxLength(64);
+                e.Property(x => x.EntityId).IsRequired().HasMaxLength(64);
+            });
+
         }
     }
 }

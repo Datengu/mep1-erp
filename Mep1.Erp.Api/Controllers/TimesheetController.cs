@@ -1,4 +1,5 @@
-﻿using Mep1.Erp.Core;
+﻿using Mep1.Erp.Api.Services;
+using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -13,9 +14,12 @@ public sealed class TimesheetController : ControllerBase
 {
     private readonly AppDbContext _db;
 
-    public TimesheetController(AppDbContext db)
+    private readonly AuditLogger _audit;
+
+    public TimesheetController(AppDbContext db, AuditLogger audit)
     {
         _db = db;
+        _audit = audit;
     }
 
     private static List<string> ParseJsonList(string? json)
@@ -163,6 +167,16 @@ public sealed class TimesheetController : ControllerBase
         _db.TimesheetEntries.Add(entry);
         await _db.SaveChangesAsync();
 
+        await _audit.LogAsync(
+            actorWorkerId: dto.WorkerId,
+            actorRole: "Worker",
+            actorSource: "Portal",
+            action: "TimesheetEntry.Create",
+            entityType: "TimesheetEntry",
+            entityId: entry.Id.ToString(),
+            summary: $"{dto.Date:yyyy-MM-dd} {dto.Hours}h {dto.Code}"
+        );
+
         return Ok(new { entry.Id });
     }
 
@@ -295,6 +309,17 @@ public sealed class TimesheetController : ControllerBase
         entry.AreasJson = JsonSerializer.Serialize(dto.Areas ?? new List<string>());
 
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(
+            actorWorkerId: dto.WorkerId,
+            actorRole: "Worker",
+            actorSource: "Portal",
+            action: "TimesheetEntry.Update",
+            entityType: "TimesheetEntry",
+            entityId: entry.Id.ToString(),
+            summary: $"Updated {entry.Date:yyyy-MM-dd}"
+        );
+
         return NoContent();
     }
 
@@ -365,6 +390,17 @@ public sealed class TimesheetController : ControllerBase
         entry.DeletedByWorkerId = workerId;
 
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(
+            actorWorkerId: workerId,
+            actorRole: "Worker",
+            actorSource: "Portal",
+            action: "TimesheetEntry.Delete",
+            entityType: "TimesheetEntry",
+            entityId: entry.Id.ToString(),
+            summary: $"Deleted entry {entry.EntryId}"
+        );
+
         return NoContent();
     }
 

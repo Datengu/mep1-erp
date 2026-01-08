@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Mep1.Erp.Core;
-using Mep1.Erp.Infrastructure;
+﻿using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
+using Mep1.Erp.Infrastructure;
+using Mep1.Erp.Api.Services;
+using Mep1.Erp.Api.Security;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Mep1.Erp.Api.Controllers;
 
@@ -11,7 +13,35 @@ namespace Mep1.Erp.Api.Controllers;
 public class SuppliersController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public SuppliersController(AppDbContext db) => _db = db;
+
+    private readonly AuditLogger _audit;
+
+    public SuppliersController(AppDbContext db, AuditLogger audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
+
+    private bool IsAdminKey()
+    => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
+
+    private ActionResult? RequireAdminKey()
+    {
+        if (IsAdminKey()) return null;
+        return Unauthorized("Admin API key required.");
+    }
+
+    private ActorContext? GetActor()
+        => HttpContext.Items["Actor"] as ActorContext;
+
+    private (int? WorkerId, string Role, string Source) GetActorForAudit()
+    {
+        var actor = GetActor();
+        if (actor != null)
+            return (actor.WorkerId, actor.Role.ToString(), "Desktop");
+
+        return (null, "AdminKey", "ApiKey");
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<SupplierDto>>> GetAll([FromQuery] bool includeInactive = false)
@@ -32,6 +62,9 @@ public class SuppliersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<SupplierDto>> Create([FromBody] UpsertSupplierDto dto)
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var name = (dto.Name ?? "").Trim();
         if (name.Length == 0) return BadRequest("Name is required.");
 
@@ -46,12 +79,26 @@ public class SuppliersController : ControllerBase
 
         await _db.SaveChangesAsync();
 
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Suppliers.Create",
+            entityType: "Supplier",
+            entityId: entity.Id.ToString(),
+            summary: $"Name={entity.Name}, Active={entity.IsActive}"
+        );
+
         return Ok(new SupplierDto(entity.Id, entity.Name, entity.IsActive, entity.Notes));
     }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpsertSupplierDto dto)
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var entity = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == id);
         if (entity == null) return NotFound();
 
@@ -64,17 +111,42 @@ public class SuppliersController : ControllerBase
 
         await _db.SaveChangesAsync();
 
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Suppliers.Update",
+            entityType: "Supplier",
+            entityId: entity.Id.ToString(),
+            summary: $"Name={entity.Name}, Active={entity.IsActive}"
+        );
+
         return NoContent();
     }
 
     [HttpPost("{id:int}/deactivate")]
     public async Task<IActionResult> Deactivate([FromRoute] int id)
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var entity = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == id);
         if (entity == null) return NotFound();
 
         entity.IsActive = false;
         await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Suppliers.Deactivate",
+            entityType: "Supplier",
+            entityId: entity.Id.ToString(),
+            summary: $"Name={entity.Name}"
+        );
 
         return NoContent();
     }

@@ -1,9 +1,11 @@
 ﻿using Mep1.Erp.Application;
 using Mep1.Erp.Core;
+using Mep1.Erp.Core.Contracts;
+using Mep1.Erp.Infrastructure;
+using Mep1.Erp.Api.Services;
+using Mep1.Erp.Api.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Mep1.Erp.Infrastructure;
-using Mep1.Erp.Core.Contracts;
 
 namespace Mep1.Erp.Api.Controllers;
 
@@ -13,10 +15,35 @@ public class ProjectsController : ControllerBase
 {
     private readonly AppDbContext _db;
 
-    public ProjectsController(AppDbContext db)
+    private readonly AuditLogger _audit;
+
+    public ProjectsController(AppDbContext db, AuditLogger audit)
     {
         _db = db;
+        _audit = audit;
     }
+
+    private bool IsAdminKey()
+    => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
+
+    private ActionResult? RequireAdminKey()
+    {
+        if (IsAdminKey()) return null;
+        return Unauthorized("Admin API key required.");
+    }
+
+    private ActorContext? GetActor()
+        => HttpContext.Items["Actor"] as ActorContext;
+
+    private (int? WorkerId, string Role, string Source) GetActorForAudit()
+    {
+        var actor = GetActor();
+        if (actor != null)
+            return (actor.WorkerId, actor.Role.ToString(), "Desktop");
+
+        return (null, "AdminKey", "ApiKey");
+    }
+
 
     [HttpGet]
     public async Task<IActionResult> Get()
@@ -126,6 +153,9 @@ public class ProjectsController : ControllerBase
     [HttpPost("{jobKey}/supplier-costs")]
     public async Task<ActionResult<SupplierCostRowDto>> AddSupplierCost([FromRoute] string jobKey, [FromBody] UpsertSupplierCostDto dto)
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
         if (project == null) return NotFound();
 
@@ -146,12 +176,26 @@ public class ProjectsController : ControllerBase
         _db.SupplierCosts.Add(entity);
         await _db.SaveChangesAsync();
 
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Projects.SupplierCost.Create",
+            entityType: "SupplierCost",
+            entityId: entity.Id.ToString(),
+            summary: $"Job={jobKey}, SupplierId={dto.SupplierId}, Amount={dto.Amount}, Date={(dto.Date?.Date.ToString("yyyy-MM-dd") ?? "null")}"
+        );
+
         return Ok(new SupplierCostRowDto(entity.Id, entity.Date, entity.SupplierId, supplier.Name, entity.Amount, entity.Note));
     }
 
     [HttpPut("{jobKey}/supplier-costs/{id:int}")]
     public async Task<IActionResult> UpdateSupplierCost([FromRoute] string jobKey, [FromRoute] int id, [FromBody] UpsertSupplierCostDto dto)
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
         if (project == null) return NotFound();
 
@@ -169,20 +213,48 @@ public class ProjectsController : ControllerBase
         entity.Note = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim();
 
         await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Projects.SupplierCost.Update",
+            entityType: "SupplierCost",
+            entityId: entity.Id.ToString(),
+            summary: $"Job={jobKey}, SupplierId={entity.SupplierId}, Amount={entity.Amount}, Date={(entity.Date?.ToString("yyyy-MM-dd") ?? "null")}"
+        );
+
         return NoContent();
     }
 
     [HttpDelete("{jobKey}/supplier-costs/{id:int}")]
     public async Task<IActionResult> DeleteSupplierCost([FromRoute] string jobKey, [FromRoute] int id)
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
         if (project == null) return NotFound();
 
         var entity = await _db.SupplierCosts.FirstOrDefaultAsync(sc => sc.Id == id && sc.ProjectId == project.Id);
         if (entity == null) return NotFound();
 
+        var deletedId = entity.Id;
+
         _db.SupplierCosts.Remove(entity);
         await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Projects.SupplierCost.Delete",
+            entityType: "SupplierCost",
+            entityId: deletedId.ToString(),
+            summary: $"Job={jobKey}, SupplierCostId={deletedId}"
+        );
 
         return NoContent();
     }
@@ -190,6 +262,9 @@ public class ProjectsController : ControllerBase
     [HttpPatch("{jobKey}/active")]
     public async Task<IActionResult> SetProjectActive([FromRoute] string jobKey, [FromBody] SetProjectActiveDto dto)
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
 
         if (project == null) 
@@ -201,6 +276,17 @@ public class ProjectsController : ControllerBase
 
         project.IsActive = dto.IsActive;
         await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Projects.SetActive",
+            entityType: "Project",
+            entityId: project.Id.ToString(),
+            summary: $"Job={jobKey}, IsActive={dto.IsActive}"
+        );
 
         return NoContent();
     }

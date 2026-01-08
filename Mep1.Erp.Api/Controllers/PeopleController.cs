@@ -6,6 +6,7 @@ using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
 using Mep1.Erp.Api.Security;
+using Mep1.Erp.Api.Services;
 
 namespace Mep1.Erp.Api.Controllers;
 
@@ -15,10 +16,14 @@ public sealed class PeopleController : ControllerBase
 {
     private readonly AppDbContext _db;
 
-    public PeopleController(AppDbContext db)
+    private readonly AuditLogger _audit;
+
+    public PeopleController(AppDbContext db, AuditLogger audit)
     {
         _db = db;
+        _audit = audit;
     }
+
 
     private bool IsAdminKey()
         => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
@@ -31,6 +36,16 @@ public sealed class PeopleController : ControllerBase
 
     private ActorContext? GetActor()
     => HttpContext.Items["Actor"] as ActorContext;
+
+    private (int? WorkerId, string Role, string Source) GetActorForAudit()
+    {
+        var actor = GetActor();
+        if (actor != null)
+            return (actor.WorkerId, actor.Role.ToString(), "Desktop");
+
+        // Admin API key used without an actor token (should be rare)
+        return (null, "AdminKey", "ApiKey");
+    }
 
     private ActionResult? RequireAdminActor()
     {
@@ -155,6 +170,17 @@ public sealed class PeopleController : ControllerBase
         _db.TimesheetUsers.Add(user);
         await _db.SaveChangesAsync();
 
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "People.PortalAccess.Create",
+            entityType: "TimesheetUser",
+            entityId: user.Id.ToString(),
+            summary: $"Created portal access for WorkerId={workerId}, Username={username}, Role={role}"
+        );
+
         var dto = new PortalAccessDto(
             Exists: true,
             WorkerId: user.WorkerId,
@@ -199,6 +225,18 @@ public sealed class PeopleController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "People.PortalAccess.Update",
+            entityType: "TimesheetUser",
+            entityId: user.Id.ToString(),
+            summary: $"Updated portal access for WorkerId={workerId} (IsActive={user.IsActive}, Role={user.Role})"
+        );
+
         return NoContent();
     }
 
@@ -218,6 +256,17 @@ public sealed class PeopleController : ControllerBase
         user.PasswordChangedAtUtc = DateTime.UtcNow; // “reset happened now”
 
         await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "People.PortalAccess.ResetPassword",
+            entityType: "TimesheetUser",
+            entityId: user.Id.ToString(),
+            summary: $"Reset portal password for WorkerId={workerId}, Username={user.Username}"
+        );
 
         return Ok(new ResetPortalPasswordResultDto(tempPassword));
     }
@@ -316,6 +365,18 @@ public sealed class PeopleController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "People.Worker.SetActive",
+            entityType: "Worker",
+            entityId: workerId.ToString(),
+            summary: $"Set WorkerId={workerId} active={request.IsActive}"
+        );
+
         return NoContent();
     }
 
