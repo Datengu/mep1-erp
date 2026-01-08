@@ -300,7 +300,7 @@ public sealed class PeopleController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult> CreateWorker([FromBody] CreateWorkerRequest req)
+    public async Task<ActionResult<CreateWorkerResponseDto>> CreateWorker([FromBody] CreateWorkerRequestDto req)
     {
         if (req == null) return BadRequest("Missing body.");
 
@@ -313,7 +313,7 @@ public sealed class PeopleController : ControllerBase
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest("Name is required.");
 
-        // Optional: enforce unique initials (comment out if you don't want this)
+        // Enforce unique initials
         var initialsTaken = await _db.Workers.AnyAsync(w => w.Initials == initials);
         if (initialsTaken) return BadRequest("Initials already exist.");
 
@@ -345,13 +345,12 @@ public sealed class PeopleController : ControllerBase
             await _db.SaveChangesAsync();
         }
 
-        // Return enough info for the desktop app to select the new worker
-        return Ok(new
+        return Ok(new CreateWorkerResponseDto
         {
-            worker.Id,
-            worker.Initials,
-            worker.Name,
-            worker.IsActive
+            Id = worker.Id,
+            Initials = worker.Initials,
+            Name = worker.Name,
+            IsActive = worker.IsActive
         });
     }
 }
