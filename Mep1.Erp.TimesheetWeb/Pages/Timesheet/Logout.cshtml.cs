@@ -7,10 +7,8 @@ public sealed class LogoutModel : PageModel
 {
     public IActionResult OnGet()
     {
-        // Clear everything the portal uses for "logged in" state
         HttpContext.Session.Clear();
-
-        // Back to login
+        Response.Cookies.Delete("MEP1_REMEMBER");
         return RedirectToPage("/Timesheet/Login");
     }
 }
