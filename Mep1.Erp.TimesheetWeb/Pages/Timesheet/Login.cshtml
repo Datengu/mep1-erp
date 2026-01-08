@@ -19,6 +19,13 @@
         <span class="text-danger" asp-validation-for="Input.Password"></span>
     </div>
 
+    <div class="form-check mb-3">
+        <input class="form-check-input" asp-for="Input.RememberMe" />
+        <label class="form-check-label" asp-for="Input.RememberMe">
+            Remember me for 30 days
+        </label>
+    </div>
+
     @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
     {
         <div class="text-danger mb-3">@Model.ErrorMessage</div>

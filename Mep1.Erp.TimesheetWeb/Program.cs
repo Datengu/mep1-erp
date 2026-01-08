@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.DataProtection;
 using Mep1.Erp.TimesheetWeb;
 using Mep1.Erp.TimesheetWeb.Services;
 using QuestPDF.Infrastructure;
@@ -13,6 +15,9 @@ builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
     http.BaseAddress = new Uri(cfg.BaseUrl);
     http.DefaultRequestHeaders.Add("X-API-KEY", cfg.ApiKey);
 });
+
+// Data protection (used to encrypt/decrypt remember-me cookie)
+builder.Services.AddDataProtection();
 
 builder.Services.AddSession(options =>
 {
@@ -36,7 +41,6 @@ QuestPDF.Settings.License = LicenseType.Community;
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -49,6 +53,61 @@ app.UseAuthorization();
 
 app.UseSession();
 
+// Remember-me rehydrate middleware (restores session if session expired but cookie exists)
+const string RememberCookieName = "MEP1_REMEMBER";
+const string RememberProtectorPurpose = "Mep1.Erp.TimesheetWeb.RememberMe.v1";
+
+app.Use(async (ctx, next) =>
+{
+    // If already logged in via session, carry on
+    if (ctx.Session.GetInt32("WorkerId") is not null)
+    {
+        await next();
+        return;
+    }
+
+    // If cookie exists, try to restore session
+    if (ctx.Request.Cookies.TryGetValue(RememberCookieName, out var protectedValue)
+        && !string.IsNullOrWhiteSpace(protectedValue))
+    {
+        try
+        {
+            var provider = ctx.RequestServices.GetRequiredService<IDataProtectionProvider>();
+            var protector = provider.CreateProtector(RememberProtectorPurpose);
+
+            var json = protector.Unprotect(protectedValue);
+
+            var payload = JsonSerializer.Deserialize<RememberPayload>(json);
+            if (payload is not null && payload.WorkerId > 0)
+            {
+                ctx.Session.SetInt32("WorkerId", payload.WorkerId);
+                ctx.Session.SetString("WorkerName", payload.Name ?? "");
+                ctx.Session.SetString("WorkerInitials", payload.Initials ?? "");
+                ctx.Session.SetString("UserRole", payload.Role ?? "Worker");
+                ctx.Session.SetString("Username", payload.Username ?? "");
+                ctx.Session.SetString("MustChangePassword", payload.MustChangePassword ? "true" : "false");
+            }
+        }
+        catch
+        {
+            // If cookie is invalid/tampered/old, just delete it and continue as logged out.
+            ctx.Response.Cookies.Delete(RememberCookieName);
+        }
+    }
+
+    await next();
+});
+
 app.MapRazorPages();
 
 app.Run();
+
+file sealed class RememberPayload
+{
+    public int WorkerId { get; set; }
+    public string? Name { get; set; }
+    public string? Initials { get; set; }
+    public string? Role { get; set; }
+    public string? Username { get; set; }
+    public bool MustChangePassword { get; set; }
+}
