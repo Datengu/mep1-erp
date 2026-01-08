@@ -1,4 +1,5 @@
 using Mep1.Erp.Infrastructure;
+using Mep1.Erp.Api.Security;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -55,6 +56,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
     Console.WriteLine($"[DB] Using SQLite file: {b.DataSource}");
     options.UseSqlite(b.ToString());
+});
+
+// Actor token auth (desktop identity)
+builder.Services.AddSingleton(sp =>
+{
+    var signingKey = builder.Configuration["Security:ActorTokenSigningKey"] ?? "";
+    return new ActorTokenService(signingKey);
 });
 
 var app = builder.Build();
@@ -132,6 +140,10 @@ app.Use(async (context, next) =>
     await context.Response.WriteAsync("Invalid API key.");
 });
 // --- end API Key auth ---
+
+// --- Actor token (optional, per-endpoint enforcement) ---
+app.UseMiddleware<ActorTokenMiddleware>();
+// --- end Actor token ---
 
 app.UseHttpsRedirection();
 app.UseAuthorization(); // don’t expose the app publicly without proper auth in place.
