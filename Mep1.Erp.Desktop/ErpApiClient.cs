@@ -250,5 +250,41 @@ namespace Mep1.Erp.Desktop
 
             return dto;
         }
+
+        public async Task<List<AuditLogRowDto>> GetAuditLogsAsync(
+            int take = 200,
+            int skip = 0,
+            string? search = null,
+            string? entityType = null,
+            string? entityId = null,
+            int? actorWorkerId = null,
+            string? action = null)
+        {
+            var qs = new List<string>
+            {
+                $"take={take}",
+                $"skip={skip}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(search))
+                qs.Add("search=" + Uri.EscapeDataString(search.Trim()));
+
+            if (!string.IsNullOrWhiteSpace(entityType))
+                qs.Add("entityType=" + Uri.EscapeDataString(entityType.Trim()));
+
+            if (!string.IsNullOrWhiteSpace(entityId))
+                qs.Add("entityId=" + Uri.EscapeDataString(entityId.Trim()));
+
+            if (actorWorkerId.HasValue)
+                qs.Add("actorWorkerId=" + actorWorkerId.Value);
+
+            if (!string.IsNullOrWhiteSpace(action))
+                qs.Add("action=" + Uri.EscapeDataString(action.Trim()));
+
+            var url = "api/audit?" + string.Join("&", qs);
+
+            var result = await _http.GetFromJsonAsync<List<AuditLogRowDto>>(url);
+            return result ?? new List<AuditLogRowDto>();
+        }
     }
 }

@@ -371,6 +371,48 @@ namespace Mep1.Erp.Desktop
 
         private int _projectDrilldownLoadVersion = 0;
 
+        private List<AuditLogRowDto> _auditLogs = new();
+
+        public List<AuditLogRowDto> AuditLogs 
+        {
+            get => _auditLogs;
+            set => SetField(ref _auditLogs, value, nameof(AuditLogs));
+        }
+
+        private string _auditSearchText = "";
+        public string AuditSearchText
+        {
+            get => _auditSearchText;
+            set => SetField(ref _auditSearchText, value, nameof(AuditSearchText));
+        }
+
+        private string _auditEntityTypeText = "";
+        public string AuditEntityTypeText
+        {
+            get => _auditEntityTypeText;
+            set => SetField(ref _auditEntityTypeText, value, nameof(AuditEntityTypeText));
+        }
+
+        private string _auditEntityIdText = "";
+        public string AuditEntityIdText
+        {
+            get => _auditEntityIdText;
+            set => SetField(ref _auditEntityIdText, value, nameof(AuditEntityIdText));
+        }
+
+        private string _auditActorWorkerIdText = "";
+        public string AuditActorWorkerIdText
+        {
+            get => _auditActorWorkerIdText;
+            set => SetField(ref _auditActorWorkerIdText, value, nameof(AuditActorWorkerIdText));
+        }
+
+        private string _auditActionText = "";
+        public string AuditActionText
+        {
+            get => _auditActionText;
+            set => SetField(ref _auditActionText, value, nameof(AuditActionText));
+        }
 
         // ---------------------------------------------
         // Invoice filtering
@@ -465,6 +507,8 @@ namespace Mep1.Erp.Desktop
 
             // Upcoming Applications comes from API now
             UpcomingApplications = await _api.GetUpcomingApplicationsAsync(Settings.UpcomingApplicationsDaysAhead);
+
+            await LoadAuditLogsAsync();
 
             EnsurePeopleView();
             EnsureInvoiceView();
@@ -1693,5 +1737,44 @@ namespace Mep1.Erp.Desktop
                 AddWorkerStatusText = $"Failed to create worker: {ex.Message}";
             }
         }
+
+        private async Task LoadAuditLogsAsync()
+        {
+            try
+            {
+                int? actorId = null;
+                if (!string.IsNullOrWhiteSpace(AuditActorWorkerIdText) &&
+                    int.TryParse(AuditActorWorkerIdText.Trim(), out var parsed))
+                {
+                    actorId = parsed;
+                }
+
+                AuditLogs = await _api.GetAuditLogsAsync(
+                    take: 300,
+                    skip: 0,
+                    search: string.IsNullOrWhiteSpace(AuditSearchText) ? null : AuditSearchText,
+                    entityType: string.IsNullOrWhiteSpace(AuditEntityTypeText) ? null : AuditEntityTypeText,
+                    entityId: string.IsNullOrWhiteSpace(AuditEntityIdText) ? null : AuditEntityIdText,
+                    actorWorkerId: actorId,
+                    action: string.IsNullOrWhiteSpace(AuditActionText) ? null : AuditActionText
+                );
+
+                OnPropertyChanged(nameof(AuditLogs));
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    "Failed to load audit logs:\n\n" + ex.Message,
+                    "API error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void RefreshAudit_Click(object sender, RoutedEventArgs e)
+        {
+            await LoadAuditLogsAsync();
+        }
+
     }
 }
