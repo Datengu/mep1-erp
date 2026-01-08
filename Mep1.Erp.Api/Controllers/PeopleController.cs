@@ -202,9 +202,6 @@ public sealed class PeopleController : ControllerBase
         return Ok(new ResetPortalPasswordResult(tempPassword));
     }
 
-    // ... keep your existing endpoints below ...
-
-
     [HttpGet("summary")]
     public ActionResult<List<PeopleSummaryRowDto>> GetPeopleSummary()
     {
