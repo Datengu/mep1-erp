@@ -222,5 +222,33 @@ namespace Mep1.Erp.Desktop
             if (dto == null) throw new Exception("API returned empty response.");
             return dto;
         }
+
+        public void SetActorToken(string? token)
+        {
+            const string headerName = "X-Actor-Token";
+
+            if (_http.DefaultRequestHeaders.Contains(headerName))
+                _http.DefaultRequestHeaders.Remove(headerName);
+
+            if (!string.IsNullOrWhiteSpace(token))
+                _http.DefaultRequestHeaders.Add(headerName, token);
+        }
+
+        public async Task<DesktopAdminLoginResponseDto> DesktopAdminLoginAsync(string username, string password)
+        {
+            var resp = await _http.PostAsJsonAsync("api/admin/auth/login",
+                new DesktopAdminLoginRequestDto(username, password));
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"Login failed ({(int)resp.StatusCode}): {body}");
+            }
+
+            var dto = await resp.Content.ReadFromJsonAsync<DesktopAdminLoginResponseDto>();
+            if (dto == null) throw new Exception("Login returned empty response.");
+
+            return dto;
+        }
     }
 }
