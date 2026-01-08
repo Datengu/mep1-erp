@@ -1,5 +1,6 @@
-using Mep1.Erp.Infrastructure;
 using Mep1.Erp.Api.Security;
+using Mep1.Erp.Api.Services;
+using Mep1.Erp.Infrastructure;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -57,6 +58,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     Console.WriteLine($"[DB] Using SQLite file: {b.DataSource}");
     options.UseSqlite(b.ToString());
 });
+
+// Audit Log
+builder.Services.AddScoped<AuditLogger>();
 
 // Actor token auth (desktop identity)
 builder.Services.AddSingleton(sp =>
