@@ -1101,6 +1101,66 @@
                 </Grid>
             </TabItem>
 
+            <!-- 🔹 AUDIT TAB -->
+            <TabItem Header="Audit">
+                <Grid Background="#FF1E1E1E" Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Filters -->
+                    <WrapPanel Grid.Row="0" Margin="0,0,0,8" VerticalAlignment="Center">
+                        <TextBlock Text="Search:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Width="240"
+                     Text="{Binding AuditSearchText, UpdateSourceTrigger=PropertyChanged}"
+                     Margin="0,0,12,0"/>
+
+                        <TextBlock Text="EntityType:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Width="160"
+                     Text="{Binding AuditEntityTypeText, UpdateSourceTrigger=PropertyChanged}"
+                     Margin="0,0,12,0"/>
+
+                        <TextBlock Text="EntityId:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Width="160"
+                     Text="{Binding AuditEntityIdText, UpdateSourceTrigger=PropertyChanged}"
+                     Margin="0,0,12,0"/>
+
+                        <TextBlock Text="ActorWorkerId:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Width="90"
+                     Text="{Binding AuditActorWorkerIdText, UpdateSourceTrigger=PropertyChanged}"
+                     Margin="0,0,12,0"/>
+
+                        <TextBlock Text="Action:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Width="140"
+                     Text="{Binding AuditActionText, UpdateSourceTrigger=PropertyChanged}"
+                     Margin="0,0,12,0"/>
+
+                        <Button Content="Refresh"
+                    Padding="10,4"
+                    Click="RefreshAudit_Click"/>
+                    </WrapPanel>
+
+                    <!-- Grid -->
+                    <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding AuditLogs}"
+                  Style="{StaticResource DarkDataGridStyle}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="UTC" Binding="{Binding OccurredUtc, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="160"/>
+                            <DataGridTextColumn Header="ActorId" Binding="{Binding ActorWorkerId}" Width="70"/>
+                            <DataGridTextColumn Header="Role" Binding="{Binding ActorRole}" Width="90"/>
+                            <DataGridTextColumn Header="Source" Binding="{Binding ActorSource}" Width="90"/>
+                            <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="140"/>
+                            <DataGridTextColumn Header="EntityType" Binding="{Binding EntityType}" Width="140"/>
+                            <DataGridTextColumn Header="EntityId" Binding="{Binding EntityId}" Width="140"/>
+                            <DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
             <!-- 🔹 SETTINGS TAB -->
             <TabItem Header="Settings">
                 <ScrollViewer Background="#FF1E1E1E">
