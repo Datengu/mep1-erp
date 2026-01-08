@@ -939,6 +939,53 @@
                                 </StackPanel>
                             </Grid>
                         </TabItem>
+                        <!-- ADD PERSON TAB -->
+                        <TabItem Header="Add Person">
+                            <Grid Background="#FF1E1E1E" Margin="10">
+                                <GroupBox Header="Add Person" Foreground="White">
+                                    <StackPanel Margin="10" MaxWidth="420">
+
+                                        <WrapPanel Margin="0,0,0,8">
+                                            <TextBlock Text="Initials:" Width="90" VerticalAlignment="Center"/>
+                                            <TextBox Width="260"
+                                                     Text="{Binding NewWorkerInitialsText, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="e.g. JD"/>
+                                        </WrapPanel>
+
+                                        <WrapPanel Margin="0,0,0,8">
+                                            <TextBlock Text="Name:" Width="90" VerticalAlignment="Center"/>
+                                            <TextBox Width="260"
+                                                     Text="{Binding NewWorkerNameText, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="Full name"/>
+                                        </WrapPanel>
+
+                                        <WrapPanel Margin="0,0,0,8">
+                                            <TextBlock Text="Rate (£/hr):" Width="90" VerticalAlignment="Center"/>
+                                            <TextBox Width="260"
+                                                     Text="{Binding NewWorkerRateText, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="e.g. 25.00"/>
+                                        </WrapPanel>
+
+                                        <WrapPanel Margin="0,0,0,12">
+                                            <TextBlock Text="Active:" Width="90" VerticalAlignment="Center"/>
+                                            <CheckBox IsChecked="{Binding NewWorkerIsActive}"
+                                                      VerticalAlignment="Center"/>
+                                        </WrapPanel>
+
+                                        <WrapPanel>
+                                            <Button Content="Add Person"
+                                                    Padding="14,6"
+                                                    Click="AddWorker_Click"/>
+                                        </WrapPanel>
+
+                                        <TextBlock Text="{Binding AddWorkerStatusText}"
+                                                   Margin="0,10,0,0"
+                                                   Opacity="0.85"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </GroupBox>
+                            </Grid>
+                        </TabItem>
                     </TabControl>
                 </Border>
             </TabItem>

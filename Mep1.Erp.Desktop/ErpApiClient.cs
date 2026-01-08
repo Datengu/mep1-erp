@@ -208,5 +208,19 @@ namespace Mep1.Erp.Desktop
             resp.EnsureSuccessStatusCode();
         }
 
+        public async Task<CreateWorkerResponseDto> CreateWorkerAsync(CreateWorkerRequestDto request)
+        {
+            var resp = await _http.PostAsJsonAsync("api/people", request);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"API failed ({(int)resp.StatusCode}): {body}");
+            }
+
+            var dto = await resp.Content.ReadFromJsonAsync<CreateWorkerResponseDto>();
+            if (dto == null) throw new Exception("API returned empty response.");
+            return dto;
+        }
     }
 }

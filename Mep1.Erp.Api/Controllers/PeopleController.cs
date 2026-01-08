@@ -299,4 +299,59 @@ public sealed class PeopleController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost]
+    public async Task<ActionResult> CreateWorker([FromBody] CreateWorkerRequest req)
+    {
+        if (req == null) return BadRequest("Missing body.");
+
+        var initials = (req.Initials ?? "").Trim();
+        var name = (req.Name ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(initials))
+            return BadRequest("Initials are required.");
+
+        if (string.IsNullOrWhiteSpace(name))
+            return BadRequest("Name is required.");
+
+        // Optional: enforce unique initials (comment out if you don't want this)
+        var initialsTaken = await _db.Workers.AnyAsync(w => w.Initials == initials);
+        if (initialsTaken) return BadRequest("Initials already exist.");
+
+        var worker = new Worker
+        {
+            Initials = initials,
+            Name = name,
+
+            // Default to true unless explicitly provided
+            IsActive = req.IsActive ?? true
+        };
+
+        _db.Workers.Add(worker);
+        await _db.SaveChangesAsync();
+
+        if (req.RatePerHour.HasValue)
+        {
+            var rate = req.RatePerHour.Value;
+            if (rate < 0) return BadRequest("RatePerHour cannot be negative.");
+
+            _db.WorkerRates.Add(new WorkerRate
+            {
+                WorkerId = worker.Id,
+                RatePerHour = rate,
+                ValidFrom = DateTime.UtcNow.Date,
+                ValidTo = null
+            });
+
+            await _db.SaveChangesAsync();
+        }
+
+        // Return enough info for the desktop app to select the new worker
+        return Ok(new
+        {
+            worker.Id,
+            worker.Initials,
+            worker.Name,
+            worker.IsActive
+        });
+    }
 }

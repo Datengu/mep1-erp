@@ -192,6 +192,41 @@ namespace Mep1.Erp.Desktop
 
         public bool CanCreatePortalAccount => SelectedPerson != null && !HasPortalAccount;
 
+        private string _newWorkerInitialsText = "";
+        public string NewWorkerInitialsText
+        {
+            get => _newWorkerInitialsText;
+            set => SetField(ref _newWorkerInitialsText, value, nameof(NewWorkerInitialsText));
+        }
+
+        private string _newWorkerNameText = "";
+        public string NewWorkerNameText
+        {
+            get => _newWorkerNameText;
+            set => SetField(ref _newWorkerNameText, value, nameof(NewWorkerNameText));
+        }
+
+        private string _newWorkerRateText = "";
+        public string NewWorkerRateText
+        {
+            get => _newWorkerRateText;
+            set => SetField(ref _newWorkerRateText, value, nameof(NewWorkerRateText));
+        }
+
+        private bool _newWorkerIsActive = true;
+        public bool NewWorkerIsActive
+        {
+            get => _newWorkerIsActive;
+            set => SetField(ref _newWorkerIsActive, value, nameof(NewWorkerIsActive));
+        }
+
+        private string _addWorkerStatusText = "";
+        public string AddWorkerStatusText
+        {
+            get => _addWorkerStatusText;
+            set => SetField(ref _addWorkerStatusText, value, nameof(AddWorkerStatusText));
+        }
+
         private List<InvoiceListEntryDto> _invoices = new();
         public List<InvoiceListEntryDto> Invoices
         {
@@ -1581,6 +1616,70 @@ namespace Mep1.Erp.Desktop
                 // Always refresh RHS panels for the worker id (even if filtered out of the left list)
                 await LoadSelectedPersonDetails(selectedWorkerId.Value);
                 await LoadPortalAccessAsync(selectedWorkerId.Value);
+            }
+        }
+
+        private async void AddWorker_Click(object sender, RoutedEventArgs e)
+        {
+            AddWorkerStatusText = "";
+
+            var initials = (NewWorkerInitialsText ?? "").Trim();
+            var name = (NewWorkerNameText ?? "").Trim();
+
+            if (string.IsNullOrWhiteSpace(initials))
+            {
+                AddWorkerStatusText = "Initials are required.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                AddWorkerStatusText = "Name is required.";
+                return;
+            }
+
+            // Parse rate (allow "25", "25.00", "£25.00")
+            var rateText = (NewWorkerRateText ?? "").Trim().Replace("£", "");
+            if (!decimal.TryParse(rateText, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.CurrentCulture, out var rate) &&
+                !decimal.TryParse(rateText, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out rate))
+            {
+                AddWorkerStatusText = "Rate must be a valid number (e.g. 25.00).";
+                return;
+            }
+
+            if (rate < 0)
+            {
+                AddWorkerStatusText = "Rate cannot be negative.";
+                return;
+            }
+
+            try
+            {
+                var req = new CreateWorkerRequestDto
+                {
+                    Initials = initials,
+                    Name = name,
+                    RatePerHour = rate,
+                    IsActive = NewWorkerIsActive
+                };
+
+                var created = await _api.CreateWorkerAsync(req);
+
+                AddWorkerStatusText = $"Created worker (ID {created.Id}).";
+
+                // Clear inputs (keep Active default true)
+                NewWorkerInitialsText = "";
+                NewWorkerNameText = "";
+                NewWorkerRateText = "";
+
+                // Refresh people list (this should also refresh selection + right panel data next time selected)
+                await RefreshPeopleAsync(keepSelection: false);
+            }
+            catch (Exception ex)
+            {
+                AddWorkerStatusText = $"Failed to create worker: {ex.Message}";
             }
         }
     }
