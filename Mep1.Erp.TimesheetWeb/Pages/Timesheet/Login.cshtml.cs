@@ -21,6 +21,9 @@ public sealed class LoginModel : PageModel
         _api = api;
     }
 
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
@@ -39,9 +42,15 @@ public sealed class LoginModel : PageModel
 
     public void OnGet()
     {
-        // If already logged in, go straight to Enter Hours
+        // If already logged in, go straight to ReturnUrl (or EnterHours)
         if (HttpContext.Session.GetInt32("WorkerId") is not null)
         {
+            if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+            {
+                Response.Redirect(ReturnUrl);
+                return;
+            }
+
             Response.Redirect("/Timesheet/EnterHours");
         }
     }
@@ -93,6 +102,11 @@ public sealed class LoginModel : PageModel
         {
             // If user logs in without remember-me, ensure any old remember cookie is removed.
             Response.Cookies.Delete(RememberCookieName);
+        }
+
+        if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+        {
+            return Redirect(ReturnUrl);
         }
 
         return RedirectToPage("/Timesheet/EnterHours");

@@ -49,9 +49,39 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthorization();
-
 app.UseSession();
+
+// ---- Timesheet auth guard (ReturnUrl support) ----
+app.Use(async (context, next) =>
+{
+    // Only protect /Timesheet/*
+    if (!context.Request.Path.StartsWithSegments("/Timesheet", out var remaining))
+    {
+        await next();
+        return;
+    }
+
+    // Allow anonymous pages
+    var p = context.Request.Path.Value ?? "";
+    if (p.Equals("/Timesheet/Login", StringComparison.OrdinalIgnoreCase) ||
+        p.Equals("/Timesheet/Logout", StringComparison.OrdinalIgnoreCase))
+    {
+        await next();
+        return;
+    }
+
+    // If not logged in (no session), send to login with returnUrl
+    var workerId = context.Session.GetInt32("WorkerId");
+    if (workerId is null)
+    {
+        var returnUrl = context.Request.PathBase + context.Request.Path + context.Request.QueryString;
+        var loginUrl = "/Timesheet/Login?returnUrl=" + Uri.EscapeDataString(returnUrl);
+        context.Response.Redirect(loginUrl);
+        return;
+    }
+
+    await next();
+});
 
 // Remember-me rehydrate middleware (restores session if session expired but cookie exists)
 const string RememberCookieName = "MEP1_REMEMBER";
@@ -97,6 +127,8 @@ app.Use(async (ctx, next) =>
 
     await next();
 });
+
+app.UseAuthorization();
 
 app.MapRazorPages();
 
