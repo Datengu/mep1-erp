@@ -21,19 +21,28 @@ public sealed class AuditLogger
         string entityId,
         string? summary = null)
     {
-        var log = new AuditLog
+        try
         {
-            OccurredUtc = DateTime.UtcNow,
-            ActorWorkerId = actorWorkerId,
-            ActorRole = actorRole,
-            ActorSource = actorSource,
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            Summary = summary
-        };
 
-        _db.AuditLogs.Add(log);
-        await _db.SaveChangesAsync();
+            var log = new AuditLog
+            {
+                OccurredUtc = DateTime.UtcNow,
+                ActorWorkerId = actorWorkerId,
+                ActorRole = actorRole,
+                ActorSource = actorSource,
+                Action = action,
+                EntityType = entityType,
+                EntityId = entityId,
+                Summary = summary
+            };
+
+            _db.AuditLogs.Add(log);
+            await _db.SaveChangesAsync();
+        }
+        catch
+        {
+            // swallow - audit must never block core actions
+            // later: optional fallback to file logging or in-memory buffer
+        }
     }
 }
