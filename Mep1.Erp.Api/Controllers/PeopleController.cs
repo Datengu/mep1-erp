@@ -3,8 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using Mep1.Erp.Application;
 using Mep1.Erp.Core;
-using Mep1.Erp.Infrastructure;
 using Mep1.Erp.Core.Contracts;
+using Mep1.Erp.Infrastructure;
+using Mep1.Erp.Api.Security;
 
 namespace Mep1.Erp.Api.Controllers;
 
@@ -28,6 +29,24 @@ public sealed class PeopleController : ControllerBase
         return Unauthorized("Admin API key required.");
     }
 
+    private ActorContext? GetActor()
+    => HttpContext.Items["Actor"] as ActorContext;
+
+    private ActionResult? RequireAdminActor()
+    {
+        if (!IsAdminKey())
+            return Unauthorized("Admin API key required.");
+
+        var actor = GetActor();
+        if (actor is null)
+            return Unauthorized("Actor token required.");
+
+        if (!actor.IsAdminOrOwner)
+            return Unauthorized("Admin/Owner actor required.");
+
+        return null;
+    }
+
     private static string GenerateTempPassword(int length = 12)
     {
         // simple, safe, readable; avoids ambiguous chars
@@ -49,7 +68,7 @@ public sealed class PeopleController : ControllerBase
     [HttpGet("{workerId:int}/portal-access")]
     public async Task<ActionResult<PortalAccessDto>> GetPortalAccess(int workerId)
     {
-        var guard = RequireAdminKey();
+        var guard = RequireAdminActor();
         if (guard != null) return guard;
 
         var user = await _db.TimesheetUsers
@@ -85,7 +104,7 @@ public sealed class PeopleController : ControllerBase
         int workerId,
         [FromBody] CreatePortalAccessRequestDto request)
     {
-        var guard = RequireAdminKey();
+        var guard = RequireAdminActor();
         if (guard != null) return guard;
 
         if (string.IsNullOrWhiteSpace(request.Username))
@@ -154,7 +173,7 @@ public sealed class PeopleController : ControllerBase
         int workerId,
         [FromBody] UpdatePortalAccessRequestDto request)
     {
-        var guard = RequireAdminKey();
+        var guard = RequireAdminActor();
         if (guard != null) return guard;
 
         var user = await _db.TimesheetUsers.FirstOrDefaultAsync(u => u.WorkerId == workerId);
@@ -186,7 +205,7 @@ public sealed class PeopleController : ControllerBase
     [HttpPost("{workerId:int}/portal-access/reset-password")]
     public async Task<ActionResult<ResetPortalPasswordResultDto>> ResetPortalPassword(int workerId)
     {
-        var guard = RequireAdminKey();
+        var guard = RequireAdminActor();
         if (guard != null) return guard;
 
         var user = await _db.TimesheetUsers.FirstOrDefaultAsync(u => u.WorkerId == workerId);
@@ -277,7 +296,7 @@ public sealed class PeopleController : ControllerBase
     [HttpPatch("{workerId:int}/active")]
     public async Task<IActionResult> SetWorkerActive(int workerId, [FromBody] SetWorkerActiveRequest request)
     {
-        var guard = RequireAdminKey();
+        var guard = RequireAdminActor();
         if (guard != null) return guard;
 
         var worker = await _db.Workers.FirstOrDefaultAsync(w => w.Id == workerId);
