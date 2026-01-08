@@ -1,4 +1,4 @@
-﻿using Mep1.Erp.Core;
+﻿using Mep1.Erp.Core.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -91,17 +91,17 @@ namespace Mep1.Erp.Desktop
             return result;
         }
 
-        public async Task<CreatePortalAccessResult> CreatePortalAccessAsync(int workerId, CreatePortalAccessRequest dto)
+        public async Task<CreatePortalAccessResultDto> CreatePortalAccessAsync(int workerId, CreatePortalAccessRequestDto dto)
         {
             var resp = await _http.PostAsJsonAsync($"api/people/{workerId}/portal-access", dto);
             resp.EnsureSuccessStatusCode();
 
-            var created = await resp.Content.ReadFromJsonAsync<CreatePortalAccessResult>();
+            var created = await resp.Content.ReadFromJsonAsync<CreatePortalAccessResultDto>();
             if (created == null) throw new InvalidOperationException("Create portal access response was empty.");
             return created;
         }
 
-        public async Task UpdatePortalAccessAsync(int workerId, UpdatePortalAccessRequest dto)
+        public async Task UpdatePortalAccessAsync(int workerId, UpdatePortalAccessRequestDto dto)
         {
             var req = new HttpRequestMessage(HttpMethod.Patch, $"api/people/{workerId}/portal-access")
             {
@@ -112,12 +112,12 @@ namespace Mep1.Erp.Desktop
             resp.EnsureSuccessStatusCode(); // expects 204
         }
 
-        public async Task<ResetPortalPasswordResult> ResetPortalPasswordAsync(int workerId)
+        public async Task<ResetPortalPasswordResultDto> ResetPortalPasswordAsync(int workerId)
         {
             var resp = await _http.PostAsync($"api/people/{workerId}/portal-access/reset-password", content: null);
             resp.EnsureSuccessStatusCode();
 
-            var result = await resp.Content.ReadFromJsonAsync<ResetPortalPasswordResult>();
+            var result = await resp.Content.ReadFromJsonAsync<ResetPortalPasswordResultDto>();
             if (result == null) throw new InvalidOperationException("Reset password response was empty.");
             return result;
         }

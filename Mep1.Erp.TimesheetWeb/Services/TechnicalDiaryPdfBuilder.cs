@@ -1,4 +1,4 @@
-﻿using Mep1.Erp.Core;
+﻿using Mep1.Erp.Core.Contracts;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;

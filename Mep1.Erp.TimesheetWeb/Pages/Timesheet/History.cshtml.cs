@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Mep1.Erp.Core;
 using Mep1.Erp.TimesheetWeb.Services;
+using Mep1.Erp.Core.Contracts;
 
 namespace Mep1.Erp.TimesheetWeb.Pages.Timesheet;
 

@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Mep1.Erp.Core;
 using System.Text.Json;
+using Mep1.Erp.Core.Contracts;
 
 namespace Mep1.Erp.TimesheetWeb.Services;
 

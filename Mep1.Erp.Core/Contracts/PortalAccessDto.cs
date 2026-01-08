@@ -1,4 +1,4 @@
-﻿namespace Mep1.Erp.Core;
+﻿namespace Mep1.Erp.Core.Contracts;
 
 public sealed record PortalAccessDto(
     bool Exists,

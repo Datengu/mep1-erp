@@ -1,5 +1,5 @@
 ﻿using DocumentFormat.OpenXml.Math;
-using Mep1.Erp.Core;
+using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -61,7 +61,7 @@ public sealed class TimesheetAuthController : ControllerBase
     }
 
     [HttpPost("change-password")]
-    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequestDto request)
     {
         var username = request.Username.Trim();
         if (string.IsNullOrWhiteSpace(request.Username) ||

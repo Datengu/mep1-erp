@@ -3,6 +3,7 @@ using Mep1.Erp.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Mep1.Erp.Infrastructure;
+using Mep1.Erp.Core.Contracts;
 
 namespace Mep1.Erp.Api.Controllers;
 

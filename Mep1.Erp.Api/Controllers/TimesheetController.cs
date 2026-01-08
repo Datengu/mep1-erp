@@ -1,4 +1,5 @@
 ﻿using Mep1.Erp.Core;
+using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

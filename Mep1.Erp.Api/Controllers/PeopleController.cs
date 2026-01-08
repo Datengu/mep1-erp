@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using Mep1.Erp.Application;
 using Mep1.Erp.Core;
 using Mep1.Erp.Infrastructure;
+using Mep1.Erp.Core.Contracts;
 
 namespace Mep1.Erp.Api.Controllers;
 
@@ -80,9 +81,9 @@ public sealed class PeopleController : ControllerBase
     }
 
     [HttpPost("{workerId:int}/portal-access")]
-    public async Task<ActionResult<CreatePortalAccessResult>> CreatePortalAccess(
+    public async Task<ActionResult<CreatePortalAccessResultDto>> CreatePortalAccess(
         int workerId,
-        [FromBody] CreatePortalAccessRequest request)
+        [FromBody] CreatePortalAccessRequestDto request)
     {
         var guard = RequireAdminKey();
         if (guard != null) return guard;
@@ -145,13 +146,13 @@ public sealed class PeopleController : ControllerBase
             PasswordChangedAtUtc: user.PasswordChangedAtUtc
         );
 
-        return Ok(new CreatePortalAccessResult(dto, tempPassword));
+        return Ok(new CreatePortalAccessResultDto(dto, tempPassword));
     }
 
     [HttpPatch("{workerId:int}/portal-access")]
     public async Task<IActionResult> UpdatePortalAccess(
         int workerId,
-        [FromBody] UpdatePortalAccessRequest request)
+        [FromBody] UpdatePortalAccessRequestDto request)
     {
         var guard = RequireAdminKey();
         if (guard != null) return guard;
@@ -183,7 +184,7 @@ public sealed class PeopleController : ControllerBase
     }
 
     [HttpPost("{workerId:int}/portal-access/reset-password")]
-    public async Task<ActionResult<ResetPortalPasswordResult>> ResetPortalPassword(int workerId)
+    public async Task<ActionResult<ResetPortalPasswordResultDto>> ResetPortalPassword(int workerId)
     {
         var guard = RequireAdminKey();
         if (guard != null) return guard;
@@ -199,7 +200,7 @@ public sealed class PeopleController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        return Ok(new ResetPortalPasswordResult(tempPassword));
+        return Ok(new ResetPortalPasswordResultDto(tempPassword));
     }
 
     [HttpGet("summary")]
@@ -300,7 +301,7 @@ public sealed class PeopleController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult> CreateWorker([FromBody] CreateWorkerRequest req)
+    public async Task<ActionResult<CreateWorkerResponseDto>> CreateWorker([FromBody] CreateWorkerRequestDto req)
     {
         if (req == null) return BadRequest("Missing body.");
 
@@ -313,7 +314,7 @@ public sealed class PeopleController : ControllerBase
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest("Name is required.");
 
-        // Optional: enforce unique initials (comment out if you don't want this)
+        // Enforce unique initials
         var initialsTaken = await _db.Workers.AnyAsync(w => w.Initials == initials);
         if (initialsTaken) return BadRequest("Initials already exist.");
 
@@ -345,13 +346,12 @@ public sealed class PeopleController : ControllerBase
             await _db.SaveChangesAsync();
         }
 
-        // Return enough info for the desktop app to select the new worker
-        return Ok(new
+        return Ok(new CreateWorkerResponseDto
         {
-            worker.Id,
-            worker.Initials,
-            worker.Name,
-            worker.IsActive
+            Id = worker.Id,
+            Initials = worker.Initials,
+            Name = worker.Name,
+            IsActive = worker.IsActive
         });
     }
 }
