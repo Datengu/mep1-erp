@@ -220,7 +220,8 @@ public sealed class PeopleController : ControllerBase
             CurrentRatePerHour = r.CurrentRatePerHour,
             LastWorkedDate = r.LastWorkedDate,
             HoursThisMonth = r.HoursThisMonth,
-            CostThisMonth = r.CostThisMonth
+            CostThisMonth = r.CostThisMonth,
+            IsActive = r.IsActive
         }).ToList();
 
         return Ok(dto);
