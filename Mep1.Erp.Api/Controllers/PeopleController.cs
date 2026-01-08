@@ -272,4 +272,23 @@ public sealed class PeopleController : ControllerBase
             RecentEntries = recent
         });
     }
+
+    public sealed record SetWorkerActiveRequest(bool IsActive);
+
+    [HttpPatch("{workerId:int}/active")]
+    public async Task<IActionResult> SetWorkerActive(int workerId, [FromBody] SetWorkerActiveRequest request)
+    {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
+        var worker = await _db.Workers.FirstOrDefaultAsync(w => w.Id == workerId);
+        if (worker == null)
+            return NotFound("Worker not found.");
+
+        worker.IsActive = request.IsActive;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
 }
