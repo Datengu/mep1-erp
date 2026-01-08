@@ -1,4 +1,5 @@
 ﻿using Mep1.Erp.Core;
+using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Application;
 using System;
 using System.Collections.Generic;
@@ -15,7 +16,7 @@ using System.Windows.Input;
 using static Mep1.Erp.Application.Reporting;
 using Binding = System.Windows.Data.Binding;
 using WpfMessageBox = System.Windows.MessageBox;
-using Mep1.Erp.Core.Contracts;
+using WpfApplication = System.Windows.Application;
 
 namespace Mep1.Erp.Desktop
 {
@@ -409,6 +410,15 @@ namespace Mep1.Erp.Desktop
                 Settings.ApiBaseUrl ?? "https://localhost:7254",
                 Settings.ApiKey
             );
+
+            // Desktop login (Admin/Owner only). Session stays in memory.
+            var login = new LoginWindow(_api);
+            var ok = login.ShowDialog();
+            if (ok != true)
+            {
+                WpfApplication.Current.Shutdown();
+                return;
+            }
 
             LoadData();
         }
