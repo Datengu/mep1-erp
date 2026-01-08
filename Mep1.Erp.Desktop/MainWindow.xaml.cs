@@ -1547,7 +1547,12 @@ namespace Mep1.Erp.Desktop
             {
                 await _api.SetWorkerActiveAsync(person.WorkerId, newIsActive);
 
-                RefreshPeople(keepSelection: true);
+                // IMPORTANT: await the refresh so the right panel (portal) updates deterministically
+                await RefreshPeopleAsync(keepSelection: true);
+
+                // Extra safety: if your API deactivates portal access when worker deactivates,
+                // this guarantees the checkbox reflects the latest state immediately.
+                await LoadPortalAccessAsync(person.WorkerId);
             }
             catch (Exception ex)
             {
@@ -1559,7 +1564,7 @@ namespace Mep1.Erp.Desktop
             }
         }
 
-        private async void RefreshPeople(bool keepSelection)
+        private async Task RefreshPeopleAsync(bool keepSelection)
         {
             var selectedWorkerId = keepSelection ? SelectedPerson?.WorkerId : null;
 
@@ -1568,15 +1573,15 @@ namespace Mep1.Erp.Desktop
 
             if (keepSelection && selectedWorkerId.HasValue)
             {
+                // Try to rebind SelectedPerson to the refreshed list (if still visible)
                 var match = People.FirstOrDefault(p => p.WorkerId == selectedWorkerId.Value);
                 if (match != null)
-                {
                     SelectedPerson = match;
-                    await LoadSelectedPersonDetails(match.WorkerId);
-                    await LoadPortalAccessAsync(match.WorkerId);
-                }
+
+                // Always refresh RHS panels for the worker id (even if filtered out of the left list)
+                await LoadSelectedPersonDetails(selectedWorkerId.Value);
+                await LoadPortalAccessAsync(selectedWorkerId.Value);
             }
         }
-
     }
 }

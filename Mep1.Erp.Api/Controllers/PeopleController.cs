@@ -284,8 +284,18 @@ public sealed class PeopleController : ControllerBase
             return NotFound("Worker not found.");
 
         worker.IsActive = request.IsActive;
-        await _db.SaveChangesAsync();
 
+        // NEW: if worker is deactivated, also deactivate their portal account (if it exists)
+        if (!request.IsActive)
+        {
+            var user = await _db.TimesheetUsers.FirstOrDefaultAsync(u => u.WorkerId == workerId);
+            if (user != null && user.IsActive)
+            {
+                user.IsActive = false;
+            }
+        }
+
+        await _db.SaveChangesAsync();
         return NoContent();
     }
 
