@@ -80,9 +80,9 @@ public sealed class PeopleController : ControllerBase
     }
 
     [HttpPost("{workerId:int}/portal-access")]
-    public async Task<ActionResult<CreatePortalAccessResult>> CreatePortalAccess(
+    public async Task<ActionResult<CreatePortalAccessResultDto>> CreatePortalAccess(
         int workerId,
-        [FromBody] CreatePortalAccessRequest request)
+        [FromBody] CreatePortalAccessRequestDto request)
     {
         var guard = RequireAdminKey();
         if (guard != null) return guard;
@@ -145,7 +145,7 @@ public sealed class PeopleController : ControllerBase
             PasswordChangedAtUtc: user.PasswordChangedAtUtc
         );
 
-        return Ok(new CreatePortalAccessResult(dto, tempPassword));
+        return Ok(new CreatePortalAccessResultDto(dto, tempPassword));
     }
 
     [HttpPatch("{workerId:int}/portal-access")]

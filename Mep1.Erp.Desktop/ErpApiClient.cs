@@ -91,12 +91,12 @@ namespace Mep1.Erp.Desktop
             return result;
         }
 
-        public async Task<CreatePortalAccessResult> CreatePortalAccessAsync(int workerId, CreatePortalAccessRequest dto)
+        public async Task<CreatePortalAccessResultDto> CreatePortalAccessAsync(int workerId, CreatePortalAccessRequestDto dto)
         {
             var resp = await _http.PostAsJsonAsync($"api/people/{workerId}/portal-access", dto);
             resp.EnsureSuccessStatusCode();
 
-            var created = await resp.Content.ReadFromJsonAsync<CreatePortalAccessResult>();
+            var created = await resp.Content.ReadFromJsonAsync<CreatePortalAccessResultDto>();
             if (created == null) throw new InvalidOperationException("Create portal access response was empty.");
             return created;
         }

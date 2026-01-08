@@ -1450,7 +1450,7 @@ namespace Mep1.Erp.Desktop
             {
                 var created = await _api.CreatePortalAccessAsync(
                     SelectedPerson.WorkerId,
-                    new CreatePortalAccessRequest(PortalUsernameText.Trim(), SelectedPortalRole));
+                    new CreatePortalAccessRequestDto(PortalUsernameText.Trim(), SelectedPortalRole));
 
                 System.Windows.Clipboard.SetText(created.TemporaryPassword);
                 PortalTempPasswordText = "Temporary password: " + created.TemporaryPassword;
