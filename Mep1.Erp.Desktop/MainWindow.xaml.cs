@@ -137,6 +137,33 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _selectedPersonRates, value, nameof(SelectedPersonRates));
         }
 
+        private ICollectionView _peopleView = null!;
+        public ICollectionView PeopleView
+        {
+            get => _peopleView;
+            set => SetField(ref _peopleView, value, nameof(PeopleView));
+        }
+
+        public enum PeopleActiveFilter
+        {
+            All = 0,
+            ActiveOnly = 1,
+            InactiveOnly = 2
+        }
+
+        private PeopleActiveFilter _peopleFilter = PeopleActiveFilter.All;
+        public PeopleActiveFilter PeopleFilter
+        {
+            get => _peopleFilter;
+            set
+            {
+                if (SetField(ref _peopleFilter, value, nameof(PeopleFilter)))
+                {
+                    PeopleView?.Refresh();
+                }
+            }
+        }
+
         private PortalAccessDto? _portalAccess;
 
         public bool HasPortalAccount => _portalAccess?.Exists == true;
@@ -164,6 +191,41 @@ namespace Mep1.Erp.Desktop
         public string PortalTempPasswordText { get; set; } = "";
 
         public bool CanCreatePortalAccount => SelectedPerson != null && !HasPortalAccount;
+
+        private string _newWorkerInitialsText = "";
+        public string NewWorkerInitialsText
+        {
+            get => _newWorkerInitialsText;
+            set => SetField(ref _newWorkerInitialsText, value, nameof(NewWorkerInitialsText));
+        }
+
+        private string _newWorkerNameText = "";
+        public string NewWorkerNameText
+        {
+            get => _newWorkerNameText;
+            set => SetField(ref _newWorkerNameText, value, nameof(NewWorkerNameText));
+        }
+
+        private string _newWorkerRateText = "";
+        public string NewWorkerRateText
+        {
+            get => _newWorkerRateText;
+            set => SetField(ref _newWorkerRateText, value, nameof(NewWorkerRateText));
+        }
+
+        private bool _newWorkerIsActive = true;
+        public bool NewWorkerIsActive
+        {
+            get => _newWorkerIsActive;
+            set => SetField(ref _newWorkerIsActive, value, nameof(NewWorkerIsActive));
+        }
+
+        private string _addWorkerStatusText = "";
+        public string AddWorkerStatusText
+        {
+            get => _addWorkerStatusText;
+            set => SetField(ref _addWorkerStatusText, value, nameof(AddWorkerStatusText));
+        }
 
         private List<InvoiceListEntryDto> _invoices = new();
         public List<InvoiceListEntryDto> Invoices
@@ -393,6 +455,7 @@ namespace Mep1.Erp.Desktop
             // Upcoming Applications comes from API now
             UpcomingApplications = await _api.GetUpcomingApplicationsAsync(Settings.UpcomingApplicationsDaysAhead);
 
+            EnsurePeopleView();
             EnsureInvoiceView();
             EnsureProjectView();
             LoadSuppliers();
@@ -1459,6 +1522,165 @@ namespace Mep1.Erp.Desktop
         private static string BuildSuggestedUsername(string? fullName)
         {
             return string.IsNullOrWhiteSpace(fullName) ? "" : fullName.Trim();
+        }
+
+        private void EnsurePeopleView()
+        {
+            PeopleView = CollectionViewSource.GetDefaultView(People);
+
+            PeopleView.Filter = obj =>
+            {
+                if (obj is not PeopleSummaryRowDto p)
+                    return false;
+
+                return PeopleFilter switch
+                {
+                    PeopleActiveFilter.All => true,
+                    PeopleActiveFilter.ActiveOnly => p.IsActive,
+                    PeopleActiveFilter.InactiveOnly => !p.IsActive,
+                    _ => true
+                };
+            };
+        }
+
+        private void SetPeopleFilter(PeopleActiveFilter filter)
+        {
+            PeopleFilter = filter; // triggers PeopleView.Refresh() in setter
+        }
+
+        private void ShowAllPeople_Click(object sender, RoutedEventArgs e)
+            => SetPeopleFilter(PeopleActiveFilter.All);
+
+        private void ShowActivePeople_Click(object sender, RoutedEventArgs e)
+            => SetPeopleFilter(PeopleActiveFilter.ActiveOnly);
+
+        private void ShowInactivePeople_Click(object sender, RoutedEventArgs e)
+            => SetPeopleFilter(PeopleActiveFilter.InactiveOnly);
+
+        private async void TogglePersonActive_Click(object sender, RoutedEventArgs e)
+        {
+            var person = SelectedPerson;
+            if (person == null)
+                return;
+
+            var newIsActive = !person.IsActive;
+
+            var confirmText = newIsActive
+                ? $"Activate '{person.Name}'?"
+                : $"Deactivate '{person.Name}'?\n\nThey will be hidden from the Timesheet worker dropdown (if you filter to active workers).";
+
+            var result = WpfMessageBox.Show(
+                confirmText,
+                "Confirm",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                await _api.SetWorkerActiveAsync(person.WorkerId, newIsActive);
+
+                // IMPORTANT: await the refresh so the right panel (portal) updates deterministically
+                await RefreshPeopleAsync(keepSelection: true);
+
+                // Extra safety: if your API deactivates portal access when worker deactivates,
+                // this guarantees the checkbox reflects the latest state immediately.
+                await LoadPortalAccessAsync(person.WorkerId);
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    "Failed to change worker active status:\n\n" + ex.Message,
+                    "API error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async Task RefreshPeopleAsync(bool keepSelection)
+        {
+            var selectedWorkerId = keepSelection ? SelectedPerson?.WorkerId : null;
+
+            People = await _api.GetPeopleSummaryAsync();
+            EnsurePeopleView();
+
+            if (keepSelection && selectedWorkerId.HasValue)
+            {
+                // Try to rebind SelectedPerson to the refreshed list (if still visible)
+                var match = People.FirstOrDefault(p => p.WorkerId == selectedWorkerId.Value);
+                if (match != null)
+                    SelectedPerson = match;
+
+                // Always refresh RHS panels for the worker id (even if filtered out of the left list)
+                await LoadSelectedPersonDetails(selectedWorkerId.Value);
+                await LoadPortalAccessAsync(selectedWorkerId.Value);
+            }
+        }
+
+        private async void AddWorker_Click(object sender, RoutedEventArgs e)
+        {
+            AddWorkerStatusText = "";
+
+            var initials = (NewWorkerInitialsText ?? "").Trim();
+            var name = (NewWorkerNameText ?? "").Trim();
+
+            if (string.IsNullOrWhiteSpace(initials))
+            {
+                AddWorkerStatusText = "Initials are required.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                AddWorkerStatusText = "Name is required.";
+                return;
+            }
+
+            // Parse rate (allow "25", "25.00", "£25.00")
+            var rateText = (NewWorkerRateText ?? "").Trim().Replace("£", "");
+            if (!decimal.TryParse(rateText, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.CurrentCulture, out var rate) &&
+                !decimal.TryParse(rateText, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out rate))
+            {
+                AddWorkerStatusText = "Rate must be a valid number (e.g. 25.00).";
+                return;
+            }
+
+            if (rate < 0)
+            {
+                AddWorkerStatusText = "Rate cannot be negative.";
+                return;
+            }
+
+            try
+            {
+                var req = new CreateWorkerRequestDto
+                {
+                    Initials = initials,
+                    Name = name,
+                    RatePerHour = rate,
+                    IsActive = NewWorkerIsActive
+                };
+
+                var created = await _api.CreateWorkerAsync(req);
+
+                AddWorkerStatusText = $"Created worker (ID {created.Id}).";
+
+                // Clear inputs (keep Active default true)
+                NewWorkerInitialsText = "";
+                NewWorkerNameText = "";
+                NewWorkerRateText = "";
+
+                // Refresh people list (this should also refresh selection + right panel data next time selected)
+                await RefreshPeopleAsync(keepSelection: false);
+            }
+            catch (Exception ex)
+            {
+                AddWorkerStatusText = $"Failed to create worker: {ex.Message}";
+            }
         }
     }
 }

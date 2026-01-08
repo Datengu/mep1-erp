@@ -259,7 +259,8 @@ namespace Mep1.Erp.Application
             decimal? CurrentRatePerHour,
             DateTime? LastWorkedDate,
             decimal HoursThisMonth,
-            decimal CostThisMonth);
+            decimal CostThisMonth,
+            bool IsActive);
 
         public static List<PeopleSummaryRow> GetPeopleSummary(AppDbContext db, DateTime? todayOverride = null)
         {
@@ -320,7 +321,8 @@ namespace Mep1.Erp.Application
                     CurrentRatePerHour: GetCurrentRate(w.Id),
                     LastWorkedDate: lastWorkedByWorkerId.TryGetValue(w.Id, out var last) ? last : null,
                     HoursThisMonth: hoursThisMonthByWorkerId.TryGetValue(w.Id, out var hrs) ? hrs : 0m,
-                    CostThisMonth: costThisMonthByWorkerId.TryGetValue(w.Id, out var cost) ? cost : 0m
+                    CostThisMonth: costThisMonthByWorkerId.TryGetValue(w.Id, out var cost) ? cost : 0m,
+                    IsActive: w.IsActive
                 ))
                 .ToList();
         }

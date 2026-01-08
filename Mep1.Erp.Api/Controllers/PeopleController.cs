@@ -202,9 +202,6 @@ public sealed class PeopleController : ControllerBase
         return Ok(new ResetPortalPasswordResult(tempPassword));
     }
 
-    // ... keep your existing endpoints below ...
-
-
     [HttpGet("summary")]
     public ActionResult<List<PeopleSummaryRowDto>> GetPeopleSummary()
     {
@@ -220,7 +217,8 @@ public sealed class PeopleController : ControllerBase
             CurrentRatePerHour = r.CurrentRatePerHour,
             LastWorkedDate = r.LastWorkedDate,
             HoursThisMonth = r.HoursThisMonth,
-            CostThisMonth = r.CostThisMonth
+            CostThisMonth = r.CostThisMonth,
+            IsActive = r.IsActive
         }).ToList();
 
         return Ok(dto);
@@ -270,6 +268,90 @@ public sealed class PeopleController : ControllerBase
             Rates = rates,
             Projects = projects,
             RecentEntries = recent
+        });
+    }
+
+    public sealed record SetWorkerActiveRequest(bool IsActive);
+
+    [HttpPatch("{workerId:int}/active")]
+    public async Task<IActionResult> SetWorkerActive(int workerId, [FromBody] SetWorkerActiveRequest request)
+    {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
+        var worker = await _db.Workers.FirstOrDefaultAsync(w => w.Id == workerId);
+        if (worker == null)
+            return NotFound("Worker not found.");
+
+        worker.IsActive = request.IsActive;
+
+        // NEW: if worker is deactivated, also deactivate their portal account (if it exists)
+        if (!request.IsActive)
+        {
+            var user = await _db.TimesheetUsers.FirstOrDefaultAsync(u => u.WorkerId == workerId);
+            if (user != null && user.IsActive)
+            {
+                user.IsActive = false;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPost]
+    public async Task<ActionResult> CreateWorker([FromBody] CreateWorkerRequest req)
+    {
+        if (req == null) return BadRequest("Missing body.");
+
+        var initials = (req.Initials ?? "").Trim();
+        var name = (req.Name ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(initials))
+            return BadRequest("Initials are required.");
+
+        if (string.IsNullOrWhiteSpace(name))
+            return BadRequest("Name is required.");
+
+        // Optional: enforce unique initials (comment out if you don't want this)
+        var initialsTaken = await _db.Workers.AnyAsync(w => w.Initials == initials);
+        if (initialsTaken) return BadRequest("Initials already exist.");
+
+        var worker = new Worker
+        {
+            Initials = initials,
+            Name = name,
+
+            // Default to true unless explicitly provided
+            IsActive = req.IsActive ?? true
+        };
+
+        _db.Workers.Add(worker);
+        await _db.SaveChangesAsync();
+
+        if (req.RatePerHour.HasValue)
+        {
+            var rate = req.RatePerHour.Value;
+            if (rate < 0) return BadRequest("RatePerHour cannot be negative.");
+
+            _db.WorkerRates.Add(new WorkerRate
+            {
+                WorkerId = worker.Id,
+                RatePerHour = rate,
+                ValidFrom = DateTime.UtcNow.Date,
+                ValidTo = null
+            });
+
+            await _db.SaveChangesAsync();
+        }
+
+        // Return enough info for the desktop app to select the new worker
+        return Ok(new
+        {
+            worker.Id,
+            worker.Initials,
+            worker.Name,
+            worker.IsActive
         });
     }
 }

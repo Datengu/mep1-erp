@@ -71,6 +71,19 @@ namespace Mep1.Erp.Desktop
             return result;
         }
 
+        public async Task SetWorkerActiveAsync(int workerId, bool isActive)
+        {
+            var url = $"api/people/{workerId}/active";
+
+            var request = new HttpRequestMessage(HttpMethod.Patch, url)
+            {
+                Content = JsonContent.Create(new { isActive })
+            };
+
+            var response = await _http.SendAsync(request);
+            response.EnsureSuccessStatusCode(); // expects 204 NoContent
+        }
+
         public async Task<PortalAccessDto> GetPortalAccessAsync(int workerId)
         {
             var result = await _http.GetFromJsonAsync<PortalAccessDto>($"api/people/{workerId}/portal-access");
@@ -195,5 +208,19 @@ namespace Mep1.Erp.Desktop
             resp.EnsureSuccessStatusCode();
         }
 
+        public async Task<CreateWorkerResponseDto> CreateWorkerAsync(CreateWorkerRequestDto request)
+        {
+            var resp = await _http.PostAsJsonAsync("api/people", request);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"API failed ({(int)resp.StatusCode}): {body}");
+            }
+
+            var dto = await resp.Content.ReadFromJsonAsync<CreateWorkerResponseDto>();
+            if (dto == null) throw new Exception("API returned empty response.");
+            return dto;
+        }
     }
 }

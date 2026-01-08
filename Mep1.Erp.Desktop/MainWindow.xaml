@@ -617,26 +617,62 @@
                                 </Grid.ColumnDefinitions>
 
                                 <!-- LEFT: People list -->
-                                <DataGrid x:Name="PeopleGrid"
-                                Grid.Column="0"
-                                ItemsSource="{Binding People}"
-                                Style="{StaticResource DarkDataGridStyle}"
-                                AutoGenerateColumns="False"
-                                SelectionMode="Single"
-                                SelectionChanged="PeopleGrid_SelectionChanged">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Initials" Binding="{Binding Initials}" Width="90"/>
-                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="220"/>
-                                        <DataGridTextColumn Header="Current Rate" Width="120"
-                                            Binding="{Binding CurrentRatePerHour, StringFormat=£{0:N2}}"/>
-                                        <DataGridTextColumn Header="Last Worked" Width="120"
-                                            Binding="{Binding LastWorkedDate, StringFormat=yyyy-MM-dd}"/>
-                                        <DataGridTextColumn Header="Hours (This Month)" Width="140"
-                                            Binding="{Binding HoursThisMonth, StringFormat={}{0:N2}}"/>
-                                        <DataGridTextColumn Header="Cost (This Month)" Width="140"
-                                            Binding="{Binding CostThisMonth, StringFormat=£{0:N2}}"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
+                                <Grid Grid.Column="0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Filter toolbar (same as Projects tab) -->
+                                    <StackPanel Orientation="Horizontal"
+                                                Margin="0,0,0,6"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="Filter:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+
+                                        <Button Content="All"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowAllPeople_Click"/>
+
+                                        <Button Content="Active"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowActivePeople_Click"/>
+
+                                        <Button Content="Inactive"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowInactivePeople_Click"/>
+                                    </StackPanel>
+
+                                    <!-- People grid -->
+                                    <DataGrid x:Name="PeopleGrid"
+                                              Grid.Row="1"
+                                              ItemsSource="{Binding PeopleView}"
+                                              Style="{StaticResource DarkDataGridStyle}"
+                                              AutoGenerateColumns="False"
+                                              SelectionMode="Single"
+                                              SelectionChanged="PeopleGrid_SelectionChanged">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Initials" Binding="{Binding Initials}" Width="90"/>
+                                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="220"/>
+
+                                            <!-- Add this -->
+                                            <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="70" IsReadOnly="True"/>
+
+                                            <DataGridTextColumn Header="Current Rate" Width="120"
+                                                                Binding="{Binding CurrentRatePerHour, StringFormat=£{0:N2}}"/>
+                                            <DataGridTextColumn Header="Last Worked" Width="120"
+                                                                Binding="{Binding LastWorkedDate, StringFormat=yyyy-MM-dd}"/>
+                                            <DataGridTextColumn Header="Hours (This Month)" Width="140"
+                                                                Binding="{Binding HoursThisMonth, StringFormat={}{0:N2}}"/>
+                                            <DataGridTextColumn Header="Cost (This Month)" Width="140"
+                                                                Binding="{Binding CostThisMonth, StringFormat=£{0:N2}}"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Grid>
 
                                 <!-- RIGHT: Selected person details -->
                                 <Grid Grid.Column="1" Margin="12,0,0,0">
@@ -649,19 +685,46 @@
                                     </Grid.RowDefinitions>
 
                                     <!-- Header -->
-                                    <TextBlock Grid.Row="0"
-                                    FontSize="18"
-                                    FontWeight="SemiBold"
-                                    Foreground="White"
-                                    Text="{Binding SelectedPerson.Name}"
-                                    Margin="0,0,0,8"/>
+                                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0"
+                                                   FontSize="18"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="White"
+                                                   Text="{Binding SelectedPerson.Name}"
+                                                   VerticalAlignment="Center"/>
+
+                                        <Button Grid.Column="1"
+                                                Padding="12,6"
+                                                Margin="12,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Click="TogglePersonActive_Click">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Content" Value="Deactivate"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedPerson.IsActive}" Value="False">
+                                                            <Setter Property="Content" Value="Activate"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding SelectedPerson}" Value="{x:Null}">
+                                                            <Setter Property="IsEnabled" Value="False"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </Grid>
 
                                     <!-- Rate history -->
                                     <GroupBox Grid.Row="1" Header="Rate history" Margin="0,0,0,8">
                                         <DataGrid ItemsSource="{Binding SelectedPersonRates}"
-                                                Style="{StaticResource DarkDataGridStyle}"
-                                                AutoGenerateColumns="False"
-                                                IsReadOnly="True">
+                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True">
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Header="Valid From" Binding="{Binding ValidFrom, StringFormat=yyyy-MM-dd}" Width="120"/>
                                                 <DataGridTextColumn Header="Valid To" Binding="{Binding ValidTo, StringFormat=yyyy-MM-dd}" Width="120"/>
@@ -673,9 +736,9 @@
                                     <!-- This month by project -->
                                     <GroupBox Grid.Row="2" Header="This month by project" Margin="0,0,0,8">
                                         <DataGrid ItemsSource="{Binding SelectedPersonProjects}"
-                                                Style="{StaticResource DarkDataGridStyle}"
-                                                AutoGenerateColumns="False"
-                                                IsReadOnly="True">
+                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True">
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Header="Project" Binding="{Binding ProjectLabel}" Width="*"/>
                                                 <DataGridTextColumn Header="Code" Binding="{Binding ProjectCode}" Width="90"/>
@@ -688,9 +751,9 @@
                                     <!-- Recent entries -->
                                     <GroupBox Grid.Row="3" Header="Recent entries">
                                         <DataGrid ItemsSource="{Binding SelectedPersonRecentEntries}"
-                                                Style="{StaticResource DarkDataGridStyle}"
-                                                AutoGenerateColumns="False"
-                                                IsReadOnly="True">
+                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True">
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
                                                 <DataGridTextColumn Header="Project" Binding="{Binding ProjectLabel}" Width="*"/>
@@ -874,6 +937,53 @@
                                     </GroupBox>
 
                                 </StackPanel>
+                            </Grid>
+                        </TabItem>
+                        <!-- ADD PERSON TAB -->
+                        <TabItem Header="Add Person">
+                            <Grid Background="#FF1E1E1E" Margin="10">
+                                <GroupBox Header="Add Person" Foreground="White">
+                                    <StackPanel Margin="10" MaxWidth="420">
+
+                                        <WrapPanel Margin="0,0,0,8">
+                                            <TextBlock Text="Initials:" Width="90" VerticalAlignment="Center"/>
+                                            <TextBox Width="260"
+                                                     Text="{Binding NewWorkerInitialsText, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="e.g. JD"/>
+                                        </WrapPanel>
+
+                                        <WrapPanel Margin="0,0,0,8">
+                                            <TextBlock Text="Name:" Width="90" VerticalAlignment="Center"/>
+                                            <TextBox Width="260"
+                                                     Text="{Binding NewWorkerNameText, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="Full name"/>
+                                        </WrapPanel>
+
+                                        <WrapPanel Margin="0,0,0,8">
+                                            <TextBlock Text="Rate (£/hr):" Width="90" VerticalAlignment="Center"/>
+                                            <TextBox Width="260"
+                                                     Text="{Binding NewWorkerRateText, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="e.g. 25.00"/>
+                                        </WrapPanel>
+
+                                        <WrapPanel Margin="0,0,0,12">
+                                            <TextBlock Text="Active:" Width="90" VerticalAlignment="Center"/>
+                                            <CheckBox IsChecked="{Binding NewWorkerIsActive}"
+                                                      VerticalAlignment="Center"/>
+                                        </WrapPanel>
+
+                                        <WrapPanel>
+                                            <Button Content="Add Person"
+                                                    Padding="14,6"
+                                                    Click="AddWorker_Click"/>
+                                        </WrapPanel>
+
+                                        <TextBlock Text="{Binding AddWorkerStatusText}"
+                                                   Margin="0,10,0,0"
+                                                   Opacity="0.85"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </GroupBox>
                             </Grid>
                         </TabItem>
                     </TabControl>
