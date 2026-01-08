@@ -1,4 +1,4 @@
-using Mep1.Erp.Core;
+using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.TimesheetWeb.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;

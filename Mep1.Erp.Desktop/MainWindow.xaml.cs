@@ -15,6 +15,7 @@ using System.Windows.Input;
 using static Mep1.Erp.Application.Reporting;
 using Binding = System.Windows.Data.Binding;
 using WpfMessageBox = System.Windows.MessageBox;
+using Mep1.Erp.Core.Contracts;
 
 namespace Mep1.Erp.Desktop
 {
@@ -1480,7 +1481,7 @@ namespace Mep1.Erp.Desktop
             {
                 await _api.UpdatePortalAccessAsync(
                     SelectedPerson.WorkerId,
-                    new UpdatePortalAccessRequest(
+                    new UpdatePortalAccessRequestDto(
                         Role: SelectedPortalRole,
                         IsActive: PortalIsActive));
 

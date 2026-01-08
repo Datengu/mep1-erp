@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using Mep1.Erp.Application;
 using Mep1.Erp.Core;
 using Mep1.Erp.Infrastructure;
+using Mep1.Erp.Core.Contracts;
 
 namespace Mep1.Erp.Api.Controllers;
 
@@ -151,7 +152,7 @@ public sealed class PeopleController : ControllerBase
     [HttpPatch("{workerId:int}/portal-access")]
     public async Task<IActionResult> UpdatePortalAccess(
         int workerId,
-        [FromBody] UpdatePortalAccessRequest request)
+        [FromBody] UpdatePortalAccessRequestDto request)
     {
         var guard = RequireAdminKey();
         if (guard != null) return guard;
@@ -183,7 +184,7 @@ public sealed class PeopleController : ControllerBase
     }
 
     [HttpPost("{workerId:int}/portal-access/reset-password")]
-    public async Task<ActionResult<ResetPortalPasswordResult>> ResetPortalPassword(int workerId)
+    public async Task<ActionResult<ResetPortalPasswordResultDto>> ResetPortalPassword(int workerId)
     {
         var guard = RequireAdminKey();
         if (guard != null) return guard;
@@ -199,7 +200,7 @@ public sealed class PeopleController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        return Ok(new ResetPortalPasswordResult(tempPassword));
+        return Ok(new ResetPortalPasswordResultDto(tempPassword));
     }
 
     [HttpGet("summary")]
