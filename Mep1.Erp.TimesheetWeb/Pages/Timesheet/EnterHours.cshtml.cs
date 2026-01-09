@@ -43,7 +43,19 @@ public sealed class EnterHoursModel : PageModel
     public List<SelectListItem> CodeOptions { get; private set; } = new();
 
     public static readonly string[] LevelOptions =
-    Enumerable.Range(0, 31).Select(i => $"L{i:00}").ToArray();
+    [
+        // Below ground
+        "B4", "B3", "B2", "B1", "LG", "UG",
+
+        // Ground / podium / mezzanine
+        "G", "POD", "M",
+
+        // Upper floors
+        .. Enumerable.Range(1, 30).Select(i => $"L{i:00}"),
+
+        // Roof / plant
+        .. new[] { "P", "RF" },
+    ];
 
     public List<SelectListItem> LevelSelectItems { get; private set; } = new();
 
