@@ -286,5 +286,53 @@ namespace Mep1.Erp.Desktop
             var result = await _http.GetFromJsonAsync<List<AuditLogRowDto>>(url);
             return result ?? new List<AuditLogRowDto>();
         }
+
+        public async Task<WorkerForEditDto> GetWorkerForEditAsync(int workerId)
+        {
+            var result = await _http.GetFromJsonAsync<WorkerForEditDto>($"api/people/{workerId}/edit");
+            if (result == null)
+                throw new InvalidOperationException("Worker edit response was empty.");
+            return result;
+        }
+
+        public async Task UpdateWorkerDetailsAsync(int workerId, UpdateWorkerDetailsRequestDto dto)
+        {
+            var req = new HttpRequestMessage(HttpMethod.Patch, $"api/people/{workerId}")
+            {
+                Content = JsonContent.Create(dto)
+            };
+
+            var resp = await _http.SendAsync(req);
+            resp.EnsureSuccessStatusCode(); // expects 204
+        }
+
+        public async Task ChangeCurrentWorkerRateAsync(int workerId, ChangeCurrentRateRequestDto dto)
+        {
+            var resp = await _http.PostAsJsonAsync($"api/people/{workerId}/rates/change-current", dto);
+            resp.EnsureSuccessStatusCode(); // expects 204
+        }
+
+        public async Task AddWorkerRateAsync(int workerId, AddWorkerRateRequestDto dto)
+        {
+            var resp = await _http.PostAsJsonAsync($"api/people/{workerId}/rates", dto);
+            resp.EnsureSuccessStatusCode(); // expects 204
+        }
+
+        public async Task UpdateWorkerRateAmountAsync(int workerId, int rateId, UpdateWorkerRateAmountRequestDto dto)
+        {
+            var req = new HttpRequestMessage(HttpMethod.Patch, $"api/people/{workerId}/rates/{rateId}")
+            {
+                Content = JsonContent.Create(dto)
+            };
+
+            var resp = await _http.SendAsync(req);
+            resp.EnsureSuccessStatusCode(); // expects 204
+        }
+
+        public async Task DeleteWorkerRateAsync(int workerId, int rateId)
+        {
+            var resp = await _http.DeleteAsync($"api/people/{workerId}/rates/{rateId}");
+            resp.EnsureSuccessStatusCode(); // expects 204
+        }
     }
 }

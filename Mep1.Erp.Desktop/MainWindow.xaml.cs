@@ -166,6 +166,115 @@ namespace Mep1.Erp.Desktop
             }
         }
 
+        private string _editPersonInitialsText = "";
+        public string EditPersonInitialsText
+        {
+            get => _editPersonInitialsText;
+            set => SetField(ref _editPersonInitialsText, value, nameof(EditPersonInitialsText));
+        }
+
+        private string _editPersonNameText = "";
+        public string EditPersonNameText
+        {
+            get => _editPersonNameText;
+            set => SetField(ref _editPersonNameText, value, nameof(EditPersonNameText));
+        }
+
+        private string _editPersonSignatureNameText = "";
+        public string EditPersonSignatureNameText
+        {
+            get => _editPersonSignatureNameText;
+            set => SetField(ref _editPersonSignatureNameText, value, nameof(EditPersonSignatureNameText));
+        }
+
+        private string _editPersonStatusText = "";
+        public string EditPersonStatusText
+        {
+            get => _editPersonStatusText;
+            set => SetField(ref _editPersonStatusText, value, nameof(EditPersonStatusText));
+        }
+
+        private List<WorkerRate> _editPersonRates = new();
+        public List<WorkerRate> EditPersonRates
+        {
+            get => _editPersonRates;
+            set => SetField(ref _editPersonRates, value, nameof(EditPersonRates));
+        }
+
+        private WorkerRate? _selectedEditPersonRate;
+        public WorkerRate? SelectedEditPersonRate
+        {
+            get => _selectedEditPersonRate;
+            set
+            {
+                if (!SetField(ref _selectedEditPersonRate, value, nameof(SelectedEditPersonRate)))
+                    return;
+
+                // When a row is selected, prefill the amount box so Update is obvious/explicit.
+                if (value == null)
+                {
+                    UpdateSelectedRateAmountText = "";
+                }
+                else
+                {
+                    UpdateSelectedRateAmountText = value.RatePerHour.ToString("0.00");
+                }
+
+                // If your SetField doesn’t automatically raise this dependent property change:
+                OnPropertyChanged(nameof(UpdateSelectedRateAmountText));
+            }
+        }
+
+        private string _editRatesStatusText = "";
+        public string EditRatesStatusText
+        {
+            get => _editRatesStatusText;
+            set => SetField(ref _editRatesStatusText, value, nameof(EditRatesStatusText));
+        }
+
+        // Rate editor inputs
+        private DateTime? _changeCurrentEffectiveFrom = DateTime.Today;
+        public DateTime? ChangeCurrentEffectiveFrom
+        {
+            get => _changeCurrentEffectiveFrom;
+            set => SetField(ref _changeCurrentEffectiveFrom, value, nameof(ChangeCurrentEffectiveFrom));
+        }
+
+        private string _changeCurrentRateText = "";
+        public string ChangeCurrentRateText
+        {
+            get => _changeCurrentRateText;
+            set => SetField(ref _changeCurrentRateText, value, nameof(ChangeCurrentRateText));
+        }
+
+        private DateTime? _addRateValidFrom = DateTime.Today;
+        public DateTime? AddRateValidFrom
+        {
+            get => _addRateValidFrom;
+            set => SetField(ref _addRateValidFrom, value, nameof(AddRateValidFrom));
+        }
+
+        private DateTime? _addRateValidTo = DateTime.Today;
+        public DateTime? AddRateValidTo
+        {
+            get => _addRateValidTo;
+            set => SetField(ref _addRateValidTo, value, nameof(AddRateValidTo));
+        }
+
+        private string _addRateAmountText = "";
+        public string AddRateAmountText
+        {
+            get => _addRateAmountText;
+            set => SetField(ref _addRateAmountText, value, nameof(AddRateAmountText));
+        }
+
+        private string _updateSelectedRateAmountText = "";
+        public string UpdateSelectedRateAmountText
+        {
+            get => _updateSelectedRateAmountText;
+            set => SetField(ref _updateSelectedRateAmountText, value, nameof(UpdateSelectedRateAmountText));
+        }
+
         private PortalAccessDto? _portalAccess;
 
         public bool HasPortalAccount => _portalAccess?.Exists == true;
@@ -910,6 +1019,7 @@ namespace Mep1.Erp.Desktop
                 SelectedPersonRates = drill.Rates
                     .Select(r => new WorkerRate
                     {
+                        Id = r.Id,                    
                         ValidFrom = r.ValidFrom,
                         ValidTo = r.ValidTo,
                         RatePerHour = r.RatePerHour
@@ -957,10 +1067,12 @@ namespace Mep1.Erp.Desktop
                 return;
 
             SelectedPerson = person;
+
             await LoadSelectedPersonDetails(person.WorkerId);
             await LoadPortalAccessAsync(person.WorkerId);
-        }
 
+            await LoadEditPersonAsync(person.WorkerId); // NEW
+        }
         private async void LoadSelectedProjectDetails(ProjectSummaryDto projSummary)
         {
             if (projSummary == null) return;
@@ -1776,5 +1888,242 @@ namespace Mep1.Erp.Desktop
             await LoadAuditLogsAsync();
         }
 
+        private async Task LoadEditPersonAsync(int workerId)
+        {
+            EditPersonStatusText = "";
+            EditRatesStatusText = "";
+
+            try
+            {
+                // Needs new API endpoint / DTO (see API section below)
+                var dto = await _api.GetWorkerForEditAsync(workerId);
+
+                EditPersonInitialsText = dto.Initials ?? "";
+                EditPersonNameText = dto.Name ?? "";
+                EditPersonSignatureNameText = dto.SignatureName ?? "";
+
+                EditPersonRates = dto.Rates
+                    .Select(r => new WorkerRate
+                    {
+                        Id = r.Id,                    // NEW
+                        ValidFrom = r.ValidFrom,
+                        ValidTo = r.ValidTo,
+                        RatePerHour = r.RatePerHour
+                    })
+                    .OrderByDescending(r => r.ValidFrom)
+                    .ToList();
+
+                SelectedEditPersonRate = null;
+            }
+            catch (Exception ex)
+            {
+                EditPersonStatusText = "Failed to load edit data: " + ex.Message;
+                EditPersonRates = new();
+                SelectedEditPersonRate = null;
+            }
+        }
+
+        private async void ReloadEditPerson_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedPerson == null) return;
+            await LoadEditPersonAsync(SelectedPerson.WorkerId);
+        }
+
+        private async void SavePersonDetails_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedPerson == null) return;
+
+            EditPersonStatusText = "";
+
+            var initials = (EditPersonInitialsText ?? "").Trim();
+            var name = (EditPersonNameText ?? "").Trim();
+            var signature = string.IsNullOrWhiteSpace(EditPersonSignatureNameText) ? null : EditPersonSignatureNameText.Trim();
+
+            if (string.IsNullOrWhiteSpace(initials))
+            {
+                EditPersonStatusText = "Initials are required.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                EditPersonStatusText = "Name is required.";
+                return;
+            }
+
+            try
+            {
+                await _api.UpdateWorkerDetailsAsync(
+                    SelectedPerson.WorkerId,
+                    new UpdateWorkerDetailsRequestDto
+                    {
+                        Initials = initials,
+                        Name = name,
+                        SignatureName = signature
+                    });
+
+                EditPersonStatusText = "Saved.";
+
+                // Refresh left list + keep selection so grid shows updated values
+                await RefreshPeopleAsync(keepSelection: true);
+
+                // Reload edit + drilldown for consistency
+                await LoadSelectedPersonDetails(SelectedPerson.WorkerId);
+                await LoadEditPersonAsync(SelectedPerson.WorkerId);
+            }
+            catch (Exception ex)
+            {
+                EditPersonStatusText = "Save failed: " + ex.Message;
+            }
+        }
+
+        private async void ChangeCurrentRate_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedPerson == null) return;
+
+            EditRatesStatusText = "";
+
+            if (!ChangeCurrentEffectiveFrom.HasValue)
+            {
+                EditRatesStatusText = "Effective From is required.";
+                return;
+            }
+
+            var rateText = (ChangeCurrentRateText ?? "").Trim().Replace("£", "");
+            if (!decimal.TryParse(rateText, out var newRate) || newRate < 0)
+            {
+                EditRatesStatusText = "New rate must be a valid non-negative number.";
+                return;
+            }
+
+            try
+            {
+                await _api.ChangeCurrentWorkerRateAsync(
+                    SelectedPerson.WorkerId,
+                    new ChangeCurrentRateRequestDto(
+                        EffectiveFrom: ChangeCurrentEffectiveFrom.Value.Date,
+                        NewRatePerHour: newRate));
+
+                EditRatesStatusText = "Current rate changed (split applied).";
+
+                await LoadSelectedPersonDetails(SelectedPerson.WorkerId);
+                await LoadEditPersonAsync(SelectedPerson.WorkerId);
+                await RefreshPeopleAsync(keepSelection: true);
+            }
+            catch (Exception ex)
+            {
+                EditRatesStatusText = "Change current rate failed: " + ex.Message;
+            }
+        }
+
+        private async void AddHistoricalRate_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedPerson == null) return;
+
+            EditRatesStatusText = "";
+
+            if (!AddRateValidFrom.HasValue || !AddRateValidTo.HasValue)
+            {
+                EditRatesStatusText = "Valid From and Valid To are required for historical rates.";
+                return;
+            }
+
+            if (AddRateValidTo.Value.Date < AddRateValidFrom.Value.Date)
+            {
+                EditRatesStatusText = "Valid To cannot be before Valid From.";
+                return;
+            }
+
+            var rateText = (AddRateAmountText ?? "").Trim().Replace("£", "");
+            if (!decimal.TryParse(rateText, out var amount) || amount < 0)
+            {
+                EditRatesStatusText = "Rate must be a valid non-negative number.";
+                return;
+            }
+
+            try
+            {
+                await _api.AddWorkerRateAsync(
+                    SelectedPerson.WorkerId,
+                    new AddWorkerRateRequestDto(
+                        ValidFrom: AddRateValidFrom.Value.Date,
+                        ValidTo: AddRateValidTo.Value.Date,
+                        RatePerHour: amount));
+
+                EditRatesStatusText = "Historical rate added.";
+
+                await LoadSelectedPersonDetails(SelectedPerson.WorkerId);
+                await LoadEditPersonAsync(SelectedPerson.WorkerId);
+                await RefreshPeopleAsync(keepSelection: true);
+            }
+            catch (Exception ex)
+            {
+                EditRatesStatusText = "Add historical rate failed: " + ex.Message;
+            }
+        }
+
+        private async void UpdateSelectedRateAmount_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedPerson == null) return;
+            if (SelectedEditPersonRate == null) return;
+
+            EditRatesStatusText = "";
+
+            var rateText = (UpdateSelectedRateAmountText ?? "").Trim().Replace("£", "");
+            if (!decimal.TryParse(rateText, out var amount) || amount < 0)
+            {
+                EditRatesStatusText = "Rate must be a valid non-negative number.";
+                return;
+            }
+
+            try
+            {
+                // Needs rate Id in the grid model; see API section (you likely want WorkerRateDto.Id)
+                await _api.UpdateWorkerRateAmountAsync(
+                    SelectedPerson.WorkerId,
+                    SelectedEditPersonRate.Id,
+                    new UpdateWorkerRateAmountRequestDto(amount));
+
+                EditRatesStatusText = "Selected rate updated.";
+
+                await LoadSelectedPersonDetails(SelectedPerson.WorkerId);
+                await LoadEditPersonAsync(SelectedPerson.WorkerId);
+                await RefreshPeopleAsync(keepSelection: true);
+            }
+            catch (Exception ex)
+            {
+                EditRatesStatusText = "Update failed: " + ex.Message;
+            }
+        }
+
+        private async void DeleteSelectedRate_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedPerson == null) return;
+            if (SelectedEditPersonRate == null) return;
+
+            var result = System.Windows.MessageBox.Show(
+                "Delete this rate?\n\nThis should only be used to correct mistakes.",
+                "Confirm",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                await _api.DeleteWorkerRateAsync(SelectedPerson.WorkerId, SelectedEditPersonRate.Id);
+
+                EditRatesStatusText = "Deleted.";
+
+                await LoadSelectedPersonDetails(SelectedPerson.WorkerId);
+                await LoadEditPersonAsync(SelectedPerson.WorkerId);
+                await RefreshPeopleAsync(keepSelection: true);
+            }
+            catch (Exception ex)
+            {
+                EditRatesStatusText = "Delete failed: " + ex.Message;
+            }
+        }
     }
 }
