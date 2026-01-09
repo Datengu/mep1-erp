@@ -301,9 +301,13 @@ public sealed class PeopleController : ControllerBase
         var today = DateTime.Today.Date;
         var monthStart = new DateTime(today.Year, today.Month, 1);
 
-        var rates = Reporting.GetWorkerRateHistory(db, workerId)
+        var rates = db.WorkerRates
+            .AsNoTracking()
+            .Where(r => r.WorkerId == workerId)
+            .OrderByDescending(r => r.ValidFrom)
             .Select(r => new WorkerRateDto
             {
+                Id = r.Id,
                 ValidFrom = r.ValidFrom,
                 ValidTo = r.ValidTo,
                 RatePerHour = r.RatePerHour
@@ -434,4 +438,332 @@ public sealed class PeopleController : ControllerBase
             IsActive = worker.IsActive
         });
     }
+
+    private static DateTime EndExclusive(DateTime? to)
+        => (to ?? DateTime.MaxValue).Date;
+
+    // Half-open ranges: [from, to) where to is exclusive (null = infinity)
+    private static bool RangesOverlap(DateTime aFrom, DateTime? aTo, DateTime bFrom, DateTime? bTo)
+    {
+        var aStart = aFrom.Date;
+        var bStart = bFrom.Date;
+
+        var aEnd = EndExclusive(aTo);
+        var bEnd = EndExclusive(bTo);
+
+        // overlap iff starts before the other ends
+        return aStart < bEnd && bStart < aEnd;
+    }
+
+    private async Task<string?> ValidateNoOverlapsForWorkerAsync(int workerId, DateTime newFrom, DateTime? newTo, int? ignoreRateId = null)
+    {
+        var rates = await _db.WorkerRates
+            .AsNoTracking()
+            .Where(r => r.WorkerId == workerId && (ignoreRateId == null || r.Id != ignoreRateId.Value))
+            .ToListAsync();
+
+        foreach (var r in rates)
+        {
+            if (RangesOverlap(newFrom, newTo, r.ValidFrom.Date, r.ValidTo?.Date))
+                return $"Rate range overlaps an existing rate (Id={r.Id}, {r.ValidFrom:yyyy-MM-dd} to {(r.ValidTo.HasValue ? r.ValidTo.Value.ToString("yyyy-MM-dd") : "Current")}).";
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidateSingleCurrentRateAsync(int workerId)
+    {
+        var currentCount = await _db.WorkerRates.CountAsync(r => r.WorkerId == workerId && r.ValidTo == null);
+        if (currentCount != 1)
+            return $"Worker must have exactly one current (open-ended) rate. Found {currentCount}.";
+        return null;
+    }
+
+    [HttpGet("{workerId:int}/edit")]
+    public async Task<ActionResult<WorkerForEditDto>> GetWorkerForEdit(int workerId)
+    {
+        var guard = RequireAdminActor();
+        if (guard != null) return guard;
+
+        var worker = await _db.Workers.AsNoTracking().FirstOrDefaultAsync(w => w.Id == workerId);
+        if (worker == null)
+            return NotFound("Worker not found.");
+
+        var rates = await _db.WorkerRates.AsNoTracking()
+            .Where(r => r.WorkerId == workerId)
+            .OrderByDescending(r => r.ValidFrom)
+            .Select(r => new WorkerRateDto
+            {
+                Id = r.Id,
+                ValidFrom = r.ValidFrom,
+                ValidTo = r.ValidTo,
+                RatePerHour = r.RatePerHour
+            })
+            .ToListAsync();
+
+        return Ok(new WorkerForEditDto
+        {
+            WorkerId = worker.Id,
+            Initials = worker.Initials,
+            Name = worker.Name,
+            SignatureName = worker.SignatureName,
+            IsActive = worker.IsActive,
+            Rates = rates
+        });
+    }
+
+    [HttpPatch("{workerId:int}")]
+    public async Task<IActionResult> UpdateWorkerDetails(int workerId, [FromBody] UpdateWorkerDetailsRequestDto req)
+    {
+        var guard = RequireAdminActor();
+        if (guard != null) return guard;
+
+        var worker = await _db.Workers.FirstOrDefaultAsync(w => w.Id == workerId);
+        if (worker == null)
+            return NotFound("Worker not found.");
+
+        var initials = (req.Initials ?? "").Trim();
+        var name = (req.Name ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(initials))
+            return BadRequest("Initials are required.");
+
+        if (string.IsNullOrWhiteSpace(name))
+            return BadRequest("Name is required.");
+
+        var initialsTaken = await _db.Workers.AnyAsync(w => w.Id != workerId && w.Initials == initials);
+        if (initialsTaken)
+            return Conflict("Initials already exist.");
+
+        worker.Initials = initials;
+        worker.Name = name;
+        worker.SignatureName = string.IsNullOrWhiteSpace(req.SignatureName) ? null : req.SignatureName.Trim();
+
+        await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "People.Worker.UpdateDetails",
+            entityType: "Worker",
+            entityId: workerId.ToString(),
+            summary: $"Updated WorkerId={workerId} (Initials={worker.Initials}, Name={worker.Name})"
+        );
+
+        return NoContent();
+    }
+
+    [HttpPost("{workerId:int}/rates/change-current")]
+    public async Task<IActionResult> ChangeCurrentRate(int workerId, [FromBody] ChangeCurrentRateRequestDto req)
+    {
+        var guard = RequireAdminActor();
+        if (guard != null) return guard;
+
+        if (req.NewRatePerHour < 0m)
+            return BadRequest("Rate cannot be negative.");
+
+        var workerExists = await _db.Workers.AsNoTracking().AnyAsync(w => w.Id == workerId);
+        if (!workerExists)
+            return NotFound("Worker not found.");
+
+        var singleCurrentErr = await ValidateSingleCurrentRateAsync(workerId);
+        if (singleCurrentErr != null)
+            return Conflict(singleCurrentErr);
+
+        var current = await _db.WorkerRates
+            .Where(r => r.WorkerId == workerId && r.ValidTo == null)
+            .FirstAsync();
+
+        var effectiveFrom = req.EffectiveFrom.Date;
+
+        if (effectiveFrom < current.ValidFrom.Date)
+            return BadRequest($"EffectiveFrom must be on/after current rate ValidFrom ({current.ValidFrom:yyyy-MM-dd}).");
+
+        // If effectiveFrom is the same day the current starts, we just replace it (no split)
+        if (effectiveFrom == current.ValidFrom.Date)
+        {
+            current.RatePerHour = req.NewRatePerHour;
+            await _db.SaveChangesAsync();
+
+            var a0 = GetActorForAudit();
+            await _audit.LogAsync(
+                actorWorkerId: a0.WorkerId,
+                actorRole: a0.Role,
+                actorSource: a0.Source,
+                action: "People.Rates.UpdateCurrentAmount",
+                entityType: "WorkerRate",
+                entityId: current.Id.ToString(),
+                summary: $"Updated current rate amount WorkerId={workerId}, RateId={current.Id}, NewRate={req.NewRatePerHour}"
+            );
+
+            return NoContent();
+        }
+
+        // Split (exclusive-end)
+        // Old current becomes historical [oldFrom, effectiveFrom)
+        // New rate becomes current [effectiveFrom, null)
+
+        // Ensure the new open-ended rate won't overlap anything else
+        // Ignore the current rate because we're splitting it in the same operation.
+        var overlapErr = await ValidateNoOverlapsForWorkerAsync(workerId, effectiveFrom, null, ignoreRateId: current.Id);
+        if (overlapErr != null)
+            return Conflict(overlapErr);
+
+        // Exclusive end: old rate ends at EffectiveFrom (so it applies up to the day before)
+        current.ValidTo = effectiveFrom;
+
+        var newRate = new WorkerRate
+        {
+            WorkerId = workerId,
+            RatePerHour = req.NewRatePerHour,
+            ValidFrom = effectiveFrom,
+            ValidTo = null
+        };
+
+        _db.WorkerRates.Add(newRate);
+        await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "People.Rates.ChangeCurrent",
+            entityType: "Worker",
+            entityId: workerId.ToString(),
+            summary: $"Split current rate (old RateId={current.Id} now ends {current.ValidTo:yyyy-MM-dd}); created new current rate RateId={newRate.Id} from {newRate.ValidFrom:yyyy-MM-dd} at {newRate.RatePerHour}"
+        );
+
+        return NoContent();
+    }
+
+    [HttpPost("{workerId:int}/rates")]
+    public async Task<IActionResult> AddHistoricalRate(int workerId, [FromBody] AddWorkerRateRequestDto req)
+    {
+        var guard = RequireAdminActor();
+        if (guard != null) return guard;
+
+        if (req.RatePerHour < 0m)
+            return BadRequest("Rate cannot be negative.");
+
+        var from = req.ValidFrom.Date;
+        var to = req.ValidTo.Date;
+
+        if (to <= from)
+            return BadRequest("ValidTo must be after ValidFrom (ValidTo is exclusive).");
+
+        var workerExists = await _db.Workers.AsNoTracking().AnyAsync(w => w.Id == workerId);
+        if (!workerExists)
+            return NotFound("Worker not found.");
+
+        var overlapErr = await ValidateNoOverlapsForWorkerAsync(workerId, from, to);
+        if (overlapErr != null)
+            return Conflict(overlapErr);
+
+        var rate = new WorkerRate
+        {
+            WorkerId = workerId,
+            RatePerHour = req.RatePerHour,
+            ValidFrom = from,
+            ValidTo = to
+        };
+
+        _db.WorkerRates.Add(rate);
+        await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "People.Rates.AddHistorical",
+            entityType: "WorkerRate",
+            entityId: rate.Id.ToString(),
+            summary: $"Added historical rate WorkerId={workerId}, RateId={rate.Id}, {from:yyyy-MM-dd} to {to:yyyy-MM-dd} at {rate.RatePerHour}"
+        );
+
+        return NoContent();
+    }
+
+    [HttpPatch("{workerId:int}/rates/{rateId:int}")]
+    public async Task<IActionResult> UpdateRateAmount(int workerId, int rateId, [FromBody] UpdateWorkerRateAmountRequestDto req)
+    {
+        var guard = RequireAdminActor();
+        if (guard != null) return guard;
+
+        if (req.RatePerHour < 0m)
+            return BadRequest("Rate cannot be negative.");
+
+        var rate = await _db.WorkerRates.FirstOrDefaultAsync(r => r.Id == rateId && r.WorkerId == workerId);
+        if (rate == null)
+            return NotFound("Rate not found.");
+
+        rate.RatePerHour = req.RatePerHour;
+        await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "People.Rates.UpdateAmount",
+            entityType: "WorkerRate",
+            entityId: rateId.ToString(),
+            summary: $"Updated rate amount WorkerId={workerId}, RateId={rateId}, NewRate={req.RatePerHour}"
+        );
+
+        return NoContent();
+    }
+
+    [HttpDelete("{workerId:int}/rates/{rateId:int}")]
+    public async Task<IActionResult> DeleteRate(int workerId, int rateId)
+    {
+        var guard = RequireAdminActor();
+        if (guard != null) return guard;
+
+        var rate = await _db.WorkerRates.FirstOrDefaultAsync(r => r.Id == rateId && r.WorkerId == workerId);
+        if (rate == null)
+            return NotFound("Rate not found.");
+
+        // Don't allow deleting the current rate at all (too risky / can break invariants)
+        if (rate.ValidTo == null)
+            return Conflict("Cannot delete the current rate. Use 'Schedule new rate' to correct mistakes explicitly.");
+
+        var start = rate.ValidFrom.Date;
+        var endExclusive = EndExclusive(rate.ValidTo);
+
+        var hasEntries = await _db.TimesheetEntries
+            .AsNoTracking()
+            .AnyAsync(e => e.WorkerId == workerId
+                          && !e.IsDeleted
+                          && e.Date.Date >= start
+                          && e.Date.Date < endExclusive);
+
+        if (hasEntries)
+            return Conflict("Cannot delete a rate that covers existing timesheet entries. Adjust via explicit rate changes instead.");
+
+        _db.WorkerRates.Remove(rate);
+        await _db.SaveChangesAsync();
+
+        // After delete, ensure there is still exactly one current rate
+        var currentCount = await _db.WorkerRates.CountAsync(r => r.WorkerId == workerId && r.ValidTo == null);
+        if (currentCount != 1)
+            return Conflict("Delete would leave worker without exactly one current rate. Aborting.");
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "People.Rates.Delete",
+            entityType: "WorkerRate",
+            entityId: rateId.ToString(),
+            summary: $"Deleted rate WorkerId={workerId}, RateId={rateId}, {start:yyyy-MM-dd} to {(rate.ValidTo.HasValue ? rate.ValidTo.Value.ToString("yyyy-MM-dd") : "Current")}"
+        );
+
+        return NoContent();
+    }
+
 }

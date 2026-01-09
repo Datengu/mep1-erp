@@ -9,6 +9,7 @@
 
     public sealed class WorkerRateDto
     {
+        public int Id { get; init; }
         public DateTime ValidFrom { get; init; }
         public DateTime? ValidTo { get; init; }
         public decimal RatePerHour { get; init; }
