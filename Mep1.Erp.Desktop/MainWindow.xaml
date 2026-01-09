@@ -882,35 +882,35 @@
                                                     <WrapPanel Margin="0,0,0,8">
                                                         <TextBlock Text="Initials:" Width="110" VerticalAlignment="Center"/>
                                                         <TextBox Width="260"
-                         Text="{Binding EditPersonInitialsText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                 Text="{Binding EditPersonInitialsText, UpdateSourceTrigger=PropertyChanged}"/>
                                                     </WrapPanel>
 
                                                     <WrapPanel Margin="0,0,0,8">
                                                         <TextBlock Text="Name:" Width="110" VerticalAlignment="Center"/>
                                                         <TextBox Width="260"
-                         Text="{Binding EditPersonNameText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                 Text="{Binding EditPersonNameText, UpdateSourceTrigger=PropertyChanged}"/>
                                                     </WrapPanel>
 
                                                     <WrapPanel Margin="0,0,0,12">
                                                         <TextBlock Text="Signature name:" Width="110" VerticalAlignment="Center"/>
                                                         <TextBox Width="260"
-                         Text="{Binding EditPersonSignatureNameText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                 Text="{Binding EditPersonSignatureNameText, UpdateSourceTrigger=PropertyChanged}"/>
                                                     </WrapPanel>
 
                                                     <WrapPanel Margin="0,0,0,8">
                                                         <Button Content="Reload"
-                        Margin="0,0,8,0"
-                        Padding="14,6"
-                        Click="ReloadEditPerson_Click"/>
+                                                                Margin="0,0,8,0"
+                                                                Padding="14,6"
+                                                                Click="ReloadEditPerson_Click"/>
                                                         <Button Content="Save details"
-                        Padding="14,6"
-                        Click="SavePersonDetails_Click"/>
+                                                                Padding="14,6"
+                                                                Click="SavePersonDetails_Click"/>
                                                     </WrapPanel>
 
                                                     <TextBlock Text="{Binding EditPersonStatusText}"
-                       Margin="0,6,0,0"
-                       Opacity="0.85"
-                       TextWrapping="Wrap"/>
+                                                               Margin="0,6,0,0"
+                                                               Opacity="0.85"
+                                                               TextWrapping="Wrap"/>
                                                 </StackPanel>
                                             </GroupBox>
 
@@ -926,23 +926,23 @@
 
                                                     <!-- Help text -->
                                                     <TextBlock Grid.Row="0"
-                       Opacity="0.75"
-                       TextWrapping="Wrap"
-                       Margin="0,0,0,8">
-                Rates use an effective-from timeline: “Valid From” is inclusive (first day it applies). “Valid To” is exclusive (first day it no longer applies). There must be no overlaps, and only one open-ended current rate.
+                                                               Opacity="0.75"
+                                                               TextWrapping="Wrap"
+                                                               Margin="0,0,0,8">
+                                                               Rates use an effective-from timeline: “Valid From” is inclusive (first day it applies). “Valid To” is exclusive (first day it no longer applies). There must be no overlaps, and only one open-ended current rate.
                                                     </TextBlock>
 
                                                     <!-- Rates list -->
                                                     <DataGrid Grid.Row="1"
-                      ItemsSource="{Binding EditPersonRates}"
-                      SelectedItem="{Binding SelectedEditPersonRate, Mode=TwoWay}"
-                      Style="{StaticResource DarkDataGridStyle}"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      Height="240"
-                      Margin="0,0,0,10"
-                      SelectionUnit="FullRow"
-                      SelectionMode="Single">
+                                                              ItemsSource="{Binding EditPersonRates}"
+                                                              SelectedItem="{Binding SelectedEditPersonRate, Mode=TwoWay}"
+                                                              Style="{StaticResource DarkDataGridStyle}"
+                                                              AutoGenerateColumns="False"
+                                                              IsReadOnly="True"
+                                                              Height="240"
+                                                              Margin="0,0,0,10"
+                                                              SelectionUnit="FullRow"
+                                                              SelectionMode="Single">
                                                         <DataGrid.Columns>
                                                             <DataGridTextColumn Header="Valid From (first day this rate applies)" Binding="{Binding ValidFrom, StringFormat=yyyy-MM-dd}" Width="320"/>
                                                             <DataGridTextColumn Header="Valid To (first day this rate does NOT apply)" Binding="{Binding ValidTo, StringFormat=yyyy-MM-dd}" Width="320"/>
@@ -961,12 +961,12 @@
                                                         <Border Grid.Column="0" Background="#FF262626" CornerRadius="6" Padding="10" Margin="0,0,8,0">
                                                             <StackPanel>
                                                                 <TextBlock Text="Schedule new rate (effective from)"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,2"/>
+                                                                           FontWeight="SemiBold"
+                                                                           Margin="0,0,0,2"/>
                                                                 <TextBlock Text="Creates a new ongoing rate starting on the date below. The previous current rate will end on that date (exclusive)."
-                                   Opacity="0.75"
-                                   TextWrapping="Wrap"
-                                   Margin="0,0,0,8"/>
+                                                                           Opacity="0.75"
+                                                                           TextWrapping="Wrap"
+                                                                           Margin="0,0,0,8"/>
 
                                                                 <WrapPanel Margin="0,0,0,8">
                                                                     <TextBlock Text="Effective from:" Width="120" VerticalAlignment="Center"/>
@@ -976,12 +976,12 @@
                                                                 <WrapPanel Margin="0,0,0,8">
                                                                     <TextBlock Text="New £/hr:" Width="120" VerticalAlignment="Center"/>
                                                                     <TextBox Width="140"
-                                     Text="{Binding ChangeCurrentRateText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                             Text="{Binding ChangeCurrentRateText, UpdateSourceTrigger=PropertyChanged}"/>
                                                                 </WrapPanel>
 
                                                                 <Button Content="Schedule new rate"
-                                Padding="14,6"
-                                Click="ChangeCurrentRate_Click"/>
+                                                                        Padding="14,6"
+                                                                        Click="ChangeCurrentRate_Click"/>
                                                             </StackPanel>
                                                         </Border>
 
@@ -989,12 +989,12 @@
                                                         <Border Grid.Column="1" Background="#FF262626" CornerRadius="6" Padding="10" Margin="8,0,0,0">
                                                             <StackPanel>
                                                                 <TextBlock Text="Add historical rate (fixed range)"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,2"/>
+                                                                           FontWeight="SemiBold"
+                                                                           Margin="0,0,0,2"/>
                                                                 <TextBlock Text="Use for past corrections only. “Valid To” is the first day the rate stops applying (exclusive)."
-                                   Opacity="0.75"
-                                   TextWrapping="Wrap"
-                                   Margin="0,0,0,8"/>
+                                                                           Opacity="0.75"
+                                                                           TextWrapping="Wrap"
+                                                                           Margin="0,0,0,8"/>
 
                                                                 <WrapPanel Margin="0,0,0,8">
                                                                     <TextBlock Text="Valid from:" Width="120" VerticalAlignment="Center"/>
@@ -1017,12 +1017,12 @@
                                                                 <WrapPanel Margin="0,0,0,8">
                                                                     <TextBlock Text="Rate £/hr:" Width="120" VerticalAlignment="Center"/>
                                                                     <TextBox Width="140"
-                                     Text="{Binding AddRateAmountText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                             Text="{Binding AddRateAmountText, UpdateSourceTrigger=PropertyChanged}"/>
                                                                 </WrapPanel>
 
                                                                 <Button Content="Add historical rate"
-                                Padding="14,6"
-                                Click="AddHistoricalRate_Click"/>
+                                                                        Padding="14,6"
+                                                                        Click="AddHistoricalRate_Click"/>
                                                             </StackPanel>
                                                         </Border>
                                                     </Grid>
@@ -1037,33 +1037,33 @@
 
                                                             <StackPanel Grid.Column="0">
                                                                 <TextBlock Text="Correct selected rate amount"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,2"/>
+                                                                           FontWeight="SemiBold"
+                                                                           Margin="0,0,0,2"/>
                                                                 <TextBlock Text="Edits the £/hr only. Dates do not change and no automatic re-timing is applied."
-                                   Opacity="0.75"
-                                   TextWrapping="Wrap"
-                                   Margin="0,0,0,8"/>
+                                                                           Opacity="0.75"
+                                                                           TextWrapping="Wrap"
+                                                                           Margin="0,0,0,8"/>
 
                                                                 <WrapPanel Margin="0,0,0,8">
                                                                     <TextBlock Text="New £/hr:" Width="120" VerticalAlignment="Center"/>
                                                                     <TextBox Width="140"
-                                     Text="{Binding UpdateSelectedRateAmountText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                             Text="{Binding UpdateSelectedRateAmountText, UpdateSourceTrigger=PropertyChanged}"/>
                                                                 </WrapPanel>
 
                                                                 <TextBlock Text="{Binding EditRatesStatusText}"
-                                   Margin="0,6,0,0"
-                                   Opacity="0.85"
-                                   TextWrapping="Wrap"/>
+                                                                           Margin="0,6,0,0"
+                                                                           Opacity="0.85"
+                                                                           TextWrapping="Wrap"/>
                                                             </StackPanel>
 
                                                             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Top">
                                                                 <Button Content="Update amount"
-                                Margin="0,0,0,8"
-                                Padding="14,6"
-                                Click="UpdateSelectedRateAmount_Click"/>
+                                                                        Margin="0,0,0,8"
+                                                                        Padding="14,6"
+                                                                        Click="UpdateSelectedRateAmount_Click"/>
                                                                 <Button Content="Delete rate"
-                                Padding="14,6"
-                                Click="DeleteSelectedRate_Click"/>
+                                                                        Padding="14,6"
+                                                                        Click="DeleteSelectedRate_Click"/>
                                                             </StackPanel>
                                                         </Grid>
                                                     </Border>
@@ -1121,7 +1121,6 @@
                                         </GroupBox>
                                     </Grid>
                                 </TabItem>
-
                             </TabControl>
                         </TabItem>
 
