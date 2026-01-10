@@ -52,7 +52,7 @@
 
         <div class="mb-2"></div>
 
-        <div class="row mb-3">
+        <div id="workDetailsWrapper" class="row mb-3">
 
             <!-- Sheet / Modelling -->
             <div class="col-md-4">
@@ -250,4 +250,57 @@
             applyRules();
         })();
     </script>
+
+    <script>
+        // Hide/show Sheet/Modelling, Level, Area based on selected job category (Project vs non-project)
+        (function () {
+            const jobSel = document.querySelector('[name="Input.JobKey"]');
+            const wrapper = document.getElementById('workDetailsWrapper');
+            if (!jobSel || !wrapper) return;
+
+            // This is emitted from the PageModel (JobKey -> true if Category == Project)
+            const jobKeyShowsWorkDetails = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.JobKeyShowsWorkDetails));
+
+            // Inputs to clear when hidden
+            const workType = document.querySelector('[name="Input.WorkType"]'); // might be radios or select
+            const areas = document.querySelector('[name="Input.AreasRaw"]');
+
+            function clearWorkDetails() {
+                // WorkType: handle common cases (select or radio buttons)
+                if (workType) {
+                    if (workType.tagName === 'SELECT') {
+                        workType.value = '';
+                    } else {
+                        // if WorkType is a radio group, clear checked
+                        const radios = document.querySelectorAll('[name="Input.WorkType"]');
+                        radios.forEach(r => r.checked = false);
+                    }
+                }
+
+                // Levels: multi-select or checkboxes
+                const levelsSel = document.querySelector('[name="Input.Levels"]');
+                if (levelsSel && levelsSel.tagName === 'SELECT') {
+                    for (const opt of levelsSel.options) opt.selected = false;
+                } else {
+                    // if you render levels as checkboxes:
+                    const levelChecks = document.querySelectorAll('[name="Input.Levels"]');
+                    levelChecks.forEach(c => c.checked = false);
+                }
+
+                if (areas) areas.value = '';
+            }
+
+            function refresh() {
+                const key = jobSel.value || '';
+                const show = jobKeyShowsWorkDetails[key] === true;
+
+                wrapper.style.display = show ? '' : 'none';
+                if (!show) clearWorkDetails();
+            }
+
+            jobSel.addEventListener('change', refresh);
+            refresh();
+        })();
+    </script>
+
 }

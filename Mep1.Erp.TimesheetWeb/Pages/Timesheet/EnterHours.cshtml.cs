@@ -84,6 +84,10 @@ public sealed class EnterHoursModel : PageModel
 
     }
 
+    public bool ShowWorkDetails { get; private set; }
+
+    public Dictionary<string, bool> JobKeyShowsWorkDetails { get; private set; } = new();
+
     public async Task<IActionResult> OnGet()
     {
         if (HttpContext.Session.GetString("MustChangePassword") == "true")
@@ -97,6 +101,10 @@ public sealed class EnterHoursModel : PageModel
             return RedirectToPage("/Timesheet/Login");
 
         await LoadOptionsAsync();
+
+        // Initial state for first render: hidden until a valid project is selected
+        var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
+        ShowWorkDetails = selected?.Category == "Project";
 
         // If redirected back with a TempData message
         if (TempData.TryGetValue("Message", out var msgObj))
@@ -120,6 +128,8 @@ public sealed class EnterHoursModel : PageModel
 
         // ---- Enforce Job <-> Code rules based on selected "job" ----
         var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
+
+        ShowWorkDetails = selected?.Category == "Project";
 
         if (selected is null)
         {
@@ -204,11 +214,21 @@ public sealed class EnterHoursModel : PageModel
                 ModelState.AddModelError("Input.TaskDescription", "Please enter a task description.");
         }
 
-        if (Input.WorkType != "S" && Input.WorkType != "M")
-            ModelState.AddModelError("Input.WorkType", "Please select Sheet or Modelling.");
+        if (ShowWorkDetails)
+        {
+            if (Input.WorkType != "S" && Input.WorkType != "M")
+                ModelState.AddModelError("Input.WorkType", "Please select Sheet or Modelling.");
 
-        if (Input.Levels.Any(l => !LevelOptions.Contains(l)))
-            ModelState.AddModelError("Input.Levels", "Please select valid level(s).");
+            if (Input.Levels.Any(l => !LevelOptions.Contains(l)))
+                ModelState.AddModelError("Input.Levels", "Please select valid level(s).");
+        }
+        else
+        {
+            // Normalize to avoid leaking previous values
+            Input.WorkType = "M";
+            Input.Levels.Clear();
+            Input.AreasRaw = null;
+        }
 
         if (!ModelState.IsValid)
             return Page();
@@ -276,5 +296,11 @@ public sealed class EnterHoursModel : PageModel
         LevelSelectItems = LevelOptions
             .Select(l => new SelectListItem(l, l))
             .ToList();
+
+        JobKeyShowsWorkDetails = _projectsCache.ToDictionary(
+            p => p.JobKey,
+            p => string.Equals(p.Category, "Project", StringComparison.OrdinalIgnoreCase),
+            StringComparer.OrdinalIgnoreCase
+        );
     }
 }
