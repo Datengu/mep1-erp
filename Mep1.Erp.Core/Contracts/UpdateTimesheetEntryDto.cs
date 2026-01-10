@@ -8,7 +8,7 @@ public sealed record UpdateTimesheetEntryDto(
     string Code,
     string? TaskDescription,
     string? CcfRef,
-    string WorkType,
+    string? WorkType,
     List<string> Levels,
     List<string> Areas
 );

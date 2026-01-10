@@ -73,7 +73,7 @@ public sealed class EditModel : PageModel
         public string Code { get; set; } = "";
         public string? CcfRef { get; set; }
         public string? TaskDescription { get; set; }
-        public string WorkType { get; set; } = "M";      // "S" or "M"
+        public string? WorkType { get; set; }
         public List<string> Levels { get; set; } = new(); // multi-select
         public string? AreasRaw { get; set; }             // comma-separated input
     }
@@ -111,7 +111,7 @@ public sealed class EditModel : PageModel
             TaskDescription = entry.TaskDescription,
             CcfRef = entry.CcfRef,
 
-            WorkType = string.IsNullOrWhiteSpace(entry.WorkType) ? "M" : entry.WorkType,
+            WorkType = string.IsNullOrWhiteSpace(entry.WorkType) ? null : entry.WorkType,
             Levels = entry.Levels ?? new List<string>(),
             AreasRaw = (entry.Areas is null || entry.Areas.Count == 0)
                 ? null
@@ -238,8 +238,7 @@ public sealed class EditModel : PageModel
         }
         else
         {
-            // Normalize to avoid leaking previous values
-            Input.WorkType = "M";
+            Input.WorkType = null;
             Input.Levels.Clear();
             Input.AreasRaw = null;
         }

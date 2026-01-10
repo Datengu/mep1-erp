@@ -78,7 +78,7 @@ public sealed class EnterHoursModel : PageModel
 
         public string? TaskDescription { get; set; }
 
-        public string WorkType { get; set; } = "M";      // "S" or "M"
+        public string? WorkType { get; set; }
         public List<string> Levels { get; set; } = new(); // multi-select
         public string? AreasRaw { get; set; }             // comma-separated input
 
@@ -224,8 +224,7 @@ public sealed class EnterHoursModel : PageModel
         }
         else
         {
-            // Normalize to avoid leaking previous values
-            Input.WorkType = "M";
+            Input.WorkType = null;
             Input.Levels.Clear();
             Input.AreasRaw = null;
         }

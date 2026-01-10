@@ -76,6 +76,7 @@
                         <label class="form-check-label" for="workTypeModelling">Modelling</label>
                     </div>
                 </div>
+                <span class="text-danger" asp-validation-for="Input.WorkType"></span>
             </div>
 
             <!-- Levels -->
@@ -254,7 +255,7 @@
         // Hide/show Sheet/Modelling, Level, Area based on selected job category
         (function () {
             const jobSel = document.querySelector('[name="Input.JobKey"]');
-            const wrapper = document.getElementById('workDetailsBlock');
+            const wrapper = document.getElementById('workDetailsWrapper');
             if (!jobSel || !wrapper) return;
 
             const jobKeyShowsWorkDetails = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.JobKeyShowsWorkDetails));
