@@ -65,7 +65,7 @@ namespace Mep1.Erp.Core
         public int? DeletedByWorkerId { get; set; }
 
         // --- New for tracking hours worked more specifically on what ---
-        public string WorkType { get; set; } = "M";   // "S" or "M"
+        public string? WorkType { get; set; }   // "S" or "M" or null
 
         // Stored as JSON in DB
         public string LevelsJson { get; set; } = "[]";

@@ -138,6 +138,29 @@ public sealed class TimesheetController : ControllerBase
         if (!project.IsActive) return BadRequest("Project is inactive.");
         //  internal jobs (IsRealProject == false) are allowed for timesheets
 
+        var isProjectWork = string.Equals(project.Category, "Project", StringComparison.OrdinalIgnoreCase);
+
+        string? workTypeToStore = null;
+
+        if (isProjectWork)
+        {
+            if (dto.WorkType is not ("S" or "M"))
+                return BadRequest("WorkType must be S (Sheet) or M (Modelling) for Project jobs.");
+
+            workTypeToStore = dto.WorkType;
+        }
+        else
+        {
+            // Non-project: ignore any submitted work details
+            workTypeToStore = null;
+            dto = dto with
+            {
+                Levels = new List<string>(),
+                Areas = new List<string>(),
+                WorkType = null
+            };
+        }
+
         var nextEntryId = await _db.TimesheetEntries
             .Where(e => e.WorkerId == dto.WorkerId)
             .Select(e => (int?)e.EntryId)
@@ -159,7 +182,7 @@ public sealed class TimesheetController : ControllerBase
                 : "",
             CreatedAtUtc = DateTime.UtcNow,
             IsDeleted = false,
-            WorkType = dto.WorkType is "S" or "M" ? dto.WorkType : "M",
+            WorkType = workTypeToStore,
             LevelsJson = JsonSerializer.Serialize(dto.Levels ?? new List<string>()),
             AreasJson = JsonSerializer.Serialize(dto.Areas ?? new List<string>())
         };
@@ -279,6 +302,29 @@ public sealed class TimesheetController : ControllerBase
         if (project is null)
             return BadRequest("Invalid job.");
 
+        var isProjectWork = string.Equals(project.Category, "Project", StringComparison.OrdinalIgnoreCase);
+
+        string? workTypeToStore = null;
+
+        if (isProjectWork)
+        {
+            if (dto.WorkType is not ("S" or "M"))
+                return BadRequest("WorkType must be S (Sheet) or M (Modelling) for Project jobs.");
+
+            workTypeToStore = dto.WorkType;
+        }
+        else
+        {
+            workTypeToStore = null;
+            dto = dto with
+            {
+                Levels = new List<string>(),
+                Areas = new List<string>(),
+                WorkType = null
+            };
+        }
+
+
         // Business rules: HOL/SI/BH => hours 0, description optional
         var code = (dto.Code ?? "").Trim().ToUpperInvariant();
 
@@ -303,7 +349,7 @@ public sealed class TimesheetController : ControllerBase
         entry.UpdatedAtUtc = DateTime.UtcNow;
         entry.UpdatedByWorkerId = dto.WorkerId;
 
-        entry.WorkType = dto.WorkType is "S" or "M" ? dto.WorkType : "M";
+        entry.WorkType = workTypeToStore;
 
         entry.LevelsJson = JsonSerializer.Serialize(dto.Levels ?? new List<string>());
         entry.AreasJson = JsonSerializer.Serialize(dto.Areas ?? new List<string>());

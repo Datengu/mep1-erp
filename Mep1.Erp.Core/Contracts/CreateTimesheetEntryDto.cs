@@ -10,7 +10,7 @@ public sealed record CreateTimesheetEntryDto(
     string Code,
     string? CcfRef,
     string? TaskDescription,
-    string WorkType,
+    string? WorkType,
     List<string> Levels,
     List<string> Areas
 );

@@ -50,7 +50,7 @@
 
         <div class="mb-2"></div>
 
-        <div class="row mb-3">
+        <div id="workDetailsWrapper" class="row mb-3">
 
             <!-- Sheet / Modelling -->
             <div class="col-md-4">
@@ -76,6 +76,7 @@
                         <label class="form-check-label" for="workTypeModelling">Modelling</label>
                     </div>
                 </div>
+                <span class="text-danger" asp-validation-for="Input.WorkType"></span>
             </div>
 
             <!-- Levels -->
@@ -247,6 +248,42 @@
 
             // Apply on initial page load too
             applyRules();
+        })();
+    </script>
+
+    <script>
+        // Hide/show Sheet/Modelling, Level, Area based on selected job category
+        (function () {
+            const jobSel = document.querySelector('[name="Input.JobKey"]');
+            const wrapper = document.getElementById('workDetailsWrapper');
+            if (!jobSel || !wrapper) return;
+
+            const jobKeyShowsWorkDetails = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.JobKeyShowsWorkDetails));
+
+            function clearWorkDetails() {
+                // WorkType radios
+                const radios = document.querySelectorAll('[name="Input.WorkType"]');
+                radios.forEach(r => r.checked = false);
+
+                // Levels checkboxes
+                const levelChecks = document.querySelectorAll('[name="Input.Levels"]');
+                levelChecks.forEach(c => c.checked = false);
+
+                // Areas
+                const areas = document.querySelector('[name="Input.AreasRaw"]');
+                if (areas) areas.value = '';
+            }
+
+            function refresh() {
+                const key = jobSel.value || '';
+                const show = jobKeyShowsWorkDetails[key] === true;
+
+                wrapper.style.display = show ? '' : 'none';
+                if (!show) clearWorkDetails();
+            }
+
+            jobSel.addEventListener('change', refresh);
+            refresh();
         })();
     </script>
 }

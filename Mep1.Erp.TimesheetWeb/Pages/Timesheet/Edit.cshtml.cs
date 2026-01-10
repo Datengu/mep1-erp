@@ -73,10 +73,14 @@ public sealed class EditModel : PageModel
         public string Code { get; set; } = "";
         public string? CcfRef { get; set; }
         public string? TaskDescription { get; set; }
-        public string WorkType { get; set; } = "M";      // "S" or "M"
+        public string? WorkType { get; set; }
         public List<string> Levels { get; set; } = new(); // multi-select
         public string? AreasRaw { get; set; }             // comma-separated input
     }
+
+    public bool ShowWorkDetails { get; private set; }
+
+    public Dictionary<string, bool> JobKeyShowsWorkDetails { get; private set; } = new();
 
     public async Task<IActionResult> OnGet()
     {
@@ -107,12 +111,15 @@ public sealed class EditModel : PageModel
             TaskDescription = entry.TaskDescription,
             CcfRef = entry.CcfRef,
 
-            WorkType = string.IsNullOrWhiteSpace(entry.WorkType) ? "M" : entry.WorkType,
+            WorkType = string.IsNullOrWhiteSpace(entry.WorkType) ? null : entry.WorkType,
             Levels = entry.Levels ?? new List<string>(),
             AreasRaw = (entry.Areas is null || entry.Areas.Count == 0)
                 ? null
                 : string.Join(", ", entry.Areas)
         };
+
+        var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
+        ShowWorkDetails = selected?.Category == "Project";
 
         return Page();
     }
@@ -135,6 +142,8 @@ public sealed class EditModel : PageModel
 
         // ---- Enforce Job <-> Code rules based on selected "job" ----
         var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
+
+        ShowWorkDetails = selected?.Category == "Project";
 
         if (selected is null)
         {
@@ -219,11 +228,20 @@ public sealed class EditModel : PageModel
                 ModelState.AddModelError("Input.TaskDescription", "Please enter a task description.");
         }
 
-        if (Input.WorkType != "S" && Input.WorkType != "M")
-            ModelState.AddModelError("Input.WorkType", "Please select Sheet or Modelling.");
+        if (ShowWorkDetails)
+        {
+            if (Input.WorkType != "S" && Input.WorkType != "M")
+                ModelState.AddModelError("Input.WorkType", "Please select Sheet or Modelling.");
 
-        if (Input.Levels.Any(l => !LevelOptions.Contains(l)))
-            ModelState.AddModelError("Input.Levels", "Please select valid level(s).");
+            if (Input.Levels.Any(l => !LevelOptions.Contains(l)))
+                ModelState.AddModelError("Input.Levels", "Please select valid level(s).");
+        }
+        else
+        {
+            Input.WorkType = null;
+            Input.Levels.Clear();
+            Input.AreasRaw = null;
+        }
 
         if (!ModelState.IsValid)
             return Page();
@@ -277,5 +295,11 @@ public sealed class EditModel : PageModel
         LevelSelectItems = LevelOptions
             .Select(l => new SelectListItem(l, l))
             .ToList();
+
+        JobKeyShowsWorkDetails = _projectsCache.ToDictionary(
+            p => p.JobKey,
+            p => string.Equals(p.Category, "Project", StringComparison.OrdinalIgnoreCase),
+            StringComparer.OrdinalIgnoreCase
+        );
     }
 }
