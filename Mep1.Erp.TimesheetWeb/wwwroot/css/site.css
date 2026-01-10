@@ -21,6 +21,22 @@ body {
   margin-bottom: 60px;
 }
 
+.navbar {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+.navbar-nav .nav-link {
+    font-weight: 600;
+    font-size: 1.1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+    .navbar-nav .nav-link:hover {
+        opacity: 0.8;
+    }
+
 .week-block {
     margin-bottom: 2rem;
     padding: 1rem;
