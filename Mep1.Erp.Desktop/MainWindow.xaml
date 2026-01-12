@@ -358,249 +358,415 @@
 
             <!-- 🔹 PROJECTS TAB -->
             <TabItem Header="Projects">
-                <Grid Background="#FF1E1E1E" Margin="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="3*"/>
-                    </Grid.ColumnDefinitions>
+                <Border Background="#FF1E1E1E"
+                        BorderBrush="#FF333333"
+                        BorderThickness="1"
+                        Padding="6">
+                    <TabControl Background="#FF1E1E1E"
+                                BorderThickness="0"
+                                Margin="0">
 
-                    <!-- LEFT: Project list -->
-                    <Grid Grid.Column="0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                        <TabItem Header="Projects">
+                            <Grid Background="#FF1E1E1E" Margin="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="3*"/>
+                                </Grid.ColumnDefinitions>
 
-                        <!-- Filter toolbar -->
-                        <StackPanel Orientation="Horizontal"
-                                    Margin="0,0,0,6"
-                                    VerticalAlignment="Center">
-                            <TextBlock Text="Filter:"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,8,0"/>
+                                <!-- LEFT: Project list -->
+                                <Grid Grid.Column="0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
 
-                            <Button Content="All"
-                                    Margin="0,0,4,0"
-                                    Padding="8,3"
-                                    Click="ShowAllProjects_Click"/>
+                                    <!-- Filter toolbar -->
+                                    <StackPanel Orientation="Horizontal"
+                                                Margin="0,0,0,6"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="Filter:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
 
-                            <Button Content="Active"
-                                    Margin="0,0,4,0"
-                                    Padding="8,3"
-                                    Click="ShowActiveProjects_Click"/>
+                                        <Button Content="All"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowAllProjects_Click"/>
 
-                            <Button Content="Inactive"
-                                    Margin="0,0,4,0"
-                                    Padding="8,3"
-                                    Click="ShowInactiveProjects_Click"/>
-                        </StackPanel>
+                                        <Button Content="Active"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowActiveProjects_Click"/>
 
-                        <!-- Projects grid -->
-                        <DataGrid x:Name="ProjectsGrid"
-                                  Grid.Row="1"
-                                  ItemsSource="{Binding ProjectView}"
-                                  Style="{StaticResource DarkDataGridStyle}"
-                                  AutoGenerateColumns="False"
-                                  SelectionMode="Single"
-                                  SelectionChanged="ProjectsGrid_SelectionChanged">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Job" Binding="{Binding JobNameOrNumber}" Width="*"/>
-                                <DataGridTextColumn Header="Code" Binding="{Binding BaseCode}" Width="50"/>
-                                <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="40" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="Labour" Binding="{Binding LabourCost, StringFormat=£{0:N2}}" Width="100"/>
-                                <DataGridTextColumn Header="Sub-Contractor" Binding="{Binding SupplierCost, StringFormat=£{0:N2}}" Width="100" IsReadOnly="True" />
-                                <DataGridTextColumn Header="Total Cost" Binding="{Binding TotalCost, StringFormat=£{0:N2}}" Width="100" IsReadOnly="True" />
-                                <DataGridTextColumn Header="Invoiced Net" Binding="{Binding InvoicedNet, StringFormat=£{0:N2}}" Width="100"/>
-                                <DataGridTextColumn Header="Profit Net" Binding="{Binding ProfitNet, StringFormat=£{0:N2}}" Width="100"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </Grid>
-
-                    <!-- RIGHT: Selected project details -->
-                    <Grid Grid.Column="1" Margin="12,0,0,0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-
-                        <Grid Grid.Row="0" Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Left: title + meta -->
-                            <StackPanel Grid.Column="0">
-                                <TextBlock FontSize="18"
-                                           FontWeight="SemiBold"
-                                           Foreground="White"
-                                           Text="{Binding SelectedProject.JobNameOrNumber}"/>
-
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Foreground="#FFBFBFBF"
-                                               Text="{Binding SelectedProject.BaseCode, StringFormat=Code: {0}}"
-                                               Margin="0,0,12,0"/>
-                                </StackPanel>
-
-                                <TextBlock Foreground="#FFBFBFBF"
-                                           Text="{Binding SelectedProject.ProfitNet, StringFormat=Profit (Net): £{0:N2}}"/>
-                            </StackPanel>
-
-                            <!-- Right: activate/deactivate -->
-                            <Button Grid.Column="1"
-                                    Padding="12,6"
-                                    Margin="12,0,0,0"
-                                    VerticalAlignment="Top"
-                                    Click="ToggleProjectActive_Click">
-                                <Button.Style>
-                                    <Style TargetType="Button">
-                                        <Setter Property="Content" Value="Deactivate"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedProject.IsActive}" Value="False">
-                                                <Setter Property="Content" Value="Activate"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding SelectedProject}" Value="{x:Null}">
-                                                <Setter Property="IsEnabled" Value="False"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                        </Grid>
-
-                        <GroupBox Grid.Row="1" Header="Labour (this month)" Foreground="White">
-                            <DataGrid ItemsSource="{Binding SelectedProjectLabourThisMonth}"
-                                      Style="{StaticResource DarkDataGridStyle}"
-                                      AutoGenerateColumns="False"
-                                      IsReadOnly="True">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
-                                    <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
-                                    <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
-                                    <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </GroupBox>
-
-                        <GroupBox Grid.Row="2" Header="Labour (all time)" Foreground="White" Margin="0,8,0,0">
-                            <DataGrid ItemsSource="{Binding SelectedProjectLabourAllTime}"
-                                      Style="{StaticResource DarkDataGridStyle}"
-                                      AutoGenerateColumns="False"
-                                      IsReadOnly="True">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
-                                    <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
-                                    <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
-                                    <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </GroupBox>
-
-                        <GroupBox Grid.Row="3" Header="Invoices (this project)" Foreground="White" Margin="0,8,0,0">
-                            <DataGrid ItemsSource="{Binding SelectedProjectInvoices}"
-                                      Style="{StaticResource DarkDataGridStyle}"
-                                      AutoGenerateColumns="False"
-                                      IsReadOnly="True">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="110"/>
-                                    <DataGridTextColumn Header="Date" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                    <DataGridTextColumn Header="Due" Binding="{Binding DueDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                    <DataGridTextColumn Header="Net" Binding="{Binding NetAmount, StringFormat=£{0:N2}}" Width="110"/>
-                                    <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingNet, StringFormat=£{0:N2}}" Width="120"/>
-                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </GroupBox>
-
-                        <GroupBox Grid.Row="4" Header="Sub-Contractor costs (this project)" Foreground="White" Margin="0,8,0,0">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-
-                                <!-- Input row -->
-                                <WrapPanel Grid.Row="0" Margin="8" VerticalAlignment="Top">
-                                    <ComboBox Width="220"
-                                              Margin="0,0,8,8"
-                                              ItemsSource="{Binding Suppliers}"
-                                              SelectedItem="{Binding NewSupplierCostSupplier}"
-                                              DisplayMemberPath="Name"/>
-
-                                    <DatePicker Width="140"
-                                                Margin="0,0,8,8"
-                                                SelectedDate="{Binding NewSupplierCostDate}"
-                                                IsEnabled="{Binding IsSupplierCostDateEnabled}"/>
-
-                                    <CheckBox Content="Unknown date"
-                                              Margin="0,0,8,8"
-                                              VerticalAlignment="Center"
-                                              IsChecked="{Binding NewSupplierCostDateUnknown}"/>
-
-                                    <TextBox Width="120"
-                                             Margin="0,0,8,8"
-                                             Text="{Binding NewSupplierCostAmountText, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="Amount (net)"/>
-
-                                    <TextBox Width="260"
-                                             Margin="0,0,8,8"
-                                             Text="{Binding NewSupplierCostNote, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="Note (optional)"/>
-
-                                    <!--<Button Content="Add"
-                                            Padding="14,6"
-                                            Margin="0,0,8,8"
-                                            Click="AddSupplierCost_Click"/>-->
-
-                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                        <Button Content="Add Cost" Margin="0,0,8,0" Click="AddSupplierCost_Click"/>
-                                        <Button Content="Edit Selected" Margin="0,0,8,0" Click="EditSelectedSupplierCost_Click"/>
-                                        <Button Content="Save Edit" Margin="0,0,8,0" Click="SaveSupplierCostEdit_Click"/>
-                                        <Button Content="Cancel" Margin="0,0,8,0" Click="CancelSupplierCostEdit_Click"/>
-                                        <Button Content="Delete Selected" Click="DeleteSelectedSupplierCost_Click"/>
+                                        <Button Content="Inactive"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowInactiveProjects_Click"/>
                                     </StackPanel>
-                                </WrapPanel>
 
-                                <!-- Costs grid -->
-                                <DataGrid Grid.Row="1"
-                                          ItemsSource="{Binding SelectedProjectSupplierCosts}"
-                                          SelectionMode="Single"
-                                          SelectionChanged="SupplierCostsGrid_SelectionChanged"
-                                          Style="{StaticResource DarkDataGridStyle}"
-                                          AutoGenerateColumns="False"
-                                          IsReadOnly="True">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/>
-                                        <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                        <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=£{0:N2}}" Width="120"/>
-                                        <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="2*"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
+                                    <!-- Projects grid -->
+                                    <DataGrid x:Name="ProjectsGrid"
+                                              Grid.Row="1"
+                                              ItemsSource="{Binding ProjectView}"
+                                              Style="{StaticResource DarkDataGridStyle}"
+                                              AutoGenerateColumns="False"
+                                              SelectionMode="Single"
+                                              SelectionChanged="ProjectsGrid_SelectionChanged">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Job" Binding="{Binding JobNameOrNumber}" Width="*"/>
+                                            <DataGridTextColumn Header="Code" Binding="{Binding BaseCode}" Width="50"/>
+                                            <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="40" IsReadOnly="True"/>
+                                            <DataGridTextColumn Header="Labour" Binding="{Binding LabourCost, StringFormat=£{0:N2}}" Width="100"/>
+                                            <DataGridTextColumn Header="Sub-Contractor" Binding="{Binding SupplierCost, StringFormat=£{0:N2}}" Width="100" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="Total Cost" Binding="{Binding TotalCost, StringFormat=£{0:N2}}" Width="100" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="Invoiced Net" Binding="{Binding InvoicedNet, StringFormat=£{0:N2}}" Width="100"/>
+                                            <DataGridTextColumn Header="Profit Net" Binding="{Binding ProfitNet, StringFormat=£{0:N2}}" Width="100"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Grid>
+
+                                <!-- RIGHT: Selected project details -->
+                                <Grid Grid.Column="1" Margin="12,0,0,0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Left: title + meta -->
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock FontSize="18"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="White"
+                                                       Text="{Binding SelectedProject.JobNameOrNumber}"/>
+
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Foreground="#FFBFBFBF"
+                                                           Text="{Binding SelectedProject.BaseCode, StringFormat=Code: {0}}"
+                                                           Margin="0,0,12,0"/>
+                                            </StackPanel>
+
+                                            <TextBlock Foreground="#FFBFBFBF"
+                                                       Text="{Binding SelectedProject.ProfitNet, StringFormat=Profit (Net): £{0:N2}}"/>
+                                        </StackPanel>
+
+                                        <!-- Right: activate/deactivate -->
+                                        <Button Grid.Column="1"
+                                                Padding="12,6"
+                                                Margin="12,0,0,0"
+                                                VerticalAlignment="Top"
+                                                Click="ToggleProjectActive_Click">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Content" Value="Deactivate"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedProject.IsActive}" Value="False">
+                                                            <Setter Property="Content" Value="Activate"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding SelectedProject}" Value="{x:Null}">
+                                                            <Setter Property="IsEnabled" Value="False"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </Grid>
+
+                                    <GroupBox Grid.Row="1" Header="Labour (this month)" Foreground="White">
+                                        <DataGrid ItemsSource="{Binding SelectedProjectLabourThisMonth}"
+                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
+                                                <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
+                                                <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
+                                                <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </GroupBox>
+
+                                    <GroupBox Grid.Row="2" Header="Labour (all time)" Foreground="White" Margin="0,8,0,0">
+                                        <DataGrid ItemsSource="{Binding SelectedProjectLabourAllTime}"
+                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
+                                                <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
+                                                <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
+                                                <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </GroupBox>
+
+                                    <GroupBox Grid.Row="3" Header="Invoices (this project)" Foreground="White" Margin="0,8,0,0">
+                                        <DataGrid ItemsSource="{Binding SelectedProjectInvoices}"
+                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="110"/>
+                                                <DataGridTextColumn Header="Date" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                                <DataGridTextColumn Header="Due" Binding="{Binding DueDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                                <DataGridTextColumn Header="Net" Binding="{Binding NetAmount, StringFormat=£{0:N2}}" Width="110"/>
+                                                <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingNet, StringFormat=£{0:N2}}" Width="120"/>
+                                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </GroupBox>
+
+                                    <GroupBox Grid.Row="4" Header="Sub-Contractor costs (this project)" Foreground="White" Margin="0,8,0,0">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Input row -->
+                                            <WrapPanel Grid.Row="0" Margin="8" VerticalAlignment="Top">
+                                                <ComboBox Width="220"
+                                                          Margin="0,0,8,8"
+                                                          ItemsSource="{Binding Suppliers}"
+                                                          SelectedItem="{Binding NewSupplierCostSupplier}"
+                                                          DisplayMemberPath="Name"/>
+
+                                                <DatePicker Width="140"
+                                                            Margin="0,0,8,8"
+                                                            SelectedDate="{Binding NewSupplierCostDate}"
+                                                            IsEnabled="{Binding IsSupplierCostDateEnabled}"/>
+
+                                                <CheckBox Content="Unknown date"
+                                                          Margin="0,0,8,8"
+                                                          VerticalAlignment="Center"
+                                                          IsChecked="{Binding NewSupplierCostDateUnknown}"/>
+
+                                                <TextBox Width="120"
+                                                         Margin="0,0,8,8"
+                                                         Text="{Binding NewSupplierCostAmountText, UpdateSourceTrigger=PropertyChanged}"
+                                                         ToolTip="Amount (net)"/>
+
+                                                <TextBox Width="260"
+                                                         Margin="0,0,8,8"
+                                                         Text="{Binding NewSupplierCostNote, UpdateSourceTrigger=PropertyChanged}"
+                                                         ToolTip="Note (optional)"/>
+
+                                                <!--<Button Content="Add"
+                                                        Padding="14,6"
+                                                        Margin="0,0,8,8"
+                                                        Click="AddSupplierCost_Click"/>-->
+
+                                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                    <Button Content="Add Cost" Margin="0,0,8,0" Click="AddSupplierCost_Click"/>
+                                                    <Button Content="Edit Selected" Margin="0,0,8,0" Click="EditSelectedSupplierCost_Click"/>
+                                                    <Button Content="Save Edit" Margin="0,0,8,0" Click="SaveSupplierCostEdit_Click"/>
+                                                    <Button Content="Cancel" Margin="0,0,8,0" Click="CancelSupplierCostEdit_Click"/>
+                                                    <Button Content="Delete Selected" Click="DeleteSelectedSupplierCost_Click"/>
+                                                </StackPanel>
+                                            </WrapPanel>
+
+                                            <!-- Costs grid -->
+                                            <DataGrid Grid.Row="1"
+                                                      ItemsSource="{Binding SelectedProjectSupplierCosts}"
+                                                      SelectionMode="Single"
+                                                      SelectionChanged="SupplierCostsGrid_SelectionChanged"
+                                                      Style="{StaticResource DarkDataGridStyle}"
+                                                      AutoGenerateColumns="False"
+                                                      IsReadOnly="True">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/>
+                                                    <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                                    <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=£{0:N2}}" Width="120"/>
+                                                    <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="2*"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </Grid>
+                                    </GroupBox>
+
+                                    <GroupBox Grid.Row="5" Header="Recent labour entries" Foreground="White" Margin="0,8,0,0">
+                                        <DataGrid ItemsSource="{Binding SelectedProjectRecentEntries}"
+                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                                <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
+                                                <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
+                                                <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
+                                                <DataGridTextColumn Header="Task" Binding="{Binding TaskDescription}" Width="*"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </GroupBox>
+                                </Grid>
                             </Grid>
-                        </GroupBox>
+                        </TabItem>
 
-                        <GroupBox Grid.Row="5" Header="Recent labour entries" Foreground="White" Margin="0,8,0,0">
-                            <DataGrid ItemsSource="{Binding SelectedProjectRecentEntries}"
-                                      Style="{StaticResource DarkDataGridStyle}"
-                                      AutoGenerateColumns="False"
-                                      IsReadOnly="True">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                    <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
-                                    <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
-                                    <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
-                                    <DataGridTextColumn Header="Task" Binding="{Binding TaskDescription}" Width="*"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </GroupBox>
-                    </Grid>
-                </Grid>
+                        <!-- ADD PROJECT -->
+                        <TabItem Header="Add Project">
+                            <Grid Background="#FF1E1E1E" Margin="10">
+                                <GroupBox Header="Add Project" Foreground="White">
+                                    <StackPanel Margin="10" MaxWidth="560">
+
+                                        <TextBlock Text="Creates a real project row. No inline edits; save is explicit."
+                                                   Opacity="0.7"
+                                                   Margin="0,0,0,12"
+                                                   TextWrapping="Wrap"/>
+
+                                        <!-- Consistent form layout (no WrapPanels for fields) -->
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <!-- builder -->
+                                                <RowDefinition Height="Auto"/>
+                                                <!-- preview -->
+                                                <RowDefinition Height="Auto"/>
+                                                <!-- company -->
+                                                <RowDefinition Height="Auto"/>
+                                                <!-- active -->
+                                                <RowDefinition Height="Auto"/>
+                                                <!-- button -->
+                                                <RowDefinition Height="Auto"/>
+                                                <!-- status -->
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Job key builder -->
+                                            <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                                                <TextBlock Text="Job key builder"
+                                                           FontWeight="SemiBold"
+                                                           Margin="0,0,0,6"/>
+
+                                                <Grid Margin="0,0,0,6">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="90"/>
+                                                        <ColumnDefinition Width="110"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- Headers -->
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Prefix" Opacity="0.8" Margin="0,0,0,4"/>
+                                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Number" Opacity="0.8" Margin="0,0,0,4"/>
+                                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Job name" Opacity="0.8" Margin="0,0,0,4"/>
+
+                                                    <!-- Inputs -->
+                                                    <ComboBox Grid.Row="1" Grid.Column="0"
+                                                              Height="28"
+                                                              Width="70"
+                                                              ItemsSource="{Binding ProjectPrefixOptions}"
+                                                              SelectedItem="{Binding SelectedProjectPrefix}"
+                                                              Margin="0,0,8,0"/>
+
+                                                    <TextBox Grid.Row="1" Grid.Column="1"
+                                                             Height="28"
+                                                             Width="90"
+                                                             Text="{Binding NewProjectNumberText, UpdateSourceTrigger=PropertyChanged}"
+                                                             ToolTip="Project number (e.g. 27 becomes 0027)"
+                                                             Margin="0,0,8,0"/>
+
+                                                    <TextBox Grid.Row="1" Grid.Column="2"
+                                                             Height="28"
+                                                             Text="{Binding NewProjectNameText, UpdateSourceTrigger=PropertyChanged}"
+                                                             ToolTip="Job name (Required) (e.g. DP, 25 SG)"/>
+
+                                                    <!-- Helper text -->
+                                                    <TextBlock Grid.Row="2" Grid.Column="0"
+                                                               Text="e.g. PN"
+                                                               Opacity="0.6"
+                                                               FontSize="11"
+                                                               Margin="0,4,0,0"/>
+
+                                                    <TextBlock Grid.Row="2" Grid.Column="1"
+                                                               Text="e.g. 0027"
+                                                               Opacity="0.6"
+                                                               FontSize="11"
+                                                               Margin="0,4,0,0"/>
+
+                                                    <TextBlock Grid.Row="2" Grid.Column="2"
+                                                               Text="e.g. DP / 25 SG"
+                                                               Opacity="0.6"
+                                                               FontSize="11"
+                                                               Margin="0,4,0,0"/>
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <!-- Preview (full width, feels like the outcome) -->
+                                            <StackPanel Grid.Row="1" Margin="0,0,0,12">
+                                                <TextBlock Text="Job key (Preview)"
+                                                           Opacity="0.8"
+                                                           Margin="0,0,0,4"/>
+                                                <TextBox Height="30"
+                                                         IsReadOnly="True"
+                                                         Text="{Binding NewProjectJobNameText}"
+                                                         Opacity="0.95"/>
+                                            </StackPanel>
+
+                                            <!-- Company (consistent with above-label form style) -->
+                                            <StackPanel Grid.Row="2" Margin="0,0,0,10">
+                                                <TextBlock Text="Company"
+                                                           Opacity="0.8"
+                                                           Margin="0,0,0,4"/>
+                                                <TextBox Height="30"
+                                                         Text="{Binding NewProjectCompanyText, UpdateSourceTrigger=PropertyChanged}"
+                                                         ToolTip="Required"/>
+                                            </StackPanel>
+
+                                            <!-- Active -->
+                                            <StackPanel Grid.Row="3" Margin="0,0,0,14">
+                                                <CheckBox Content="Active"
+                                                          Foreground="#FFE0E0E0"
+                                                          IsChecked="{Binding NewProjectIsActive}"
+                                                          VerticalAlignment="Center"/>
+                                            </StackPanel>
+
+                                            <!-- Button -->
+                                            <Button Grid.Row="4"
+                                                    Content="Add Project"
+                                                    Width="140"
+                                                    Padding="14,6"
+                                                    HorizontalAlignment="Left"
+                                                    Click="AddProject_Click"
+                                                    IsEnabled="{Binding CanAddProject}"/>
+
+                                            <!-- Status -->
+                                            <TextBlock Grid.Row="5"
+                                                       Text="{Binding AddProjectStatusText}"
+                                                       Margin="0,10,0,0"
+                                                       Opacity="0.85"
+                                                       TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </GroupBox>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- EDIT PROJECT -->
+                        <TabItem Header="Edit Project">
+                            <Grid Background="#FF1E1E1E" Margin="10">
+                                <Border Background="#FF262626" CornerRadius="6" Padding="12">
+                                    <TextBlock Text="Edit Project is coming next. Add Project is isolated from Edit Project logic."
+                                               Opacity="0.8"
+                                               TextWrapping="Wrap"/>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+
+                    </TabControl>
+                </Border>
             </TabItem>
-
+            
             <!-- PEOPLE & SUPPLIERS TAB -->
             <TabItem Header="People &amp; Sub-Contractors">
                 <Border Background="#FF1E1E1E"

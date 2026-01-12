@@ -334,5 +334,26 @@ namespace Mep1.Erp.Desktop
             var resp = await _http.DeleteAsync($"api/people/{workerId}/rates/{rateId}");
             resp.EnsureSuccessStatusCode(); // expects 204
         }
+
+        public async Task<CreateProjectResponseDto> CreateProjectAsync(CreateProjectRequestDto dto)
+        {
+            var resp = await _http.PostAsJsonAsync("api/projects", dto);
+
+            if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                var msg = await resp.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(msg)
+                    ? "A project with that job name/number already exists."
+                    : msg);
+            }
+
+            resp.EnsureSuccessStatusCode();
+
+            var created = await resp.Content.ReadFromJsonAsync<CreateProjectResponseDto>();
+            if (created == null)
+                throw new InvalidOperationException("Create project response was empty.");
+
+            return created;
+        }
     }
 }

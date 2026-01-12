@@ -92,6 +92,61 @@ public class ProjectsController : ControllerBase
         return Ok(dto);
     }
 
+    [HttpPost]
+    public async Task<ActionResult<CreateProjectResponseDto>> Create([FromBody] CreateProjectRequestDto dto)
+    {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
+        var job = (dto.JobNameOrNumber ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(job))
+            return BadRequest("Job name / number is required.");
+
+        var company = (dto.Company ?? "").Trim();
+
+        // Conservative uniqueness check (case-insensitive)
+        var jobLower = job.ToLower();
+        var exists = await _db.Projects
+            .AsNoTracking()
+            .AnyAsync(p => p.JobNameOrNumber.ToLower() == jobLower);
+
+        if (exists)
+            return Conflict("A project with that job name / number already exists.");
+
+        var project = new Project
+        {
+            JobNameOrNumber = job,
+            Company = company,
+            IsActive = dto.IsActive,
+            IsRealProject = true
+        };
+
+        _db.Projects.Add(project);
+        await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Projects.Create",
+            entityType: "Project",
+            entityId: project.Id.ToString(),
+            summary: $"Job={project.JobNameOrNumber}, Company={project.Company}, IsActive={project.IsActive}"
+        );
+
+        var resp = new CreateProjectResponseDto
+        {
+            Id = project.Id,
+            JobNameOrNumber = project.JobNameOrNumber,
+            Company = project.Company,
+            IsActive = project.IsActive
+        };
+
+        // We don't have a dedicated GET-by-id route here, so use Created with a reasonable location
+        return Created($"api/projects/{Uri.EscapeDataString(project.JobNameOrNumber)}/drilldown", resp);
+    }
+
     [HttpGet("{jobKey}/drilldown")]
     public async Task<ActionResult<ProjectDrilldownDto>> GetDrilldown([FromRoute] string jobKey, [FromQuery] int recentTake = 25)
     {

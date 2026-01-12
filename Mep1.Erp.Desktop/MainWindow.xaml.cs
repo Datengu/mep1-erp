@@ -104,6 +104,124 @@ namespace Mep1.Erp.Desktop
             }
         }
 
+        private string _newProjectJobNameText = "";
+        public string NewProjectJobNameText
+        {
+            get => _newProjectJobNameText;
+            set => SetField(ref _newProjectJobNameText, value, nameof(NewProjectJobNameText));
+        }
+
+        private string _newProjectCompanyText = "";
+        public string NewProjectCompanyText
+        {
+            get => _newProjectCompanyText;
+            set
+            {
+                if (SetField(ref _newProjectCompanyText, value, nameof(NewProjectCompanyText)))
+                {
+                    OnPropertyChanged(nameof(CanAddProject));
+                }
+            }
+        }
+
+        private bool _newProjectIsActive = true;
+        public bool NewProjectIsActive
+        {
+            get => _newProjectIsActive;
+            set => SetField(ref _newProjectIsActive, value, nameof(NewProjectIsActive));
+        }
+
+        private string _addProjectStatusText = "";
+        public string AddProjectStatusText
+        {
+            get => _addProjectStatusText;
+            set => SetField(ref _addProjectStatusText, value, nameof(AddProjectStatusText));
+        }
+
+        // Add Project builder inputs
+        public List<string> ProjectPrefixOptions { get; } = new() { "PN", "SW" };
+
+        private string _selectedProjectPrefix = "PN";
+        public string SelectedProjectPrefix
+        {
+            get => _selectedProjectPrefix;
+            set
+            {
+                if (SetField(ref _selectedProjectPrefix, value, nameof(SelectedProjectPrefix)))
+                    RebuildNewProjectJobName();
+            }
+        }
+
+        private string _newProjectNumberText = "";
+        public string NewProjectNumberText
+        {
+            get => _newProjectNumberText;
+            set
+            {
+                if (SetField(ref _newProjectNumberText, value, nameof(NewProjectNumberText)))
+                    RebuildNewProjectJobName();
+            }
+        }
+
+        private string _newProjectNameText = "";
+        public string NewProjectNameText
+        {
+            get => _newProjectNameText;
+            set
+            {
+                if (SetField(ref _newProjectNameText, value, nameof(NewProjectNameText)))
+                    RebuildNewProjectJobName();
+            }
+        }
+
+        private void RebuildNewProjectJobName()
+        {
+            var prefix = (SelectedProjectPrefix ?? "").Trim();
+            var numRaw = (NewProjectNumberText ?? "").Trim();
+            var name = (NewProjectNameText ?? "").Trim();
+
+            // Parse number; if not valid, just show prefix + whatever they typed (keeps it responsive)
+            string numberPart;
+            if (int.TryParse(numRaw, out var n) && n >= 0)
+                numberPart = n.ToString("0000");  // 27 -> 0027
+            else
+                numberPart = numRaw;
+
+            var basePart = (prefix + numberPart).Trim();
+
+            NewProjectJobNameText = string.IsNullOrWhiteSpace(name)
+                ? basePart
+                : $"{basePart} - {name}";
+
+            // Ensure dependent UI updates
+            OnPropertyChanged(nameof(NewProjectJobNameText));
+            OnPropertyChanged(nameof(CanAddProject));
+        }
+
+        public bool CanAddProject
+        {
+            get
+            {
+                // Prefix is effectively always set, but keep it explicit
+                if (string.IsNullOrWhiteSpace(SelectedProjectPrefix))
+                    return false;
+
+                // Project number must be a valid non-negative int
+                if (!int.TryParse(NewProjectNumberText?.Trim(), out var n) || n < 0)
+                    return false;
+
+                // Job name is required
+                if (string.IsNullOrWhiteSpace(NewProjectNameText))
+                    return false;
+
+                // Company is required
+                if (string.IsNullOrWhiteSpace(NewProjectCompanyText))
+                    return false;
+
+                return true;
+            }
+        }
+
         private List<PeopleSummaryRowDto> _people = new();
         public List<PeopleSummaryRowDto> People
         {
@@ -551,6 +669,8 @@ namespace Mep1.Erp.Desktop
             InitializeComponent();
 
             DataContext = this;
+
+            RebuildNewProjectJobName();
 
             Settings = SettingsService.LoadSettings();
 
@@ -2125,5 +2245,66 @@ namespace Mep1.Erp.Desktop
                 EditRatesStatusText = "Delete failed: " + ex.Message;
             }
         }
+
+        private async void AddProject_Click(object sender, RoutedEventArgs e)
+        {
+            if (!CanAddProject)
+            {
+                AddProjectStatusText = "Please fill in Prefix, Number, Job name, and Company before adding the project.";
+                OnPropertyChanged(nameof(AddProjectStatusText));
+                return;
+            }
+
+            AddProjectStatusText = "";
+
+            var job = (NewProjectJobNameText ?? "").Trim();
+            var company = (NewProjectCompanyText ?? "").Trim();
+
+            if (string.IsNullOrWhiteSpace(job))
+            {
+                AddProjectStatusText = "Job name / number is required.";
+                return;
+            }
+
+            try
+            {
+                var req = new CreateProjectRequestDto
+                {
+                    JobNameOrNumber = job,
+                    Company = string.IsNullOrWhiteSpace(company) ? null : company,
+                    IsActive = NewProjectIsActive
+                };
+
+                var created = await _api.CreateProjectAsync(req);
+
+                AddProjectStatusText = $"Created project \"{created.JobNameOrNumber}\".";
+
+                // Clear inputs
+                NewProjectNumberText = "";
+                NewProjectNameText = "";
+                SelectedProjectPrefix = ProjectPrefixOptions.FirstOrDefault() ?? "D";
+
+                NewProjectCompanyText = "";
+                NewProjectIsActive = true;
+
+                RebuildNewProjectJobName();
+
+                // Refresh and auto-select the created project
+                ProjectSummaries = await _api.GetProjectSummariesAsync();
+                EnsureProjectView();
+
+                var match = ProjectSummaries.FirstOrDefault(p => p.JobNameOrNumber == created.JobNameOrNumber);
+                if (match != null)
+                {
+                    SelectedProject = match;
+                    LoadSelectedProjectDetails(match);
+                }
+            }
+            catch (Exception ex)
+            {
+                AddProjectStatusText = $"Error creating project: {ex.Message}";
+            }
+        }
+
     }
 }
