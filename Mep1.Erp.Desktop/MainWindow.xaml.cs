@@ -1,6 +1,6 @@
-﻿using Mep1.Erp.Core;
+﻿using Mep1.Erp.Application;
+using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
-using Mep1.Erp.Application;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -14,9 +14,10 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using static Mep1.Erp.Application.Reporting;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using Binding = System.Windows.Data.Binding;
-using WpfMessageBox = System.Windows.MessageBox;
 using WpfApplication = System.Windows.Application;
+using WpfMessageBox = System.Windows.MessageBox;
 
 namespace Mep1.Erp.Desktop
 {
@@ -473,6 +474,174 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _invoiceView, value, nameof(InvoiceView));
         }
 
+        private string _newInvoiceNumberText = "";
+        public string NewInvoiceNumberText
+        {
+            get => _newInvoiceNumberText;
+            set
+            {
+                if (SetField(ref _newInvoiceNumberText, value, nameof(NewInvoiceNumberText)))
+                {
+                    UpdateAddInvoiceValidation();
+                }
+            }
+        }
+
+        private DateTime? _newInvoiceDate = DateTime.Today;
+        public DateTime? NewInvoiceDate
+        {
+            get => _newInvoiceDate;
+            set
+            {
+                if (SetField(ref _newInvoiceDate, value, nameof(NewInvoiceDate)))
+                {
+                    // v1 helper:
+                    // If Due Date is not set yet, default it to Invoice Date
+                    if (_newInvoiceDueDate == null && _newInvoiceDate != null)
+                    {
+                        NewInvoiceDueDate = _newInvoiceDate;
+                    }
+
+                    UpdateAddInvoiceValidation();
+                }
+            }
+        }
+
+        private DateTime? _newInvoiceDueDate;
+        public DateTime? NewInvoiceDueDate
+        {
+            get => _newInvoiceDueDate;
+            set
+            {
+                if (SetField(ref _newInvoiceDueDate, value, nameof(NewInvoiceDueDate)))
+                {
+                    // Due date is optional, but still affects validation/help text sometimes.
+                    UpdateAddInvoiceValidation();
+                }
+            }
+        }
+
+        private CompanyListItemDto? _newInvoiceSelectedCompany;
+        public CompanyListItemDto? NewInvoiceSelectedCompany
+        {
+            get => _newInvoiceSelectedCompany;
+            set
+            {
+                if (SetField(ref _newInvoiceSelectedCompany, value, nameof(NewInvoiceSelectedCompany)))
+                {
+                    UpdateAddInvoiceValidation();
+                }
+            }
+        }
+
+        private InvoiceProjectPicklistItemDto? _newInvoiceSelectedProject;
+        public InvoiceProjectPicklistItemDto? NewInvoiceSelectedProject
+        {
+            get => _newInvoiceSelectedProject;
+            set
+            {
+                if (!SetField(ref _newInvoiceSelectedProject, value, nameof(NewInvoiceSelectedProject)))
+                    return;
+
+                DeriveInvoiceCompanyFromProject();
+                UpdateAddInvoiceValidation();
+            }
+        }
+
+        // Text inputs for amounts
+        private string _newInvoiceNetAmountText = "";
+        public string NewInvoiceNetAmountText
+        {
+            get => _newInvoiceNetAmountText;
+            set
+            {
+                if (SetField(ref _newInvoiceNetAmountText, value, nameof(NewInvoiceNetAmountText)))
+                {
+                    RecalculateAddInvoiceTotals();
+                    UpdateAddInvoiceValidation();
+                }
+            }
+        }
+
+        // VAT rate selection (string-based; ComboBox items are strings)
+        private string _newInvoiceVatRateText = "20%";
+        public string NewInvoiceVatRateText
+        {
+            get => _newInvoiceVatRateText;
+            set
+            {
+                if (SetField(ref _newInvoiceVatRateText, value, nameof(NewInvoiceVatRateText)))
+                {
+                    RecalculateAddInvoiceTotals();
+                    UpdateAddInvoiceValidation();
+                }
+            }
+        }
+
+        // Calculated display strings
+        private string _newInvoiceVatAmountText = "";
+        public string NewInvoiceVatAmountText
+        {
+            get => _newInvoiceVatAmountText;
+            set => SetField(ref _newInvoiceVatAmountText, value, nameof(NewInvoiceVatAmountText));
+        }
+
+        private string _newInvoiceGrossAmountText = "";
+        public string NewInvoiceGrossAmountText
+        {
+            get => _newInvoiceGrossAmountText;
+            set => SetField(ref _newInvoiceGrossAmountText, value, nameof(NewInvoiceGrossAmountText));
+        }
+
+        private string _newInvoiceNotesText = "";
+        public string NewInvoiceNotesText
+        {
+            get => _newInvoiceNotesText;
+            set => SetField(ref _newInvoiceNotesText, value, nameof(NewInvoiceNotesText));
+        }
+
+        // Status selection (string-based; ComboBox items are strings)
+        private string _newInvoiceStatusText = "Outstanding";
+        public string NewInvoiceStatusText
+        {
+            get => _newInvoiceStatusText;
+            set
+            {
+                if (SetField(ref _newInvoiceStatusText, value, nameof(NewInvoiceStatusText)))
+                {
+                    UpdateAddInvoiceValidation();
+                }
+            }
+        }
+
+        private string _addInvoiceStatusText = "";
+        public string AddInvoiceStatusText
+        {
+            get => _addInvoiceStatusText;
+            set => SetField(ref _addInvoiceStatusText, value, nameof(AddInvoiceStatusText));
+        }
+
+        private string _addInvoiceValidationText = "";
+        public string AddInvoiceValidationText
+        {
+            get => _addInvoiceValidationText;
+            set => SetField(ref _addInvoiceValidationText, value, nameof(AddInvoiceValidationText));
+        }
+
+        private string _newInvoiceDerivedCompanyName = "";
+        public string NewInvoiceDerivedCompanyName
+        {
+            get => _newInvoiceDerivedCompanyName;
+            set => SetField(ref _newInvoiceDerivedCompanyName, value, nameof(NewInvoiceDerivedCompanyName));
+        }
+
+        private List<InvoiceProjectPicklistItemDto> _invoiceProjectPicklist = new();
+        public List<InvoiceProjectPicklistItemDto> InvoiceProjectPicklist
+        {
+            get => _invoiceProjectPicklist;
+            set => SetField(ref _invoiceProjectPicklist, value, nameof(InvoiceProjectPicklist));
+        }
+
         private List<DueScheduleEntryDto> _dueSchedule = new();
         public List<DueScheduleEntryDto> DueSchedule
         {
@@ -674,6 +843,7 @@ namespace Mep1.Erp.Desktop
             DataContext = this;
 
             RebuildNewProjectJobName();
+            InitializeNewInvoice();
 
             Settings = SettingsService.LoadSettings();
 
@@ -723,6 +893,9 @@ namespace Mep1.Erp.Desktop
 
             // ProjectSummaries comes from API now
             ProjectSummaries = await _api.GetProjectSummariesAsync();
+
+            InvoiceProjectPicklist = await _api.GetInvoiceProjectPicklistAsync();
+
             // quick debug:
             System.Diagnostics.Debug.WriteLine(
                 string.Join(", ", ProjectSummaries.Take(5).Select(p => $"{p.JobNameOrNumber}:{p.IsActive}"))
@@ -730,6 +903,8 @@ namespace Mep1.Erp.Desktop
 
             // Invoices comes from API now
             Invoices = await _api.GetInvoicesAsync();
+
+            SuggestNextInvoiceNumberIfEmpty();
 
             // People comes from API now
             People = await _api.GetPeopleSummaryAsync();
@@ -760,6 +935,15 @@ namespace Mep1.Erp.Desktop
 
                 return _invoiceFilterPredicate == null || _invoiceFilterPredicate(inv);
             };
+        }
+
+        private void ApplyInvoiceFilter()
+        {
+            // Invoices is reassigned (new List instance) after reload, so rebuild the view.
+            EnsureInvoiceView();
+
+            // Re-apply the current predicate (Filter delegates to _invoiceFilterPredicate)
+            InvoiceView?.Refresh();
         }
 
         private void EnsureProjectView()
@@ -2319,5 +2503,304 @@ namespace Mep1.Erp.Desktop
             }
         }
 
+        private static string? GetComboSelectionText(object? selection)
+        {
+            // When binding SelectedItem and using ComboBoxItem in XAML,
+            // selection will usually be ComboBoxItem.
+            if (selection is ComboBoxItem cbi)
+                return cbi.Content?.ToString();
+
+            return selection?.ToString();
+        }
+
+        private static bool TryParseMoney(string? input, out decimal value)
+        {
+            value = 0m;
+            if (string.IsNullOrWhiteSpace(input))
+                return false;
+
+            // Remove common currency symbols and whitespace, but DO NOT delete commas blindly.
+            // Let the culture/NumberStyles handle thousands separators properly.
+            var cleaned = input.Trim()
+                .Replace("£", "")
+                .Replace(" ", "");
+
+            const System.Globalization.NumberStyles styles =
+                System.Globalization.NumberStyles.AllowLeadingWhite |
+                System.Globalization.NumberStyles.AllowTrailingWhite |
+                System.Globalization.NumberStyles.AllowThousands |
+                System.Globalization.NumberStyles.AllowDecimalPoint |
+                System.Globalization.NumberStyles.AllowLeadingSign;
+
+            // UK-first (your business context), then current machine culture, then invariant.
+            var uk = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
+
+            if (decimal.TryParse(cleaned, styles, uk, out value))
+                return true;
+
+            if (decimal.TryParse(cleaned, styles, System.Globalization.CultureInfo.CurrentCulture, out value))
+                return true;
+
+            return decimal.TryParse(cleaned, styles, System.Globalization.CultureInfo.InvariantCulture, out value);
+        }
+
+        private static bool TryParseVatRate(string? selectionText, out decimal rate)
+        {
+            rate = 0m;
+
+            if (string.IsNullOrWhiteSpace(selectionText))
+                return false;
+
+            var t = selectionText.Trim();
+
+            // Expect "20%" / "5%" / "0%"
+            if (t.EndsWith("%", StringComparison.Ordinal))
+                t = t.Substring(0, t.Length - 1).Trim();
+
+            if (!decimal.TryParse(t,
+                    System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var percent))
+                return false;
+
+            rate = percent / 100m;
+            return true;
+        }
+
+        private void RecalculateAddInvoiceTotals()
+        {
+            // Default: blank computed fields unless we have valid inputs.
+            NewInvoiceVatAmountText = "";
+            NewInvoiceGrossAmountText = "";
+
+            if (!TryParseMoney(NewInvoiceNetAmountText, out var net))
+                return;
+
+            var vatSelectionText = GetComboSelectionText(NewInvoiceVatRateText);
+            if (!TryParseVatRate(vatSelectionText, out var vatRate))
+                return;
+
+            var vat = Math.Round(net * vatRate, 2, MidpointRounding.AwayFromZero);
+            var gross = net + vat;
+
+            NewInvoiceVatAmountText = vat.ToString("0.00");
+            NewInvoiceGrossAmountText = gross.ToString("0.00");
+        }
+
+        private void UpdateAddInvoiceValidation()
+        {
+            var problems = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(NewInvoiceNumberText))
+                problems.Add("Invoice number is required.");
+
+            if (NewInvoiceSelectedProject == null)
+                problems.Add("Project is required.");
+
+            if (NewInvoiceSelectedProject != null && string.IsNullOrWhiteSpace(NewInvoiceDerivedCompanyName))
+                problems.Add("Company could not be derived from the selected project.");
+
+            if (!NewInvoiceDate.HasValue)
+                problems.Add("Invoice date is required.");
+
+            if (NewInvoiceDueDate == null)
+                problems.Add("Due date required.");
+
+            if (!TryParseMoney(NewInvoiceNetAmountText, out var net) || net <= 0m)
+                problems.Add("Net amount must be a number greater than 0 (e.g. 1200.00).");
+
+            var vatSelectionText = GetComboSelectionText(NewInvoiceVatRateText);
+            if (!TryParseVatRate(vatSelectionText, out _))
+                problems.Add("VAT rate must be selected.");
+
+            // Status should exist (we default it, but be explicit)
+            var statusText = GetComboSelectionText(NewInvoiceStatusText);
+            if (string.IsNullOrWhiteSpace(statusText))
+                problems.Add("Status must be selected.");
+
+            AddInvoiceValidationText = problems.Count == 0
+                ? "Ready to save."
+                : string.Join("\n", problems);
+        }
+
+        private void InitializeNewInvoice()
+        {
+            NewInvoiceDate = DateTime.Today;
+            NewInvoiceDueDate = null;
+
+            // Defaults
+            NewInvoiceVatRateText = "20%";
+            NewInvoiceStatusText = "Outstanding";
+
+            AddInvoiceStatusText = "";
+            AddInvoiceValidationText = "";
+
+            RecalculateAddInvoiceTotals();
+            UpdateAddInvoiceValidation();
+        }
+
+        private void ClearAddInvoiceForm_Click(object sender, RoutedEventArgs e)
+        {
+            ClearAddInvoiceForm(setStatusMessage: true);
+        }
+
+        private async void AddInvoice_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                AddInvoiceStatusText = "";
+                UpdateAddInvoiceValidation();
+
+                if (!string.Equals(AddInvoiceValidationText, "Ready to save.", StringComparison.Ordinal))
+                {
+                    AddInvoiceStatusText = "Fix the required fields before saving.";
+                    return;
+                }
+
+                if (NewInvoiceSelectedProject == null)
+                {
+                    AddInvoiceStatusText = "Project is required.";
+                    return;
+                }
+
+                if (!TryParseMoney(NewInvoiceNetAmountText, out var net) || net <= 0m)
+                {
+                    AddInvoiceStatusText = "Net amount must be > 0.";
+                    return;
+                }
+
+                var vatSelectionText = GetComboSelectionText(NewInvoiceVatRateText);
+                if (!TryParseVatRate(vatSelectionText, out var vatRate))
+                {
+                    AddInvoiceStatusText = "VAT rate must be selected.";
+                    return;
+                }
+
+                var statusText = GetComboSelectionText(NewInvoiceStatusText);
+                if (string.IsNullOrWhiteSpace(statusText))
+                    statusText = "Unpaid";
+
+                if (!NewInvoiceDate.HasValue)
+                {
+                    AddInvoiceStatusText = "Invoice date is required.";
+                    return;
+                }
+
+                if (!NewInvoiceDueDate.HasValue)
+                {
+                    AddInvoiceStatusText = "Due date is required.";
+                    return;
+                }
+
+                var dto = new CreateInvoiceRequestDto
+                {
+                    ProjectId = NewInvoiceSelectedProject.ProjectId,
+                    InvoiceNumber = NewInvoiceNumberText.Trim(),
+                    InvoiceDate = NewInvoiceDate.Value.Date,
+                    DueDate = NewInvoiceDueDate.Value.Date,
+                    NetAmount = net,
+                    VatRate = vatRate,
+                    Status = statusText.Trim(),
+                    Notes = string.IsNullOrWhiteSpace(NewInvoiceNotesText) ? null : NewInvoiceNotesText.Trim()
+                };
+
+                AddInvoiceStatusText = "Saving invoice...";
+                var created = await _api.CreateInvoiceAsync(dto);
+
+                AddInvoiceStatusText = $"Saved: {created.InvoiceNumber} ({created.CompanyName}) - £{created.GrossAmount:0.00}";
+
+                // Refresh invoices list + view without touching your filter logic:
+                Invoices = await _api.GetInvoicesAsync();
+                ApplyInvoiceFilter();
+
+                // Optional: clear form after save
+                ClearAddInvoiceForm(setStatusMessage: false);
+
+                SuggestNextInvoiceNumberIfEmpty();
+            }
+            catch (Exception ex)
+            {
+                AddInvoiceStatusText = ex.Message;
+            }
+        }
+
+        private void DeriveInvoiceCompanyFromProject()
+        {
+            NewInvoiceDerivedCompanyName = "";
+
+            var proj = NewInvoiceSelectedProject;
+            if (proj == null)
+                return;
+
+            // v1: derive directly from picklist (no reflection, no guessing)
+            NewInvoiceDerivedCompanyName = proj.CompanyName ?? "";
+        }
+
+        private void SuggestNextInvoiceNumberIfEmpty()
+        {
+            if (!string.IsNullOrWhiteSpace(NewInvoiceNumberText))
+                return;
+
+            if (Invoices == null || Invoices.Count == 0)
+                return;
+
+            var max = -1;
+
+            foreach (var inv in Invoices)
+            {
+                var s = inv.InvoiceNumber?.Trim();
+                if (string.IsNullOrWhiteSpace(s))
+                    continue;
+
+                // Take leading digits only (handles 0507a, 0507b, etc.)
+                int i = 0;
+                while (i < s.Length && char.IsDigit(s[i])) i++;
+
+                if (i == 0)
+                    continue;
+
+                var prefix = s.Substring(0, i);
+
+                if (int.TryParse(prefix, out var n))
+                {
+                    if (n > max) max = n;
+                }
+            }
+
+            if (max < 0)
+                return;
+
+            var next = max + 1;
+
+            // Keep your desired leading zeros (0500 style)
+            NewInvoiceNumberText = next.ToString("D4");
+
+            UpdateAddInvoiceValidation();
+        }
+
+        private void ClearAddInvoiceForm(bool setStatusMessage)
+        {
+            // Reset fields
+            NewInvoiceNumberText = "";
+            NewInvoiceDate = DateTime.Today;
+            NewInvoiceDueDate = null;
+
+            NewInvoiceSelectedProject = null;
+
+            NewInvoiceDerivedCompanyName = "";
+            NewInvoiceNetAmountText = "";
+            NewInvoiceNotesText = "";
+
+            // Default selections
+            NewInvoiceVatRateText = "20%";
+            NewInvoiceStatusText = "Outstanding";
+
+            RecalculateAddInvoiceTotals();
+            UpdateAddInvoiceValidation();
+            SuggestNextInvoiceNumberIfEmpty();
+
+            if (setStatusMessage)
+                AddInvoiceStatusText = "Cleared.";
+        }
     }
 }

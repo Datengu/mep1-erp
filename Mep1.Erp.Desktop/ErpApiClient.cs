@@ -361,5 +361,36 @@ namespace Mep1.Erp.Desktop
             var result = await _http.GetFromJsonAsync<List<CompanyListItemDto>>("api/companies");
             return result ?? new List<CompanyListItemDto>();
         }
+
+        public async Task<List<InvoiceProjectPicklistItemDto>> GetInvoiceProjectPicklistAsync()
+        {
+            var result = await _http.GetFromJsonAsync<List<InvoiceProjectPicklistItemDto>>("api/projects/picklist/invoices");
+            return result ?? new List<InvoiceProjectPicklistItemDto>();
+        }
+
+        public async Task<CreateInvoiceResponseDto> CreateInvoiceAsync(CreateInvoiceRequestDto dto)
+        {
+            var resp = await _http.PostAsJsonAsync("api/invoices", dto);
+
+            if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                var msg = await resp.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(msg)
+                    ? "An invoice with that number already exists."
+                    : msg);
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"API failed ({(int)resp.StatusCode}): {body}");
+            }
+
+            var created = await resp.Content.ReadFromJsonAsync<CreateInvoiceResponseDto>();
+            if (created == null) throw new InvalidOperationException("Create invoice response was empty.");
+
+            return created;
+        }
+
     }
 }

@@ -373,4 +373,25 @@ public class ProjectsController : ControllerBase
 
         return NoContent();
     }
+
+    // Used by Desktop "Add Invoice" to select a project and derive company
+    [HttpGet("picklist/invoices")]
+    public async Task<ActionResult<List<InvoiceProjectPicklistItemDto>>> GetInvoicePicklist()
+    {
+        var rows = await _db.Projects
+            .AsNoTracking()
+            .Where(p => p.IsRealProject && p.CompanyId != null)
+            .OrderBy(p => p.JobNameOrNumber)
+            .Select(p => new InvoiceProjectPicklistItemDto
+            {
+                ProjectId = p.Id,
+                JobNameOrNumber = p.JobNameOrNumber,
+
+                CompanyId = p.CompanyId!.Value,
+                CompanyName = p.CompanyEntity != null ? p.CompanyEntity.Name : ""
+            })
+            .ToListAsync();
+
+        return Ok(rows);
+    }
 }
