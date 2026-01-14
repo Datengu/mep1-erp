@@ -142,9 +142,11 @@ public class ProjectsController : ControllerBase
             JobNameOrNumber = job,
             CompanyId = company.Id,
             IsActive = dto.IsActive,
+            Category = "Project",
             IsRealProject = true,
             CompanyEntity = company
         };
+
 
         _db.Projects.Add(project);
         await _db.SaveChangesAsync();
