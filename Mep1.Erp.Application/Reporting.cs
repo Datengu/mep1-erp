@@ -200,11 +200,9 @@ namespace Mep1.Erp.Application
                 .OrderBy(d => d)
                 .FirstOrDefault();
 
-            // Active projects = projects that actually have timesheet entries
-            int activeProjects = db.TimesheetEntries
-                .Select(e => e.ProjectId)
-                .Distinct()
-                .Count();
+            // Active projects = real projects that are marked active
+            int activeProjects = db.Projects
+                .Count(p => p.IsActive && p.IsRealProject);
 
             DateTime? latestTimesheetDate = db.TimesheetEntries
                 .OrderByDescending(e => e.Date)

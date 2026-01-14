@@ -54,6 +54,7 @@
                     HorizontalAlignment="Right">
 
             <Button Content="Cancel"
+                    IsCancel="True"
                     Width="110"
                     Height="34"
                     Padding="12,6"
@@ -65,6 +66,7 @@
 
             <Button x:Name="LoginButton"
                     Content="Login"
+                    IsDefault="True"
                     Width="110"
                     Height="34"
                     Padding="12,6"
