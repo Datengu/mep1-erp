@@ -659,6 +659,14 @@ namespace Mep1.Erp.Importer
             Console.WriteLine("  Created " + created + " worker rate records.");
         }
 
+        static readonly HashSet<string> NonCompanyCodes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "HOL",
+            "SICK",
+            "TP",
+            "MEP1"
+        };
+
         private static void ImportProjectsFromJobSource(AppDbContext db, string jobSourcePath)
         {
             Console.WriteLine();
@@ -685,34 +693,54 @@ namespace Mep1.Erp.Importer
             int created = 0;
             int updated = 0;
 
+            // Cache existing companies by Code (normalized)
+            var companiesByCode = db.Companies
+                .AsNoTracking()
+                .ToDictionary(c => (c.Code ?? "").Trim().ToUpperInvariant(), c => c);
+
             for (int row = firstDataRow; row <= lastDataRow; row++)
             {
                 var jobName = sheet.Cell(row, 1).GetString().Trim(); // A: Job Name/No.
-                var company = sheet.Cell(row, 2).GetString().Trim(); // B: Company
 
                 if (string.IsNullOrWhiteSpace(jobName))
                     continue;
 
+                var companyRaw = sheet.Cell(row, 2).GetString().Trim();
+                var companyCode = (companyRaw ?? "").Trim().ToUpperInvariant();
+
+                int? companyId = null;
+
+                // Only create/link a real Company when it’s not one of the legacy pseudo-codes
+                if (!string.IsNullOrWhiteSpace(companyCode) && !NonCompanyCodes.Contains(companyCode))
+                {
+                    companyId = EnsureCompanyId(db, companiesByCode, companyCode);
+                }
+
                 if (existing.TryGetValue(jobName, out var proj))
                 {
-                    // Already have this project – update company if changed
-                    if (!string.Equals(proj.Company, company, StringComparison.Ordinal))
+                    //// Keep legacy string in sync (optional but useful for now)
+                    //if (!string.Equals((proj.Company ?? "").Trim(), companyCode, StringComparison.Ordinal))
+                    //{
+                    //    proj.Company = companyCode;
+                    //    updated++;
+                    //}
+
+                    if (proj.CompanyId != companyId)
                     {
-                        proj.Company = company;
+                        proj.CompanyId = companyId;
                         updated++;
                     }
                 }
                 else
                 {
-                    // New project / work item
                     var (category, isReal) = ClassifyJobName(jobName);
 
                     var project = new Project
                     {
                         JobNameOrNumber = jobName,
-                        Company = company,
 
-                        // NEW defaults
+                        CompanyId = companyId,      // nullable FK
+
                         Category = category,
                         IsRealProject = isReal,
                         IsActive = true
@@ -1328,6 +1356,7 @@ namespace Mep1.Erp.Importer
             }
         }
 
+        // Used once i think, might still need it
         private static void BackfillProjectClassification(AppDbContext db)
         {
             int changed = 0;
@@ -1350,6 +1379,33 @@ namespace Mep1.Erp.Importer
                 db.SaveChanges();
                 Console.WriteLine($"  Backfilled classification for {changed} projects.");
             }
+        }
+
+        private static int EnsureCompanyId(AppDbContext db, Dictionary<string, Company> byCode, string raw)
+        {
+            var code = (raw ?? "").Trim();
+
+            if (string.IsNullOrWhiteSpace(code))
+                throw new InvalidOperationException("CompanyCode code is required but was blank in import.");
+
+            // Normalize (optional but recommended)
+            code = code.ToUpperInvariant();
+
+            if (byCode.TryGetValue(code, out var existing))
+                return existing.Id;
+
+            var c = new Company
+            {
+                Code = code,
+                Name = code,
+                IsActive = true
+            };
+
+            db.Companies.Add(c);
+            db.SaveChanges(); // so we get Id
+
+            byCode[code] = c;
+            return c.Id;
         }
     }
 }

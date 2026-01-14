@@ -718,9 +718,26 @@
                                                 <TextBlock Text="Company"
                                                            Opacity="0.8"
                                                            Margin="0,0,0,4"/>
-                                                <TextBox Height="30"
-                                                         Text="{Binding NewProjectCompanyText, UpdateSourceTrigger=PropertyChanged}"
-                                                         ToolTip="Required"/>
+                                                <ComboBox Height="30"
+                                                          IsEditable="True"
+                                                          IsTextSearchEnabled="True"
+                                                          StaysOpenOnEdit="True"
+                                                          ItemsSource="{Binding Companies}"
+                                                          SelectedItem="{Binding SelectedCompany, Mode=TwoWay}"
+                                                          Text="{Binding NewProjectCompanyText, UpdateSourceTrigger=PropertyChanged}"
+                                                          TextSearch.TextPath="Code"
+                                                          ToolTip="Type a company code/name, or pick an existing one">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{Binding Code}" FontWeight="SemiBold"/>
+                                                                <TextBlock Text="  —  " Opacity="0.6"/>
+                                                                <TextBlock Text="{Binding Name}" Opacity="0.9"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+
                                             </StackPanel>
 
                                             <!-- Active -->

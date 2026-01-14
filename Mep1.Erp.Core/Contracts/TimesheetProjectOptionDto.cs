@@ -3,7 +3,7 @@
 public sealed record TimesheetProjectOptionDto(
     string JobKey,
     string Label,
-    string Company,
+    int? CompanyId,
     string Category,
     bool IsRealProject
 );

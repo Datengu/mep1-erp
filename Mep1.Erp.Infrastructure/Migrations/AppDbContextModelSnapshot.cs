@@ -110,6 +110,31 @@ namespace Mep1.Erp.Infrastructure.Migrations
                     b.ToTable("AuditLogs");
                 });
 
+            modelBuilder.Entity("Mep1.Erp.Core.Company", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Companies");
+                });
+
             modelBuilder.Entity("Mep1.Erp.Core.Invoice", b =>
                 {
                     b.Property<int>("Id")
@@ -193,9 +218,8 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Company")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
@@ -209,7 +233,9 @@ namespace Mep1.Erp.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("JobNameOrNumber", "Company");
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("JobNameOrNumber", "CompanyId");
 
                     b.ToTable("Projects");
                 });
@@ -452,6 +478,16 @@ namespace Mep1.Erp.Infrastructure.Migrations
                     b.Navigation("Project");
                 });
 
+            modelBuilder.Entity("Mep1.Erp.Core.Project", b =>
+                {
+                    b.HasOne("Mep1.Erp.Core.Company", "CompanyEntity")
+                        .WithMany("Projects")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CompanyEntity");
+                });
+
             modelBuilder.Entity("Mep1.Erp.Core.SupplierCost", b =>
                 {
                     b.HasOne("Mep1.Erp.Core.Project", "Project")
@@ -499,6 +535,11 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Worker");
+                });
+
+            modelBuilder.Entity("Mep1.Erp.Core.Company", b =>
+                {
+                    b.Navigation("Projects");
                 });
 
             modelBuilder.Entity("Mep1.Erp.Core.Project", b =>

@@ -61,7 +61,7 @@ public sealed class TechnicalDiaryPdfBuilder
                             header.Cell().Element(HeaderCell).Text("Date");
                             header.Cell().Element(HeaderCell).Text("Day");
                             header.Cell().Element(HeaderCell).AlignRight().Text("Hours");
-                            header.Cell().Element(HeaderCell).Text("Company");
+                            header.Cell().Element(HeaderCell).Text("CompanyCode");
                             header.Cell().Element(HeaderCell).Text("Code");
                             header.Cell().Element(HeaderCell).Text("Job Name/No.");
                             header.Cell().Element(HeaderCell).Text("Job Task Description");
@@ -79,7 +79,7 @@ public sealed class TechnicalDiaryPdfBuilder
                             table.Cell().Element(BodyCell).Text(e.Date.ToString("dd/MM/yyyy"));
                             table.Cell().Element(BodyCell).Text(e.Date.ToString("ddd"));
                             table.Cell().Element(BodyCell).AlignRight().Text(e.Hours.ToString("0.00"));
-                            table.Cell().Element(BodyCell).Text(e.ProjectCompany ?? "");
+                            table.Cell().Element(BodyCell).Text(e.ProjectCompanyCode ?? "");
                             table.Cell().Element(BodyCell).Text(e.Code ?? "");
                             table.Cell().Element(BodyCell).Text(e.JobKey ?? "");
                             table.Cell().Element(BodyCell).Text(e.TaskDescription ?? "");

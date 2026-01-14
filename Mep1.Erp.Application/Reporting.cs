@@ -385,7 +385,7 @@ namespace Mep1.Erp.Application
                 .Select(g =>
                 {
                     var proj = projectsById.TryGetValue(g.Key, out var p) ? p : null;
-                    var label = proj?.JobNameOrNumber ?? $"ProjectId {g.Key}";
+                    var label = proj?.JobNameOrNumber ?? $"Id {g.Key}";
                     var code = proj != null ? ProjectCodeHelpers.GetBaseProjectCode(proj.JobNameOrNumber) : null;
 
                     var hours = g.Sum(x => x.Hours);
@@ -427,7 +427,7 @@ namespace Mep1.Erp.Application
             return entries.Select(e =>
             {
                 var proj = projectsById.TryGetValue(e.ProjectId, out var p) ? p : null;
-                var label = proj?.JobNameOrNumber ?? $"ProjectId {e.ProjectId}";
+                var label = proj?.JobNameOrNumber ?? $"Id {e.ProjectId}";
                 var code = proj != null ? ProjectCodeHelpers.GetBaseProjectCode(proj.JobNameOrNumber) : null;
 
                 var cost = e.Hours * GetRateOn(e.Date);

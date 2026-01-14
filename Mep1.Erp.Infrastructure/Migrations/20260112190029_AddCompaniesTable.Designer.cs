@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Mep1.Erp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260101172837_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260112190029_AddCompaniesTable")]
+    partial class AddCompaniesTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -66,6 +66,76 @@ namespace Mep1.Erp.Infrastructure.Migrations
                     b.HasIndex("ProjectCode", "ApplicationSubmissionDate");
 
                     b.ToTable("ApplicationSchedules");
+                });
+
+            modelBuilder.Entity("Mep1.Erp.Core.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActorRole")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActorSource")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ActorWorkerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("OccurredUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Summary")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AuditLogs");
+                });
+
+            modelBuilder.Entity("Mep1.Erp.Core.CompanyCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Companies");
                 });
 
             modelBuilder.Entity("Mep1.Erp.Core.Invoice", b =>
@@ -155,6 +225,9 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
 
@@ -166,6 +239,8 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("JobNameOrNumber", "CompanyCode");
 
@@ -232,6 +307,10 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AreasJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("CcfRef")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -240,8 +319,17 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("Date")
                         .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DeletedByWorkerId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("EntryId")
                         .HasColumnType("INTEGER");
@@ -249,11 +337,27 @@ namespace Mep1.Erp.Infrastructure.Migrations
                     b.Property<decimal>("Hours")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LevelsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Id")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("TaskDescription")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdatedByWorkerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("WorkType")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("WorkerId")
@@ -269,6 +373,53 @@ namespace Mep1.Erp.Infrastructure.Migrations
                     b.ToTable("TimesheetEntries");
                 });
 
+            modelBuilder.Entity("Mep1.Erp.Core.TimesheetUser", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("MustChangePassword")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("PasswordChangedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Worker");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WorkerId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("TimesheetUsers", (string)null);
+                });
+
             modelBuilder.Entity("Mep1.Erp.Core.Worker", b =>
                 {
                     b.Property<int>("Id")
@@ -279,8 +430,17 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SignatureCapturedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SignatureName")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -323,6 +483,16 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .HasForeignKey("Id");
 
                     b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("Mep1.Erp.Core.Project", b =>
+                {
+                    b.HasOne("Mep1.Erp.Core.CompanyCode", "CompanyEntity")
+                        .WithMany("Projects")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CompanyEntity");
                 });
 
             modelBuilder.Entity("Mep1.Erp.Core.SupplierCost", b =>
@@ -372,6 +542,11 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Worker");
+                });
+
+            modelBuilder.Entity("Mep1.Erp.Core.CompanyCode", b =>
+                {
+                    b.Navigation("Projects");
                 });
 
             modelBuilder.Entity("Mep1.Erp.Core.Project", b =>

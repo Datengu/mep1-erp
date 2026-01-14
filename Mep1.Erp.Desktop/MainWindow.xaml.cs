@@ -222,6 +222,9 @@ namespace Mep1.Erp.Desktop
             }
         }
 
+        public ObservableCollection<CompanyListItemDto> Companies { get; } = new();
+        public CompanyListItemDto? SelectedCompany { get; set; }
+
         private List<PeopleSummaryRowDto> _people = new();
         public List<PeopleSummaryRowDto> People
         {
@@ -743,6 +746,7 @@ namespace Mep1.Erp.Desktop
             EnsureInvoiceView();
             EnsureProjectView();
             LoadSuppliers();
+            await LoadCompaniesAsync();
             EnsureInitialSelections();
         }
 
@@ -838,6 +842,15 @@ namespace Mep1.Erp.Desktop
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+        }
+
+        private async Task LoadCompaniesAsync()
+        {
+            Companies.Clear();
+
+            var companies = await _api.GetCompaniesAsync();
+            foreach (var c in companies)
+                Companies.Add(c);
         }
 
         // ---------------------------------------------
@@ -2250,7 +2263,7 @@ namespace Mep1.Erp.Desktop
         {
             if (!CanAddProject)
             {
-                AddProjectStatusText = "Please fill in Prefix, Number, Job name, and Company before adding the project.";
+                AddProjectStatusText = "Please fill in Prefix, Number, Job name, and CompanyCode before adding the project.";
                 OnPropertyChanged(nameof(AddProjectStatusText));
                 return;
             }
@@ -2271,7 +2284,7 @@ namespace Mep1.Erp.Desktop
                 var req = new CreateProjectRequestDto
                 {
                     JobNameOrNumber = job,
-                    Company = string.IsNullOrWhiteSpace(company) ? null : company,
+                    CompanyCode = string.IsNullOrWhiteSpace(company) ? null : company,
                     IsActive = NewProjectIsActive
                 };
 

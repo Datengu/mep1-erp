@@ -2,8 +2,9 @@
 {
     public sealed class CreateProjectRequestDto
     {
-        public string JobNameOrNumber { get; init; } = "";
-        public string? Company { get; init; }
-        public bool IsActive { get; init; } = true;
+        public string JobNameOrNumber { get; set; } = "";
+        public string? CompanyCode { get; set; }
+        public string? CompanyName { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 }

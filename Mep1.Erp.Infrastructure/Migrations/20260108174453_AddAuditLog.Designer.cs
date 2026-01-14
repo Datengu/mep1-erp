@@ -163,7 +163,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("ProjectId")
+                    b.Property<int?>("Id")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Status")
@@ -181,7 +181,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
 
                     b.HasIndex("ProjectCode");
 
-                    b.HasIndex("ProjectId");
+                    b.HasIndex("Id");
 
                     b.ToTable("Invoices");
                 });
@@ -196,7 +196,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Company")
+                    b.Property<string>("CompanyCode")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -212,7 +212,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("JobNameOrNumber", "Company");
+                    b.HasIndex("JobNameOrNumber", "CompanyCode");
 
                     b.ToTable("Projects");
                 });
@@ -256,7 +256,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
                     b.Property<string>("Note")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("ProjectId")
+                    b.Property<int>("Id")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("SupplierId")
@@ -266,7 +266,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
 
                     b.HasIndex("SupplierId");
 
-                    b.HasIndex("ProjectId", "SupplierId", "Date");
+                    b.HasIndex("Id", "SupplierId", "Date");
 
                     b.ToTable("SupplierCosts");
                 });
@@ -314,7 +314,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("ProjectId")
+                    b.Property<int>("Id")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("TaskDescription")
@@ -336,7 +336,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProjectId");
+                    b.HasIndex("Id");
 
                     b.HasIndex("WorkerId", "EntryId")
                         .IsUnique();
@@ -451,7 +451,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
                 {
                     b.HasOne("Mep1.Erp.Core.Project", "Project")
                         .WithMany()
-                        .HasForeignKey("ProjectId");
+                        .HasForeignKey("Id");
 
                     b.Navigation("Project");
                 });
@@ -460,7 +460,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
                 {
                     b.HasOne("Mep1.Erp.Core.Project", "Project")
                         .WithMany("SupplierCosts")
-                        .HasForeignKey("ProjectId")
+                        .HasForeignKey("Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -479,7 +479,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
                 {
                     b.HasOne("Mep1.Erp.Core.Project", "Project")
                         .WithMany("TimesheetEntries")
-                        .HasForeignKey("ProjectId")
+                        .HasForeignKey("Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

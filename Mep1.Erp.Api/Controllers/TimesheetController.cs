@@ -79,7 +79,7 @@ public sealed class TimesheetController : ControllerBase
             .Select(p => new TimesheetProjectOptionDto(
                 p.JobNameOrNumber,
                 p.JobNameOrNumber,
-                p.Company,
+                p.CompanyId,
                 p.Category,
                 p.IsRealProject
             ))
@@ -232,7 +232,7 @@ public sealed class TimesheetController : ControllerBase
                 e.Hours,
                 e.Code,
                 JobKey = e.Project.JobNameOrNumber,
-                ProjectCompany = e.Project.Company,
+                ProjectCompanyCode = e.Project.CompanyEntity != null ? e.Project.CompanyEntity.Code : null,
                 ProjectCategory = e.Project.Category,
                 e.Project.IsRealProject,
                 e.TaskDescription,
@@ -252,7 +252,7 @@ public sealed class TimesheetController : ControllerBase
                 e.Hours,
                 e.Code,
                 e.JobKey,
-                e.ProjectCompany,
+                e.ProjectCompanyCode,
                 e.ProjectCategory,
                 e.IsRealProject,
                 e.TaskDescription,

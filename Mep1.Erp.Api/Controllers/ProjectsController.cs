@@ -1,11 +1,13 @@
-﻿using Mep1.Erp.Application;
+﻿using DocumentFormat.OpenXml.Drawing;
+using Mep1.Erp.Api.Security;
+using Mep1.Erp.Api.Services;
+using Mep1.Erp.Application;
 using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
-using Mep1.Erp.Api.Services;
-using Mep1.Erp.Api.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace Mep1.Erp.Api.Controllers;
 
@@ -51,12 +53,15 @@ public class ProjectsController : ControllerBase
         var projects = await _db.Projects
             .AsNoTracking()
             .OrderBy(p => p.JobNameOrNumber)
-            .Select(p => new
+            .Select(p => new 
             {
-                p.Id,
-                p.JobNameOrNumber,
-                p.Company,
-                p.IsActive
+                Id = p.Id,
+                JobNameOrNumber = p.JobNameOrNumber,
+                IsActive = p.IsActive,
+
+                CompanyId = p.CompanyId,
+                CompanyCode = p.CompanyEntity != null ? p.CompanyEntity.Code : null,
+                CompanyName = p.CompanyEntity != null ? p.CompanyEntity.Name : null
             })
             .ToListAsync();
 
@@ -102,23 +107,43 @@ public class ProjectsController : ControllerBase
         if (string.IsNullOrWhiteSpace(job))
             return BadRequest("Job name / number is required.");
 
-        var company = (dto.Company ?? "").Trim();
+        var companyCode = (dto.CompanyCode ?? "").Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(companyCode))
+            return BadRequest("CompanyCode is required.");
 
-        // Conservative uniqueness check (case-insensitive)
-        var jobLower = job.ToLower();
-        var exists = await _db.Projects
-            .AsNoTracking()
-            .AnyAsync(p => p.JobNameOrNumber.ToLower() == jobLower);
+        // Optional: reject legacy pseudo-companies at API level too
+        // (you already do it in importer, but this prevents UI creating them)
+        var nonCompanyCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "HOL", "SICK", "TP", "MEP1" };
+        if (nonCompanyCodes.Contains(companyCode))
+            return BadRequest($"'{companyCode}' is not a real company code.");
 
+        // Ensure Company exists (create if missing)
+        var company = await _db.Companies.SingleOrDefaultAsync(c => c.Code == companyCode);
+        if (company == null)
+        {
+            company = new Company
+            {
+                Code = companyCode,
+                Name = companyCode,   // you can improve this later
+                IsActive = true
+            };
+
+            _db.Companies.Add(company);
+            await _db.SaveChangesAsync();
+        }
+
+        // Uniqueness check (keep your old behaviour)
+        var exists = await _db.Projects.AnyAsync(p => p.JobNameOrNumber == job);
         if (exists)
-            return Conflict("A project with that job name / number already exists.");
+            return Conflict($"Project '{job}' already exists.");
 
         var project = new Project
         {
             JobNameOrNumber = job,
-            Company = company,
+            CompanyId = company.Id,
             IsActive = dto.IsActive,
-            IsRealProject = true
+            IsRealProject = true,
+            CompanyEntity = company
         };
 
         _db.Projects.Add(project);
@@ -132,15 +157,18 @@ public class ProjectsController : ControllerBase
             action: "Projects.Create",
             entityType: "Project",
             entityId: project.Id.ToString(),
-            summary: $"Job={project.JobNameOrNumber}, Company={project.Company}, IsActive={project.IsActive}"
+            summary: $"Job={project.JobNameOrNumber}, CompanyId={project.CompanyId}, CompanyName={project.CompanyEntity.Name}, IsActive={project.IsActive}"
         );
 
         var resp = new CreateProjectResponseDto
         {
             Id = project.Id,
             JobNameOrNumber = project.JobNameOrNumber,
-            Company = project.Company,
-            IsActive = project.IsActive
+            IsActive = project.IsActive,
+
+            CompanyId = project.CompanyId,
+            CompanyCode = company.Code,
+            CompanyName = company.Name
         };
 
         // We don't have a dedicated GET-by-id route here, so use Created with a reasonable location

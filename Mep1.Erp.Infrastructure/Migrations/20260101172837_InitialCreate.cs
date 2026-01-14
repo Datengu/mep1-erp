@@ -216,17 +216,17 @@ namespace Mep1.Erp.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Invoices_ProjectId",
                 table: "Invoices",
-                column: "ProjectId");
+                column: "Id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Projects_JobNameOrNumber_Company",
                 table: "Projects",
-                columns: new[] { "JobNameOrNumber", "Company" });
+                columns: new[] { "JobNameOrNumber", "CompanyCode" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_SupplierCosts_ProjectId_SupplierId_Date",
                 table: "SupplierCosts",
-                columns: new[] { "ProjectId", "SupplierId", "Date" });
+                columns: new[] { "Id", "SupplierId", "Date" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_SupplierCosts_SupplierId",
@@ -242,7 +242,7 @@ namespace Mep1.Erp.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_TimesheetEntries_ProjectId",
                 table: "TimesheetEntries",
-                column: "ProjectId");
+                column: "Id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TimesheetEntries_WorkerId_EntryId",

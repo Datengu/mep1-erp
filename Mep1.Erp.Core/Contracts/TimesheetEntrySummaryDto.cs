@@ -9,7 +9,7 @@ public sealed record TimesheetEntrySummaryDto(
     decimal Hours,
     string Code,
     string JobKey,
-    string ProjectCompany,
+    string? ProjectCompanyCode,
     string ProjectCategory,
     bool IsRealProject,
     string TaskDescription,

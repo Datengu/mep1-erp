@@ -26,6 +26,7 @@ namespace Mep1.Erp.Infrastructure
         public DbSet<ApplicationSchedule> ApplicationSchedules => Set<ApplicationSchedule>();
         public DbSet<TimesheetUser> TimesheetUsers => Set<TimesheetUser>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+        public DbSet<Company> Companies => Set<Company>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -56,7 +57,21 @@ namespace Mep1.Erp.Infrastructure
                 .IsUnique();
 
             modelBuilder.Entity<Project>()
-                .HasIndex(p => new { p.JobNameOrNumber, p.Company });
+                .HasIndex(p => new { p.JobNameOrNumber, p.CompanyId });
+
+            modelBuilder.Entity<Project>()
+                .HasOne(p => p.CompanyEntity)
+                .WithMany(c => c.Projects)
+                .HasForeignKey(p => p.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Company>()
+                .HasIndex(c => c.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<Company>()
+                .Property(c => c.Code)
+                .IsRequired();
 
             modelBuilder.Entity<TimesheetEntry>()
                 .HasIndex(e => new { e.WorkerId, e.EntryId })

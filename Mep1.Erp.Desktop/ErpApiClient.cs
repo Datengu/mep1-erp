@@ -355,5 +355,11 @@ namespace Mep1.Erp.Desktop
 
             return created;
         }
+
+        public async Task<List<CompanyListItemDto>> GetCompaniesAsync()
+        {
+            var result = await _http.GetFromJsonAsync<List<CompanyListItemDto>>("api/companies");
+            return result ?? new List<CompanyListItemDto>();
+        }
     }
 }

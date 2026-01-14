@@ -57,11 +57,11 @@ else
 
                             <td>
                                 <div><strong>@e.JobKey</strong></div>
-                                @if (!string.IsNullOrWhiteSpace(e.ProjectCompany) || !string.IsNullOrWhiteSpace(e.ProjectCategory))
+                                @if (!string.IsNullOrWhiteSpace(e.ProjectCompanyCode) || !string.IsNullOrWhiteSpace(e.ProjectCategory))
                                 {
                                     <div style="font-size:0.9em; opacity:0.85;">
-                                        @e.ProjectCompany
-                                        @if (!string.IsNullOrWhiteSpace(e.ProjectCompany) && !string.IsNullOrWhiteSpace(e.ProjectCategory))
+                                        @(e.ProjectCompanyCode ?? "-")
+                                        @if (!string.IsNullOrWhiteSpace(e.ProjectCompanyCode) && !string.IsNullOrWhiteSpace(e.ProjectCategory))
                                         {
                                             <text>•</text>
                                         }

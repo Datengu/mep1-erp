@@ -19,12 +19,29 @@ namespace Mep1.Erp.Core
         public bool IsActive { get; set; } = true;
     }
 
+    public class Company
+    {
+        public int Id { get; set; }
+
+        // Your current values look like short codes: "PAV", "RDX", "ESG", etc.
+        public string Code { get; set; } = "";
+
+        // Optional nice-to-have (can be same as Code for now)
+        public string Name { get; set; } = "";
+
+        public bool IsActive { get; set; } = true;
+
+        public List<Project> Projects { get; set; } = new();
+    }
+
     public class Project
     {
         public int Id { get; set; }
 
         public string JobNameOrNumber { get; set; } = ""; // e.g. "PN0049 - Biggin Hill"
-        public string Company { get; set; } = "";         // e.g. "PAV"
+
+        public int? CompanyId { get; set; }
+        public Company CompanyEntity { get; set; }
 
         public string Category { get; set; } = "Uncategorised";
         public bool IsRealProject { get; set; } = true;
