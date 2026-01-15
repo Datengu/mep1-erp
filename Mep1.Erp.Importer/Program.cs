@@ -1,4 +1,5 @@
 ﻿using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Math;
 using Mep1.Erp.Application;
 using Mep1.Erp.Core;
 using Mep1.Erp.Infrastructure;
@@ -300,6 +301,49 @@ namespace Mep1.Erp.Importer
 
             // Use migrations now (not EnsureCreated)
             db.Database.Migrate();
+
+            // Bootstrap: ensure at least one TimesheetUser exists on a fresh database
+            if (!db.TimesheetUsers.Any())
+            {
+                const string username = "Jason Dean";
+                const string tempPassword = "ChangeMe123!";
+
+                // Find-or-create the owner worker (Jason Dean) by a stable identifier.
+                // Do NOT assume WorkerId == 1, because IDs depend on insert order.
+                var ownerWorker = db.Workers.SingleOrDefault(w => w.Name == "Jason Dean");
+                if (ownerWorker == null)
+                {
+                    ownerWorker = new Worker
+                    {
+                        Name = "Jason Dean",
+                        Initials = "JWD",
+                        IsActive = true
+                    };
+
+                    db.Workers.Add(ownerWorker);
+                    db.SaveChanges();
+                }
+
+                var passwordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword);
+
+                db.TimesheetUsers.Add(new TimesheetUser
+                {
+                    Username = username,
+                    PasswordHash = passwordHash,
+                    WorkerId = ownerWorker.Id,
+                    Role = TimesheetUserRole.Owner,
+                    MustChangePassword = true,
+                    IsActive = true
+                });
+
+                db.SaveChanges();
+
+                Console.WriteLine("Seeded initial OWNER TimesheetUser:");
+                Console.WriteLine("  Username: Jason Dean");
+                Console.WriteLine("  Temp password: ChangeMe123!");
+                Console.WriteLine("  MustChangePassword = true");
+                Console.WriteLine($"  Linked worker: {ownerWorker.Name} (Id={ownerWorker.Id})");
+            }
 
             // Import worker rate history from Finance Sheet
             var financeSheetPath = GetFinanceSheetPathFromConfig();
