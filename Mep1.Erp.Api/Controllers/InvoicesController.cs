@@ -213,5 +213,179 @@ namespace Mep1.Erp.Api.Controllers
 
             return Created($"api/invoices/{entity.Id}", resp);
         }
+
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<InvoiceDetailsDto>> GetById(int id)
+        {
+            var guard = RequireAdminKey();
+            if (guard != null) return guard;
+
+            var invoice = await _db.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (invoice == null)
+                return NotFound($"Invoice {id} not found.");
+
+            // If invoice has ProjectId, prefer canonical info from Projects/Companies.
+            string? companyName = invoice.ClientName;
+            string? jobName = invoice.JobName;
+            string projectCode = invoice.ProjectCode;
+
+            if (invoice.ProjectId.HasValue)
+            {
+                var project = await _db.Projects
+                    .Include(p => p.CompanyEntity)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == invoice.ProjectId.Value);
+
+                if (project != null)
+                {
+                    jobName = project.JobNameOrNumber;
+                    projectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
+                    companyName = project.CompanyEntity?.Name ?? companyName;
+                }
+            }
+
+            var vatRate = invoice.VatRate ?? 0.20m;
+            var (vatAmount, grossAmount) = ComputeVat(invoice.NetAmount, vatRate);
+
+            var status = CleanStatus(invoice.Status);
+            var isPaid = string.Equals(status, "Paid", StringComparison.OrdinalIgnoreCase);
+
+            var dto = new InvoiceDetailsDto
+            {
+                Id = invoice.Id,
+                InvoiceNumber = invoice.InvoiceNumber,
+
+                ProjectId = invoice.ProjectId,
+                ProjectCode = projectCode,
+                JobName = jobName,
+                CompanyName = companyName,
+
+                InvoiceDate = invoice.InvoiceDate,
+                DueDate = invoice.DueDate,
+
+                NetAmount = invoice.NetAmount,
+                VatRate = vatRate,
+                VatAmount = vatAmount,
+                GrossAmount = grossAmount,
+
+                PaymentAmount = invoice.PaymentAmount,
+                PaidDate = invoice.PaidDate,
+
+                Status = status,
+                IsPaid = isPaid,
+
+                FilePath = invoice.FilePath,
+                Notes = invoice.Notes
+            };
+
+            return Ok(dto);
+        }
+
+        [HttpPut("{id:int}")]
+        public async Task<ActionResult<UpdateInvoiceResponseDto>> Update(int id, [FromBody] UpdateInvoiceRequestDto dto)
+        {
+            var guard = RequireAdminKey();
+            if (guard != null) return guard;
+
+            var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.Id == id);
+            if (invoice == null)
+                return NotFound($"Invoice {id} not found.");
+
+            // Validate
+            if (dto.NetAmount <= 0m)
+                return BadRequest("Net amount must be > 0.");
+
+            if (dto.VatRate < 0m || dto.VatRate > 1m)
+                return BadRequest("VAT rate must be between 0 and 1 (e.g. 0.2 for 20%).");
+
+            // Optional project relink
+            if (dto.ProjectId.HasValue)
+            {
+                var project = await _db.Projects
+                    .Include(p => p.CompanyEntity)
+                    .FirstOrDefaultAsync(p => p.Id == dto.ProjectId.Value);
+
+                if (project == null)
+                    return BadRequest("Project not found.");
+
+                if (project.CompanyId == null || project.CompanyEntity == null)
+                    return BadRequest("Selected project has no company linked.");
+
+                invoice.ProjectId = project.Id;
+                invoice.ProjectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
+                invoice.JobName = project.JobNameOrNumber;
+                invoice.ClientName = project.CompanyEntity.Name;
+            }
+
+            invoice.InvoiceDate = dto.InvoiceDate.Date;
+            invoice.DueDate = dto.DueDate?.Date;
+
+            invoice.NetAmount = dto.NetAmount;
+            invoice.VatRate = dto.VatRate;
+
+            var (vatAmount, grossAmount) = ComputeVat(dto.NetAmount, dto.VatRate);
+            invoice.VatAmount = vatAmount;
+            invoice.GrossAmount = grossAmount;
+
+            var status = CleanStatus(dto.Status);
+            invoice.Status = status;
+            invoice.IsPaid = string.Equals(status, "Paid", StringComparison.OrdinalIgnoreCase);
+
+            invoice.PaymentAmount = dto.PaymentAmount;
+            invoice.PaidDate = dto.PaidDate?.Date;
+
+            invoice.FilePath = string.IsNullOrWhiteSpace(dto.FilePath) ? null : dto.FilePath.Trim();
+            invoice.Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim();
+
+            await _db.SaveChangesAsync();
+
+            var resp = new UpdateInvoiceResponseDto
+            {
+                Id = invoice.Id,
+                InvoiceNumber = invoice.InvoiceNumber,
+
+                ProjectId = invoice.ProjectId,
+                ProjectCode = invoice.ProjectCode,
+                JobName = invoice.JobName,
+                CompanyName = invoice.ClientName,
+
+                InvoiceDate = invoice.InvoiceDate,
+                DueDate = invoice.DueDate,
+
+                NetAmount = invoice.NetAmount,
+                VatRate = invoice.VatRate ?? 0.20m,
+                VatAmount = invoice.VatAmount ?? 0m,
+                GrossAmount = invoice.GrossAmount ?? invoice.NetAmount,
+
+                PaymentAmount = invoice.PaymentAmount,
+                PaidDate = invoice.PaidDate,
+
+                Status = invoice.Status,
+                IsPaid = invoice.IsPaid,
+
+                FilePath = invoice.FilePath,
+                Notes = invoice.Notes
+            };
+
+            return Ok(resp);
+        }
+
+        private static (decimal VatAmount, decimal GrossAmount) ComputeVat(decimal net, decimal vatRate)
+        {
+            // Accounting-friendly rounding
+            var vatAmount = Math.Round(net * vatRate, 2, MidpointRounding.AwayFromZero);
+            var gross = net + vatAmount;
+            return (vatAmount, gross);
+        }
+
+        private static string CleanStatus(string? s)
+        {
+            s = (s ?? "").Trim();
+            return string.IsNullOrWhiteSpace(s) ? "Outstanding" : s;
+        }
+
     }
 }

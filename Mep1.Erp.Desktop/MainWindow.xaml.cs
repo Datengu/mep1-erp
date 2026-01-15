@@ -642,6 +642,164 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _invoiceProjectPicklist, value, nameof(InvoiceProjectPicklist));
         }
 
+        private InvoiceListEntryDto? _selectedInvoiceListItem;
+        public InvoiceListEntryDto? SelectedInvoiceListItem
+        {
+            get => _selectedInvoiceListItem;
+            set
+            {
+                if (SetField(ref _selectedInvoiceListItem, value, nameof(SelectedInvoiceListItem)))
+                {
+                    UpdateEditInvoiceValidation();
+                    UpdateEditInvoiceSelectedSummary();
+                }
+            }
+        }
+
+        private int? _editInvoiceLoadedId;
+        public int? EditInvoiceLoadedId
+        {
+            get => _editInvoiceLoadedId;
+            set => SetField(ref _editInvoiceLoadedId, value, nameof(EditInvoiceLoadedId));
+        }
+
+        private string _editInvoiceSelectedSummaryText = "No invoice selected.";
+        public string EditInvoiceSelectedSummaryText
+        {
+            get => _editInvoiceSelectedSummaryText;
+            set => SetField(ref _editInvoiceSelectedSummaryText, value, nameof(EditInvoiceSelectedSummaryText));
+        }
+
+        private string _editInvoiceNumberText = "";
+        public string EditInvoiceNumberText
+        {
+            get => _editInvoiceNumberText;
+            set => SetField(ref _editInvoiceNumberText, value, nameof(EditInvoiceNumberText));
+        }
+
+        private string _editInvoiceStatusText = "Outstanding";
+        public string EditInvoiceStatusText
+        {
+            get => _editInvoiceStatusText;
+            set
+            {
+                if (SetField(ref _editInvoiceStatusText, value, nameof(EditInvoiceStatusText)))
+                {
+                    UpdateEditInvoiceValidation();
+                }
+            }
+        }
+
+        private DateTime? _editInvoiceDate = DateTime.Today;
+        public DateTime? EditInvoiceDate
+        {
+            get => _editInvoiceDate;
+            set
+            {
+                if (SetField(ref _editInvoiceDate, value, nameof(EditInvoiceDate)))
+                {
+                    UpdateEditInvoiceValidation();
+                }
+            }
+        }
+
+        private DateTime? _editInvoiceDueDate;
+        public DateTime? EditInvoiceDueDate
+        {
+            get => _editInvoiceDueDate;
+            set
+            {
+                if (SetField(ref _editInvoiceDueDate, value, nameof(EditInvoiceDueDate)))
+                {
+                    UpdateEditInvoiceValidation();
+                }
+            }
+        }
+
+        private InvoiceProjectPicklistItemDto? _editInvoiceSelectedProject;
+        public InvoiceProjectPicklistItemDto? EditInvoiceSelectedProject
+        {
+            get => _editInvoiceSelectedProject;
+            set
+            {
+                if (SetField(ref _editInvoiceSelectedProject, value, nameof(EditInvoiceSelectedProject)))
+                {
+                    EditInvoiceDerivedCompanyName = value?.CompanyName ?? "";
+                    UpdateEditInvoiceValidation();
+                }
+            }
+        }
+
+        private string _editInvoiceDerivedCompanyName = "";
+        public string EditInvoiceDerivedCompanyName
+        {
+            get => _editInvoiceDerivedCompanyName;
+            set => SetField(ref _editInvoiceDerivedCompanyName, value, nameof(EditInvoiceDerivedCompanyName));
+        }
+
+        private string _editInvoiceNetAmountText = "";
+        public string EditInvoiceNetAmountText
+        {
+            get => _editInvoiceNetAmountText;
+            set
+            {
+                if (SetField(ref _editInvoiceNetAmountText, value, nameof(EditInvoiceNetAmountText)))
+                {
+                    RecalculateEditInvoiceTotals();
+                    UpdateEditInvoiceValidation();
+                }
+            }
+        }
+
+        private string _editInvoiceVatRateText = "20%";
+        public string EditInvoiceVatRateText
+        {
+            get => _editInvoiceVatRateText;
+            set
+            {
+                if (SetField(ref _editInvoiceVatRateText, value, nameof(EditInvoiceVatRateText)))
+                {
+                    RecalculateEditInvoiceTotals();
+                    UpdateEditInvoiceValidation();
+                }
+            }
+        }
+
+        private string _editInvoiceVatAmountText = "0.00";
+        public string EditInvoiceVatAmountText
+        {
+            get => _editInvoiceVatAmountText;
+            set => SetField(ref _editInvoiceVatAmountText, value, nameof(EditInvoiceVatAmountText));
+        }
+
+        private string _editInvoiceGrossAmountText = "0.00";
+        public string EditInvoiceGrossAmountText
+        {
+            get => _editInvoiceGrossAmountText;
+            set => SetField(ref _editInvoiceGrossAmountText, value, nameof(EditInvoiceGrossAmountText));
+        }
+
+        private string _editInvoiceNotesText = "";
+        public string EditInvoiceNotesText
+        {
+            get => _editInvoiceNotesText;
+            set => SetField(ref _editInvoiceNotesText, value, nameof(EditInvoiceNotesText));
+        }
+
+        private string _editInvoiceStatusBarText = "Select an invoice and click Load selected.";
+        public string EditInvoiceStatusBarText
+        {
+            get => _editInvoiceStatusBarText;
+            set => SetField(ref _editInvoiceStatusBarText, value, nameof(EditInvoiceStatusBarText));
+        }
+
+        private string _editInvoiceValidationText = "";
+        public string EditInvoiceValidationText
+        {
+            get => _editInvoiceValidationText;
+            set => SetField(ref _editInvoiceValidationText, value, nameof(EditInvoiceValidationText));
+        }
+
         private List<DueScheduleEntryDto> _dueSchedule = new();
         public List<DueScheduleEntryDto> DueSchedule
         {
@@ -2801,6 +2959,196 @@ namespace Mep1.Erp.Desktop
 
             if (setStatusMessage)
                 AddInvoiceStatusText = "Cleared.";
+        }
+
+        private void UpdateEditInvoiceSelectedSummary()
+        {
+            if (SelectedInvoiceListItem == null)
+            {
+                EditInvoiceSelectedSummaryText = "No invoice selected.";
+                return;
+            }
+
+            EditInvoiceSelectedSummaryText = $"{SelectedInvoiceListItem.InvoiceNumber} - {SelectedInvoiceListItem.ClientName} ({SelectedInvoiceListItem.JobName})";
+        }
+
+        private decimal ParseVatRateText(string vatText)
+        {
+            if (string.IsNullOrWhiteSpace(vatText)) return 0.20m;
+            vatText = vatText.Trim().Replace("%", "");
+            if (decimal.TryParse(vatText, out var pct))
+                return pct / 100m;
+            return 0.20m;
+        }
+
+        private void RecalculateEditInvoiceTotals()
+        {
+            if (!TryParseMoney(EditInvoiceNetAmountText, out var net) || net <= 0m)
+            {
+                EditInvoiceVatAmountText = "0.00";
+                EditInvoiceGrossAmountText = "0.00";
+                return;
+            }
+
+            var vatRate = ParseVatRateText(EditInvoiceVatRateText);
+            var vat = Math.Round(net * vatRate, 2, MidpointRounding.AwayFromZero);
+            var gross = net + vat;
+
+            EditInvoiceVatAmountText = vat.ToString("0.00");
+            EditInvoiceGrossAmountText = gross.ToString("0.00");
+        }
+
+        private void UpdateEditInvoiceValidation()
+        {
+            var issues = new List<string>();
+
+            if (EditInvoiceLoadedId == null)
+                issues.Add("Load an invoice first.");
+
+            if (EditInvoiceDate == null)
+                issues.Add("Invoice date is required.");
+
+            if (!TryParseMoney(EditInvoiceNetAmountText, out var net) || net <= 0m)
+                issues.Add("Net amount must be a valid number > 0.");
+
+            if (EditInvoiceSelectedProject == null)
+                issues.Add("Project is required.");
+
+            EditInvoiceValidationText = issues.Count == 0
+                ? "Ready to save."
+                : string.Join(Environment.NewLine, issues);
+        }
+
+        private async void LoadSelectedInvoice_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedInvoiceListItem == null)
+            {
+                EditInvoiceStatusBarText = "Select an invoice in the list first.";
+                return;
+            }
+
+            try
+            {
+                EditInvoiceStatusBarText = "Loading invoice...";
+                var dto = await _api.GetInvoiceByIdAsync(SelectedInvoiceListItem.Id);
+
+                EditInvoiceLoadedId = dto.Id;
+                EditInvoiceNumberText = dto.InvoiceNumber;
+
+                EditInvoiceStatusText = string.IsNullOrWhiteSpace(dto.Status) ? "Outstanding" : dto.Status;
+                EditInvoiceDate = dto.InvoiceDate;
+                EditInvoiceDueDate = dto.DueDate;
+
+                // Select project in picklist if possible
+                if (dto.ProjectId.HasValue)
+                    EditInvoiceSelectedProject = InvoiceProjectPicklist?.FirstOrDefault(p => p.ProjectId == dto.ProjectId.Value);
+                else
+                    EditInvoiceSelectedProject = null;
+
+                EditInvoiceDerivedCompanyName = dto.CompanyName ?? "";
+
+                EditInvoiceNetAmountText = dto.NetAmount.ToString("0.00");
+                EditInvoiceVatRateText = $"{(dto.VatRate * 100m):0}%";
+                RecalculateEditInvoiceTotals();
+
+                EditInvoiceNotesText = dto.Notes ?? "";
+
+                EditInvoiceStatusBarText = "Loaded. Make changes and click Save Changes.";
+                UpdateEditInvoiceValidation();
+            }
+            catch (Exception ex)
+            {
+                EditInvoiceStatusBarText = $"Load failed: {ex.Message}";
+            }
+        }
+
+        private async void SaveInvoiceEdits_Click(object sender, RoutedEventArgs e)
+        {
+            if (EditInvoiceLoadedId == null)
+            {
+                EditInvoiceStatusBarText = "Nothing loaded. Select an invoice and click Load selected.";
+                return;
+            }
+
+            UpdateEditInvoiceValidation();
+            if (EditInvoiceValidationText != "Ready to save.")
+            {
+                EditInvoiceStatusBarText = "Fix validation issues before saving.";
+                return;
+            }
+
+            if (!TryParseMoney(EditInvoiceNetAmountText, out var net))
+            {
+                EditInvoiceStatusBarText = "Net amount is invalid.";
+                return;
+            }
+
+            var vatRate = ParseVatRateText(EditInvoiceVatRateText);
+
+            try
+            {
+                EditInvoiceStatusBarText = "Saving changes...";
+
+                var req = new UpdateInvoiceRequestDto
+                {
+                    ProjectId = EditInvoiceSelectedProject?.ProjectId,
+                    InvoiceDate = EditInvoiceDate!.Value,
+                    DueDate = EditInvoiceDueDate,
+                    NetAmount = net,
+                    VatRate = vatRate,
+                    Status = EditInvoiceStatusText ?? "Outstanding",
+                    Notes = string.IsNullOrWhiteSpace(EditInvoiceNotesText) ? null : EditInvoiceNotesText.Trim()
+                };
+
+                await _api.UpdateInvoiceAsync(EditInvoiceLoadedId.Value, req);
+
+                EditInvoiceStatusBarText = "Saved.";
+
+                // Refresh invoices list so grid reflects changes
+                await RefreshInvoicesAsync();
+            }
+            catch (Exception ex)
+            {
+                EditInvoiceStatusBarText = $"Save failed: {ex.Message}";
+            }
+        }
+
+        private void ClearEditInvoiceForm_Click(object sender, RoutedEventArgs e)
+        {
+            EditInvoiceLoadedId = null;
+            EditInvoiceNumberText = "";
+            EditInvoiceStatusText = "Outstanding";
+            EditInvoiceDate = DateTime.Today;
+            EditInvoiceDueDate = null;
+
+            EditInvoiceSelectedProject = null;
+            EditInvoiceDerivedCompanyName = "";
+
+            EditInvoiceNetAmountText = "";
+            EditInvoiceVatRateText = "20%";
+            EditInvoiceNotesText = "";
+
+            RecalculateEditInvoiceTotals();
+            UpdateEditInvoiceValidation();
+
+            EditInvoiceStatusBarText = "Cleared. Select an invoice and click Load selected.";
+        }
+
+        private async Task RefreshInvoicesAsync()
+        {
+            await LoadInvoicesAsync();
+        }
+
+        private async Task LoadInvoicesAsync()
+        {
+            // Pull latest invoices from API
+            Invoices = await _api.GetInvoicesAsync();
+
+            // Rebuild the view because Invoices is a new List instance after reload
+            ApplyInvoiceFilter();
+
+            // Optional QoL: if the Add form invoice number is blank, re-suggest
+            SuggestNextInvoiceNumberIfEmpty();
         }
     }
 }

@@ -1491,6 +1491,7 @@
                                           Grid.Row="1"
                                           Margin="8,0,8,8"
                                           ItemsSource="{Binding InvoiceView}"
+                                          SelectedItem="{Binding SelectedInvoiceListItem}"
                                           AutoGenerateColumns="False"
                                           IsReadOnly="True"
                                           Style="{StaticResource DarkDataGridStyle}">
@@ -1825,10 +1826,265 @@
                         <!-- EDIT INVOICE -->
                         <TabItem Header="Edit Invoice">
                             <Grid Background="#FF1E1E1E" Margin="10">
-                                <Border Background="#FF262626" CornerRadius="6" Padding="12">
-                                    <TextBlock Text="Edit Invoice is coming next."
-                                   Opacity="0.8"
-                                   TextWrapping="Wrap"/>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Left: Edit form -->
+                                <Border Grid.Column="0"
+                                        Background="#FF262626"
+                                        CornerRadius="6"
+                                        Padding="12"
+                                        Margin="0,0,10,0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Edit Invoice"
+                                                   FontSize="16"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,0,0,12"
+                                                   Foreground="#FFE0E0E0"/>
+
+                                        <!-- Load selected -->
+                                        <Border Grid.Row="1" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0"
+                                                           Text="Selected invoice"
+                                                           Foreground="#FFE0E0E0"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,8,0"/>
+
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding EditInvoiceSelectedSummaryText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.9"
+                                                           VerticalAlignment="Center"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,0,12,0"/>
+
+                                                <Button Grid.Column="2"
+                                                        Content="Load selected"
+                                                        Padding="12,6"
+                                                        Click="LoadSelectedInvoice_Click"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Identity (read-only invoice number) + status -->
+                                        <Border Grid.Row="2" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Invoice Number"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <TextBox Grid.Row="0" Grid.Column="1"
+                                                         Text="{Binding EditInvoiceNumberText}"
+                                                         IsReadOnly="True"
+                                                         Opacity="0.85"
+                                                         Margin="0,0,12,6"/>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Status"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <ComboBox Grid.Row="0" Grid.Column="3"
+                                                          SelectedItem="{Binding EditInvoiceStatusText}"
+                                                          Margin="0,0,0,6">
+                                                    <ComboBox.ItemsSource>
+                                                        <x:Array Type="{x:Type sys:String}">
+                                                            <sys:String>Outstanding</sys:String>
+                                                            <sys:String>Part-Paid</sys:String>
+                                                            <sys:String>Paid</sys:String>
+                                                            <sys:String>Overdue</sys:String>
+                                                            <sys:String>Settled</sys:String>
+                                                            <sys:String>VOID</sys:String>
+                                                        </x:Array>
+                                                    </ComboBox.ItemsSource>
+                                                </ComboBox>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Invoice Date"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <DatePicker Grid.Row="1" Grid.Column="1"
+                                                            SelectedDate="{Binding EditInvoiceDate}"
+                                                            Margin="0,0,12,0"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Due Date"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <DatePicker Grid.Row="1" Grid.Column="3"
+                                                            SelectedDate="{Binding EditInvoiceDueDate}"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Project / Company -->
+                                        <Border Grid.Row="3" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" Text="Project"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <ComboBox Grid.Column="1"
+                                                          ItemsSource="{Binding InvoiceProjectPicklist}"
+                                                          SelectedItem="{Binding EditInvoiceSelectedProject}"
+                                                          DisplayMemberPath="JobNameOrNumber"
+                                                          Margin="0,0,12,0"/>
+
+                                                <TextBlock Grid.Column="2" Text="Company (from project)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBox Grid.Column="3"
+                                                         Text="{Binding EditInvoiceDerivedCompanyName}"
+                                                         IsReadOnly="True"
+                                                         Opacity="0.85"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Amounts -->
+                                        <Border Grid.Row="4" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Net Amount"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <TextBox Grid.Row="0" Grid.Column="1"
+                                                         Text="{Binding EditInvoiceNetAmountText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="0,0,12,6"/>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="VAT Rate"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <ComboBox Grid.Row="0" Grid.Column="3"
+                                                          SelectedItem="{Binding EditInvoiceVatRateText}"
+                                                          Margin="0,0,0,6">
+                                                    <ComboBox.ItemsSource>
+                                                        <x:Array Type="{x:Type sys:String}">
+                                                            <sys:String>0%</sys:String>
+                                                            <sys:String>5%</sys:String>
+                                                            <sys:String>20%</sys:String>
+                                                        </x:Array>
+                                                    </ComboBox.ItemsSource>
+                                                </ComboBox>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="VAT Amount"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="1"
+                                                           Text="{Binding EditInvoiceVatAmountText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,12,0"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Gross Amount"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="3"
+                                                           Text="{Binding EditInvoiceGrossAmountText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Notes -->
+                                        <Border Grid.Row="5" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" Text="Notes (optional)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Top" Margin="0,2,8,0"/>
+                                                <TextBox Grid.Column="1"
+                                                         Text="{Binding EditInvoiceNotesText, UpdateSourceTrigger=PropertyChanged}"
+                                                         AcceptsReturn="True"
+                                                         TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         Height="80"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Status strip -->
+                                        <Border Grid.Row="6" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <TextBlock Text="{Binding EditInvoiceStatusBarText}"
+                                                       Foreground="#FFE0E0E0"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"/>
+                                        </Border>
+
+                                        <!-- Buttons -->
+                                        <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Left">
+                                            <Button Content="Save Changes"
+                                                    Padding="12,6"
+                                                    Margin="0,0,8,0"
+                                                    Click="SaveInvoiceEdits_Click"/>
+
+                                            <Button Content="Clear"
+                                                    Padding="12,6"
+                                                    Click="ClearEditInvoiceForm_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Right: Validation / help -->
+                                <Border Grid.Column="1"
+                                        Background="#FF262626"
+                                        CornerRadius="6"
+                                        Padding="12">
+                                    <StackPanel>
+                                        <TextBlock Text="Edit rules"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,0,0,10"
+                                                   Foreground="#FFE0E0E0"/>
+
+                                        <TextBlock Text="- Select an invoice in the list and click Load selected"
+                                                   Foreground="#FFE0E0E0" Opacity="0.85" Margin="0,0,0,4"/>
+                                        <TextBlock Text="- Invoice number is read-only"
+                                                   Foreground="#FFE0E0E0" Opacity="0.85" Margin="0,0,0,4"/>
+                                        <TextBlock Text="- Net amount must be > 0"
+                                                   Foreground="#FFE0E0E0" Opacity="0.85" Margin="0,0,0,4"/>
+
+                                        <Border Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,12,0,0">
+                                            <TextBlock Text="{Binding EditInvoiceValidationText}"
+                                                       Foreground="#FFE0E0E0"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"/>
+                                        </Border>
+                                    </StackPanel>
                                 </Border>
                             </Grid>
                         </TabItem>

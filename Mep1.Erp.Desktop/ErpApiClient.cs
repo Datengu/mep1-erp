@@ -392,5 +392,27 @@ namespace Mep1.Erp.Desktop
             return created;
         }
 
+        public async Task<InvoiceDetailsDto> GetInvoiceByIdAsync(int id)
+        {
+            var resp = await _http.GetAsync($"api/invoices/{id}");
+            resp.EnsureSuccessStatusCode();
+
+            var dto = await resp.Content.ReadFromJsonAsync<InvoiceDetailsDto>();
+            if (dto == null) throw new Exception("Failed to deserialize InvoiceDetailsDto.");
+
+            return dto;
+        }
+
+        public async Task<UpdateInvoiceResponseDto> UpdateInvoiceAsync(int id, UpdateInvoiceRequestDto dto)
+        {
+            var resp = await _http.PutAsJsonAsync($"api/invoices/{id}", dto);
+            resp.EnsureSuccessStatusCode();
+
+            var result = await resp.Content.ReadFromJsonAsync<UpdateInvoiceResponseDto>();
+            if (result == null) throw new Exception("Failed to deserialize UpdateInvoiceResponseDto.");
+
+            return result;
+        }
+
     }
 }
