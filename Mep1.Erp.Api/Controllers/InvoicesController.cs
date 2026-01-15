@@ -65,9 +65,7 @@ namespace Mep1.Erp.Api.Controllers
         [HttpGet]
         public ActionResult<List<InvoiceListEntryDto>> GetInvoices()
         {
-            using var db = new AppDbContext();
-
-            var rows = Reporting.GetInvoiceList(db);
+            var rows = Reporting.GetInvoiceList(_db);
 
             var dto = rows.Select(r => new InvoiceListEntryDto
             {
