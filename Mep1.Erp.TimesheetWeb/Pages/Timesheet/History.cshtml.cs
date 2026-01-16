@@ -43,7 +43,7 @@ public sealed class HistoryModel : PageModel
         if (Take <= 0) Take = 100;
         if (Take > 200) Take = 200;
 
-        Entries = await _api.GetTimesheetEntriesAsync(WorkerId.Value, Skip, Take)
+        Entries = await _api.GetTimesheetEntriesAsync(Skip, Take)
                   ?? new List<TimesheetEntrySummaryDto>();
 
         Weeks = Entries
@@ -76,7 +76,7 @@ public sealed class HistoryModel : PageModel
         if (workerId is null)
             return RedirectToPage("/Timesheet/Login");
 
-        await _api.DeleteTimesheetEntryAsync(id, workerId.Value);
+        await _api.DeleteTimesheetEntryAsync(id);
 
         // return to same page of results
         return RedirectToPage("/Timesheet/History", new { skip, take });

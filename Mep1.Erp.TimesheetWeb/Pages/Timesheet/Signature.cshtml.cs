@@ -74,7 +74,7 @@ public class SignatureModel : PageModel
             return Page();
         }
 
-        await _api.SetWorkerSignatureAsync(workerId.Value, actorWorkerId.Value, Input.SignatureName);
+        await _api.SetWorkerSignatureAsync(workerId.Value, Input.SignatureName);
 
         return Redirect(returnTo ?? "/Timesheet/History");
     }

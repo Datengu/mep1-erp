@@ -182,7 +182,7 @@ public class EvidencePackModel : PageModel
 
         while (true)
         {
-            var page = await _api.GetTimesheetEntriesAsync(workerId, skip, take);
+            var page = await _api.GetTimesheetEntriesAsync(skip, take);
 
             if (page.Count == 0)
                 break;

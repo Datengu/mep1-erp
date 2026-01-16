@@ -98,7 +98,7 @@ public sealed class EditModel : PageModel
 
         await LoadOptionsAsync(workerId.Value);
 
-        var entry = await _api.GetTimesheetEntryAsync(Id, workerId.Value);
+        var entry = await _api.GetTimesheetEntryAsync(Id);
         if (entry is null)
             return RedirectToPage("/Timesheet/History");
 
