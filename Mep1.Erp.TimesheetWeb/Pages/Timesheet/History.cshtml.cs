@@ -28,16 +28,18 @@ public sealed class HistoryModel : PageModel
 
     public async Task<IActionResult> OnGet()
     {
-        if (HttpContext.Session.GetString("MustChangePassword") == "true")
-        {
+        if (User.FindFirst("must_change_password")?.Value == "true")
             return RedirectToPage("/Timesheet/Profile");
-        }
 
-        WorkerId = HttpContext.Session.GetInt32("WorkerId");
-        if (WorkerId is null)
+        if (User.Identity?.IsAuthenticated != true)
             return RedirectToPage("/Timesheet/Login");
 
-        WorkerName = HttpContext.Session.GetString("WorkerName");
+        WorkerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
+        if (WorkerId <= 0)
+            return RedirectToPage("/Timesheet/Login");
+
+        // optional UI name (only if you want it and only if you set it in Login)
+        WorkerName = User.FindFirst("display_name")?.Value;
 
         if (Skip < 0) Skip = 0;
         if (Take <= 0) Take = 100;
@@ -48,7 +50,7 @@ public sealed class HistoryModel : PageModel
 
         Weeks = Entries
             .GroupBy(e => GetWeekEndingFriday(e.Date))
-            .OrderByDescending(g => g.Key) // most recent week first
+            .OrderByDescending(g => g.Key)
             .Select(g => new WeekGroup
             {
                 WeekEndingFriday = g.Key,
@@ -67,14 +69,13 @@ public sealed class HistoryModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteAsync(int id, int skip = 0, int take = 100)
     {
-        if (HttpContext.Session.GetString("MustChangePassword") == "true")
-        {
+        if (User.FindFirst("must_change_password")?.Value == "true")
             return RedirectToPage("/Timesheet/Profile");
-        }
 
-        var workerId = HttpContext.Session.GetInt32("WorkerId");
-        if (workerId is null)
+        if (User.Identity?.IsAuthenticated != true)
             return RedirectToPage("/Timesheet/Login");
+
+        var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
 
         await _api.DeleteTimesheetEntryAsync(id);
 

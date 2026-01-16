@@ -42,12 +42,16 @@ public class EvidencePackModel : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        var workerId = HttpContext.Session.GetInt32("WorkerId");
-        if (workerId is null)
+        if (User.FindFirst("must_change_password")?.Value == "true")
+            return RedirectToPage("/Timesheet/Profile");
+
+        if (User.Identity?.IsAuthenticated != true)
             return RedirectToPage("/Timesheet/Login");
 
+        var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
+
         // signature gate
-        var sig = await _api.GetWorkerSignatureAsync(workerId.Value);
+        var sig = await _api.GetWorkerSignatureAsync(workerId);
         if (sig is null)
             return RedirectToPage("/Timesheet/Login");
 
@@ -82,14 +86,13 @@ public class EvidencePackModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (HttpContext.Session.GetString("MustChangePassword") == "true")
-        {
+        if (User.FindFirst("must_change_password")?.Value == "true")
             return RedirectToPage("/Timesheet/Profile");
-        }
 
-        var workerId = HttpContext.Session.GetInt32("WorkerId");
-        if (workerId is null)
+        if (User.Identity?.IsAuthenticated != true)
             return RedirectToPage("/Timesheet/Login");
+
+        var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
 
         if (!ModelState.IsValid)
             return Page();
@@ -107,12 +110,12 @@ public class EvidencePackModel : PageModel
         }
 
         // signature gate again on POST
-        var sig = await _api.GetWorkerSignatureAsync(workerId.Value);
+        var sig = await _api.GetWorkerSignatureAsync(workerId);
         if (sig is null) return RedirectToPage("/Timesheet/Login");
         if (string.IsNullOrWhiteSpace(sig.SignatureName))
             return RedirectToPage("/Timesheet/Signature", new { returnTo = "/Timesheet/EvidencePack" });
 
-        var entries = await FetchEntriesForRangeAsync(workerId.Value, Input.From, Input.To);
+        var entries = await FetchEntriesForRangeAsync(workerId, Input.From, Input.To);
 
         if (entries.Count == 0)
         {

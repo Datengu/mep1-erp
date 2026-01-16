@@ -90,15 +90,13 @@ public sealed class EnterHoursModel : PageModel
 
     public async Task<IActionResult> OnGet()
     {
-        if (HttpContext.Session.GetString("MustChangePassword") == "true")
-        {
+        if (User.FindFirst("must_change_password")?.Value == "true")
             return RedirectToPage("/Timesheet/Profile");
-        }
 
-        var workerId = HttpContext.Session.GetInt32("WorkerId");
-
-        if (workerId is null)
+        if (User.Identity?.IsAuthenticated != true)
             return RedirectToPage("/Timesheet/Login");
+
+        var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
 
         await LoadOptionsAsync();
 
@@ -115,14 +113,13 @@ public sealed class EnterHoursModel : PageModel
 
     public async Task<IActionResult> OnPost()
     {
-        if (HttpContext.Session.GetString("MustChangePassword") == "true")
-        {
+        if (User.FindFirst("must_change_password")?.Value == "true")
             return RedirectToPage("/Timesheet/Profile");
-        }
 
-        var workerId = HttpContext.Session.GetInt32("WorkerId");
-        if (workerId is null)
+        if (User.Identity?.IsAuthenticated != true)
             return RedirectToPage("/Timesheet/Login");
+
+        var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
 
         await LoadOptionsAsync();
 
@@ -255,7 +252,7 @@ public sealed class EnterHoursModel : PageModel
 
         // Your DTO constructor is: (int WorkerId, string JobKey, DateTime Date, decimal Hours, string Code, string? TaskDescription, string? CcfRef)
         var dto = new CreateTimesheetEntryDto(
-            WorkerId: workerId.Value,
+            WorkerId: workerId,
             JobKey: Input.JobKey,
             Date: Input.Date.Date,
             Hours: Input.Hours,

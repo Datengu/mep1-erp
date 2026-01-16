@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Http
+﻿@using System.Security.Claims
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,17 +19,23 @@
                          height="64"
                          class="d-inline-block align-text-middle" />
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
+
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
+
                         @{
-                            var workerId = Context.Session.GetInt32("WorkerId");
+                            var isAuthed = User?.Identity?.IsAuthenticated == true;
+                            var displayName = User?.FindFirst("display_name")?.Value
+                            ?? User?.FindFirst("usr")?.Value
+                            ?? "";
                         }
 
-                        @if (workerId == null)
+                        @if (!isAuthed)
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/Timesheet/Login">Login</a>
@@ -49,12 +55,21 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/Timesheet/Logout">Logout</a>
                             </li>
+
+                            @* Optional: show who is logged in *@
+                            @if (!string.IsNullOrWhiteSpace(displayName))
+                            {
+                                <li class="nav-item ms-auto">
+                                    <span class="navbar-text text-muted">Signed in as @displayName</span>
+                                </li>
+                            }
                         }
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()

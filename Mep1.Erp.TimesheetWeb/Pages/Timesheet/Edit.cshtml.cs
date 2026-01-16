@@ -84,19 +84,18 @@ public sealed class EditModel : PageModel
 
     public async Task<IActionResult> OnGet()
     {
-        if (HttpContext.Session.GetString("MustChangePassword") == "true")
-        {
+        if (User.FindFirst("must_change_password")?.Value == "true")
             return RedirectToPage("/Timesheet/Profile");
-        }
 
-        var workerId = HttpContext.Session.GetInt32("WorkerId");
-        if (workerId is null)
+        if (User.Identity?.IsAuthenticated != true)
             return RedirectToPage("/Timesheet/Login");
+
+        var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
 
         if (Id <= 0)
             return RedirectToPage("/Timesheet/History");
 
-        await LoadOptionsAsync(workerId.Value);
+        await LoadOptionsAsync(workerId);
 
         var entry = await _api.GetTimesheetEntryAsync(Id);
         if (entry is null)
@@ -126,16 +125,15 @@ public sealed class EditModel : PageModel
 
     public async Task<IActionResult> OnPost()
     {
-        if (HttpContext.Session.GetString("MustChangePassword") == "true")
-        {
+        if (User.FindFirst("must_change_password")?.Value == "true")
             return RedirectToPage("/Timesheet/Profile");
-        }
 
-        var workerId = HttpContext.Session.GetInt32("WorkerId");
-        if (workerId is null)
+        if (User.Identity?.IsAuthenticated != true)
             return RedirectToPage("/Timesheet/Login");
 
-        await LoadOptionsAsync(workerId.Value);
+        var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
+
+        await LoadOptionsAsync(workerId);
 
         if (Id <= 0)
             return RedirectToPage("/Timesheet/History");
@@ -188,7 +186,7 @@ public sealed class EditModel : PageModel
         if (Input.Date.Date > today)
         {
             ModelState.AddModelError("Input.Date", "You cannot submit hours for a future date.");
-            await LoadOptionsAsync(workerId.Value);
+            await LoadOptionsAsync(workerId);
             return Page();
         }
 
@@ -209,7 +207,7 @@ public sealed class EditModel : PageModel
         if (halfHours != decimal.Truncate(halfHours))
         {
             ModelState.AddModelError("Input.Hours", "Hours must be in 0.5 increments.");
-            await LoadOptionsAsync(workerId.Value);
+            await LoadOptionsAsync(workerId);
             return Page();
         }
 
@@ -263,7 +261,7 @@ public sealed class EditModel : PageModel
         var areas = ParseTags(Input.AreasRaw);
 
         var dto = new UpdateTimesheetEntryDto(
-            WorkerId: workerId.Value,
+            WorkerId: workerId,
             JobKey: Input.JobKey,
             Date: Input.Date.Date,
             Hours: Input.Hours,

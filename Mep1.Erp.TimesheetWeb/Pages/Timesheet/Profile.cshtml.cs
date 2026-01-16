@@ -2,6 +2,9 @@ using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.TimesheetWeb.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Security.Claims;
 
 public class ProfileModel : PageModel
 {
@@ -12,7 +15,7 @@ public class ProfileModel : PageModel
         _api = api;
     }
 
-    public int? WorkerId { get; private set; }
+    public int WorkerId { get; private set; }
 
     public string Username { get; private set; } = "";
     public bool MustChangePassword { get; private set; }
@@ -34,14 +37,10 @@ public class ProfileModel : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        WorkerId = HttpContext.Session.GetInt32("WorkerId");
-        if (WorkerId is null)
-            return RedirectToPage("/Timesheet/Login");
+        if (!TryLoadActorFromClaims(out var redirect))
+            return redirect!;
 
-        Username = HttpContext.Session.GetString("Username") ?? "";
-        MustChangePassword = HttpContext.Session.GetString("MustChangePassword") == "true";
-
-        Signature = await _api.GetWorkerSignatureAsync(WorkerId.Value);
+        Signature = await _api.GetWorkerSignatureAsync(WorkerId);
         SignatureName = Signature?.SignatureName ?? "";
 
         return Page();
@@ -49,66 +48,75 @@ public class ProfileModel : PageModel
 
     public async Task<IActionResult> OnPostChangePasswordAsync()
     {
-        WorkerId = HttpContext.Session.GetInt32("WorkerId");
-        if (WorkerId is null)
-            return RedirectToPage("/Timesheet/Login");
+        if (!TryLoadActorFromClaims(out var redirect))
+            return redirect!;
 
-        var username = HttpContext.Session.GetString("Username");
-        if (string.IsNullOrWhiteSpace(username))
-            return RedirectToPage("/Timesheet/Login");
-
-        var (ok, error) = await _api.ChangePasswordAsync(username, CurrentPassword, NewPassword);
+        var (ok, error) = await _api.ChangePasswordAsync(Username, CurrentPassword, NewPassword);
 
         if (!ok)
         {
             ErrorMessage = error ?? "Password change failed.";
-            Username = HttpContext.Session.GetString("Username") ?? "";
-            MustChangePassword = HttpContext.Session.GetString("MustChangePassword") == "true";
             await LoadSignatureForPageAsync();
             return Page();
         }
 
-        HttpContext.Session.SetString("MustChangePassword", "false");
-        return RedirectToPage("/Timesheet/History");
+        // v1-simple: sign out so the user logs in again and gets a fresh token/claims.
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return RedirectToPage("/Timesheet/Login");
     }
 
     public async Task<IActionResult> OnPostSaveSignatureAsync()
     {
-        WorkerId = HttpContext.Session.GetInt32("WorkerId");
-        if (WorkerId is null)
-            return RedirectToPage("/Timesheet/Login");
-
-        MustChangePassword = HttpContext.Session.GetString("MustChangePassword") == "true";
-        Username = HttpContext.Session.GetString("Username") ?? "";
+        if (!TryLoadActorFromClaims(out var redirect))
+            return redirect!;
 
         var sig = (SignatureName ?? "").Trim();
         if (string.IsNullOrWhiteSpace(sig))
         {
             ErrorMessage = "Signature cannot be empty.";
-
-            // rehydrate state for re-render
-            Username = HttpContext.Session.GetString("Username") ?? "";
-            MustChangePassword = HttpContext.Session.GetString("MustChangePassword") == "true";
-
             await LoadSignatureForPageAsync();
             return Page();
         }
 
-        await _api.SetWorkerSignatureAsync(
-            workerId: WorkerId.Value,
-            signatureName: sig);
+        await _api.SetWorkerSignatureAsync(workerId: WorkerId, signatureName: sig);
 
         SuccessMessage = "Signature updated.";
-        await LoadSignatureForPageAsync(); // reload to show saved value
+        await LoadSignatureForPageAsync();
         return Page();
     }
 
     private async Task LoadSignatureForPageAsync()
     {
-        if (WorkerId is null) return;
-
-        Signature = await _api.GetWorkerSignatureAsync(WorkerId.Value);
+        if (WorkerId <= 0) return;
+        Signature = await _api.GetWorkerSignatureAsync(WorkerId);
         SignatureName = Signature?.SignatureName ?? "";
     }
 
+    private bool TryLoadActorFromClaims(out IActionResult? redirect)
+    {
+        redirect = null;
+
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            redirect = RedirectToPage("/Timesheet/Login");
+            return false;
+        }
+
+        WorkerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
+        if (WorkerId <= 0)
+        {
+            redirect = RedirectToPage("/Timesheet/Login");
+            return false;
+        }
+
+        Username = User.FindFirst("usr")?.Value ?? "";
+        if (string.IsNullOrWhiteSpace(Username))
+        {
+            redirect = RedirectToPage("/Timesheet/Login");
+            return false;
+        }
+
+        MustChangePassword = User.FindFirst("must_change_password")?.Value == "true";
+        return true;
+    }
 }

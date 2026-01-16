@@ -28,16 +28,15 @@ public class SignatureModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? returnTo = null)
     {
-        if (HttpContext.Session.GetString("MustChangePassword") == "true")
-        {
+        if (User.FindFirst("must_change_password")?.Value == "true")
             return RedirectToPage("/Timesheet/Profile");
-        }
 
-        var workerId = HttpContext.Session.GetInt32("WorkerId");
-        if (workerId is null)
+        if (User.Identity?.IsAuthenticated != true)
             return RedirectToPage("/Timesheet/Login");
 
-        var info = await _api.GetWorkerSignatureAsync(workerId.Value);
+        var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
+
+        var info = await _api.GetWorkerSignatureAsync(workerId);
         if (info is null)
             return RedirectToPage("/Timesheet/Login");
 
@@ -58,15 +57,13 @@ public class SignatureModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(string? returnTo = null)
     {
-        if (HttpContext.Session.GetString("MustChangePassword") == "true")
-        {
+        if (User.FindFirst("must_change_password")?.Value == "true")
             return RedirectToPage("/Timesheet/Profile");
-        }
 
-        var actorWorkerId = HttpContext.Session.GetInt32("WorkerId");
-        var workerId = HttpContext.Session.GetInt32("WorkerId");
-        if (workerId is null)
+        if (User.Identity?.IsAuthenticated != true)
             return RedirectToPage("/Timesheet/Login");
+
+        var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
 
         if (!ModelState.IsValid)
         {
@@ -74,7 +71,7 @@ public class SignatureModel : PageModel
             return Page();
         }
 
-        await _api.SetWorkerSignatureAsync(workerId.Value, Input.SignatureName);
+        await _api.SetWorkerSignatureAsync(workerId, Input.SignatureName);
 
         return Redirect(returnTo ?? "/Timesheet/History");
     }

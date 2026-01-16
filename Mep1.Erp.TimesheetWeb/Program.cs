@@ -1,5 +1,4 @@
-using System.Text.Json;
-using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Mep1.Erp.TimesheetWeb;
 using Mep1.Erp.TimesheetWeb.Services;
 using QuestPDF.Infrastructure;
@@ -10,6 +9,7 @@ builder.Services.Configure<ErpApiSettings>(builder.Configuration.GetSection("Erp
 
 // Needed for BearerTokenHandler
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<RefreshOnUnauthorizedHandler>();
 builder.Services.AddTransient<BearerTokenHandler>();
 
 builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
@@ -22,10 +22,8 @@ builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
     // API checks "X-Api-Key"
     http.DefaultRequestHeaders.Add("X-Api-Key", cfg.ApiKey);
 })
+.AddHttpMessageHandler<RefreshOnUnauthorizedHandler>()
 .AddHttpMessageHandler<BearerTokenHandler>();
-
-// Data protection (used to encrypt/decrypt remember-me cookie)
-builder.Services.AddDataProtection();
 
 builder.Services.AddSession(options =>
 {
@@ -35,7 +33,32 @@ builder.Services.AddSession(options =>
 });
 
 // Add services to the container.
-builder.Services.AddRazorPages();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Timesheet/Login";
+        options.LogoutPath = "/Timesheet/Logout";
+        options.AccessDeniedPath = "/Timesheet/Login";
+
+        options.SlidingExpiration = true;
+
+        options.Cookie.Name = "MEP1_AUTH";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // set Always in prod if always https
+    });
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddRazorPages(options =>
+{
+    // Protect /Timesheet/* by default
+    options.Conventions.AuthorizeFolder("/Timesheet");
+
+    // Allow anonymous access to login
+    options.Conventions.AllowAnonymousToPage("/Timesheet/Login");
+});
 
 builder.Services.AddSingleton<Mep1.Erp.TimesheetWeb.Services.TechnicalDiaryPdfBuilder>();
 
@@ -58,104 +81,9 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseSession();
-
-// ---- Timesheet auth guard (ReturnUrl support) ----
-app.Use(async (context, next) =>
-{
-    // Only protect /Timesheet/*
-    if (!context.Request.Path.StartsWithSegments("/Timesheet", out var remaining))
-    {
-        await next();
-        return;
-    }
-
-    // Allow anonymous pages
-    var p = context.Request.Path.Value ?? "";
-    if (p.Equals("/Timesheet/Login", StringComparison.OrdinalIgnoreCase) ||
-        p.Equals("/Timesheet/Logout", StringComparison.OrdinalIgnoreCase))
-    {
-        await next();
-        return;
-    }
-
-    // If not logged in (no session), send to login with returnUrl
-    var workerId = context.Session.GetInt32("WorkerId");
-    if (workerId is null)
-    {
-        var returnUrl = context.Request.PathBase + context.Request.Path + context.Request.QueryString;
-        var loginUrl = "/Timesheet/Login?returnUrl=" + Uri.EscapeDataString(returnUrl);
-        context.Response.Redirect(loginUrl);
-        return;
-    }
-
-    await next();
-});
-
-// Remember-me rehydrate middleware (restores session if session expired but cookie exists)
-const string RememberCookieName = "MEP1_REMEMBER";
-const string RememberProtectorPurpose = "Mep1.Erp.TimesheetWeb.RememberMe.v1";
-
-app.Use(async (ctx, next) =>
-{
-    // If already logged in via session, carry on
-    if (ctx.Session.GetInt32("WorkerId") is not null)
-    {
-        await next();
-        return;
-    }
-
-    // If cookie exists, try to restore session
-    if (ctx.Request.Cookies.TryGetValue(RememberCookieName, out var protectedValue)
-        && !string.IsNullOrWhiteSpace(protectedValue))
-    {
-        try
-        {
-            var provider = ctx.RequestServices.GetRequiredService<IDataProtectionProvider>();
-            var protector = provider.CreateProtector(RememberProtectorPurpose);
-
-            var json = protector.Unprotect(protectedValue);
-
-            var payload = JsonSerializer.Deserialize<RememberPayload>(json);
-            if (payload is not null && payload.WorkerId > 0)
-            {
-                ctx.Session.SetInt32("WorkerId", payload.WorkerId);
-                ctx.Session.SetString("WorkerName", payload.Name ?? "");
-                ctx.Session.SetString("WorkerInitials", payload.Initials ?? "");
-                ctx.Session.SetString("UserRole", payload.Role ?? "Worker");
-                ctx.Session.SetString("Username", payload.Username ?? "");
-                ctx.Session.SetString("MustChangePassword", payload.MustChangePassword ? "true" : "false");
-                ctx.Session.SetString("AccessToken", payload.AccessToken ?? "");
-                ctx.Session.SetString("AccessTokenExpiresUtc", payload.ExpiresUtcUtcIso ?? "");
-            }
-        }
-        catch
-        {
-            // If cookie is invalid/tampered/old, just delete it and continue as logged out.
-            ctx.Response.Cookies.Delete(RememberCookieName);
-        }
-    }
-
-    await next();
-});
-
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
 
 app.Run();
-
-file sealed class RememberPayload
-{
-    public int WorkerId { get; set; }
-    public string? Name { get; set; }
-    public string? Initials { get; set; }
-    public string? Role { get; set; }
-    public string? Username { get; set; }
-    public bool MustChangePassword { get; set; }
-
-    // JWT (NEW)
-    public string? AccessToken { get; set; }
-
-    // Keep it stringly-typed to avoid DateTimeKind issues across serialisation
-    public string? ExpiresUtcUtcIso { get; set; }
-}

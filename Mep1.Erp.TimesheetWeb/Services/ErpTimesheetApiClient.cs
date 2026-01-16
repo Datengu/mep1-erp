@@ -43,7 +43,7 @@ public sealed class ErpTimesheetApiClient
         return await res.Content.ReadFromJsonAsync<List<TimesheetProjectOptionDto>>();
     }
 
-    public sealed record TimesheetLoginRequest(string Username, string Password);
+    public sealed record TimesheetLoginRequest(string Username, string Password, bool RememberMe);
 
     public sealed record TimesheetLoginResponse(
         int WorkerId,
@@ -53,12 +53,25 @@ public sealed class ErpTimesheetApiClient
         string Initials,
         bool MustChangePassword,
         string AccessToken,
-        DateTime ExpiresUtc
+        DateTime ExpiresUtc,
+        string? RefreshToken,
+        DateTime? RefreshExpiresUtc
     );
 
-    public async Task<TimesheetLoginResponse?> LoginAsync(string username, string password)
+    public sealed record TimesheetLogoutRequest(string RefreshToken);
+
+    public sealed record TimesheetRefreshRequest(string RefreshToken);
+
+    public sealed record TimesheetRefreshResponse(
+        string AccessToken,
+        DateTime ExpiresUtc,
+        string RefreshToken,
+        DateTime RefreshExpiresUtc
+    );
+
+    public async Task<TimesheetLoginResponse?> LoginAsync(string username, string password, bool rememberMe)
     {
-        var body = new TimesheetLoginRequest(username, password);
+        var body = new TimesheetLoginRequest(username, password, rememberMe);
 
         using var req = new HttpRequestMessage(HttpMethod.Post, "api/auth/login")
         {
@@ -203,4 +216,36 @@ public sealed class ErpTimesheetApiClient
         return (false, msg);
     }
 
+    public async Task<TimesheetRefreshResponse?> RefreshAsync(string refreshToken)
+    {
+        var body = new TimesheetRefreshRequest(refreshToken);
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, "api/auth/refresh")
+        {
+            Content = JsonContent.Create(body, options: _jsonOptions)
+        };
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        if (res.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            return null;
+
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadFromJsonAsync<TimesheetRefreshResponse>(_jsonOptions);
+    }
+
+    public async Task LogoutAsync(string refreshToken)
+    {
+        var body = new TimesheetLogoutRequest(refreshToken);
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, "api/auth/logout")
+        {
+            Content = JsonContent.Create(body, options: _jsonOptions)
+        };
+
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        // you can ignore failures or call EnsureSuccessStatusCode()
+    }
 }
