@@ -2055,6 +2055,16 @@ namespace Mep1.Erp.Desktop
                     // Prefill username to speed up account creation
                     PortalUsernameText = BuildSuggestedUsername(SelectedPerson?.Name);
 
+                    // if it's taken, auto-suggest a free one (jason.dean2, etc.)
+                    try
+                    {
+                        await EnsurePortalUsernameAvailableAsync(showMessageIfTaken: false);
+                    }
+                    catch
+                    {
+                        // ignore here (prefill is QoL only); create will still validate
+                    }
+
                     SelectedPortalRole = "Worker";
                     PortalIsActive = true;
                 }
@@ -2085,6 +2095,23 @@ namespace Mep1.Erp.Desktop
             if (string.IsNullOrWhiteSpace(PortalUsernameText))
             {
                 WpfMessageBox.Show("Enter a username first.", "Portal Access", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // server-check availability before creating
+            try
+            {
+                var ok = await EnsurePortalUsernameAvailableAsync(showMessageIfTaken: true);
+                if (!ok)
+                    return; // user can just click Create again (now with suggested username)
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    "Failed to validate username availability:\n\n" + ex.Message,
+                    "Portal Access",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
                 return;
             }
 
@@ -2163,7 +2190,52 @@ namespace Mep1.Erp.Desktop
 
         private static string BuildSuggestedUsername(string? fullName)
         {
-            return string.IsNullOrWhiteSpace(fullName) ? "" : fullName.Trim();
+            if (string.IsNullOrWhiteSpace(fullName))
+                return "";
+
+            var parts = fullName.Trim()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length == 0)
+                return "";
+
+            var raw = parts.Length == 1
+                ? parts[0]
+                : parts[0] + "." + parts[parts.Length - 1];
+
+            // letters/digits/dot only
+            raw = raw.ToLowerInvariant();
+
+            var chars = raw.Where(c => char.IsLetterOrDigit(c) || c == '.').ToArray();
+            return new string(chars);
+        }
+
+        private async Task<bool> EnsurePortalUsernameAvailableAsync(bool showMessageIfTaken)
+        {
+            var typed = (PortalUsernameText ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(typed))
+                return false;
+
+            var check = await _api.GetPortalUsernameAvailabilityAsync(typed);
+
+            // If available, keep exactly what the user typed (but you *could* replace with check.Normalized if you want)
+            if (check.Available)
+                return true;
+
+            // Not available: switch to suggested and notify UI
+            PortalUsernameText = check.Suggested ?? typed;
+            OnPropertyChanged(nameof(PortalUsernameText));
+
+            if (showMessageIfTaken)
+            {
+                WpfMessageBox.Show(
+                    $"That portal username is already taken.\n\nSuggested: {PortalUsernameText}",
+                    "Portal Access",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+
+            return false;
         }
 
         private void EnsurePeopleView()
