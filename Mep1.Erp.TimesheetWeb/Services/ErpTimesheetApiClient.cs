@@ -51,7 +51,9 @@ public sealed class ErpTimesheetApiClient
         string Role,
         string Name,
         string Initials,
-        bool MustChangePassword
+        bool MustChangePassword,
+        string AccessToken,
+        DateTime ExpiresUtc
     );
 
     public async Task<TimesheetLoginResponse?> LoginAsync(string username, string password)
@@ -88,9 +90,9 @@ public sealed class ErpTimesheetApiClient
         res.EnsureSuccessStatusCode();
     }
 
-    public async Task<TimesheetEntryEditDto?> GetTimesheetEntryAsync(int id, int workerId)
+    public async Task<TimesheetEntryEditDto?> GetTimesheetEntryAsync(int id)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/timesheet/entries/{id}?workerId={workerId}");
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/timesheet/entries/{id}");
         AddApiKeyHeader(req);
 
         using var res = await _http.SendAsync(req);
@@ -98,15 +100,12 @@ public sealed class ErpTimesheetApiClient
             return null;
 
         res.EnsureSuccessStatusCode();
-        return await res.Content.ReadFromJsonAsync<TimesheetEntryEditDto>();
+        return await res.Content.ReadFromJsonAsync<TimesheetEntryEditDto>(_jsonOptions);
     }
 
-    public async Task<List<TimesheetEntrySummaryDto>?> GetTimesheetEntriesAsync(
-    int workerId,
-    int skip = 0,
-    int take = 100)
+    public async Task<List<TimesheetEntrySummaryDto>?> GetTimesheetEntriesAsync(int skip = 0, int take = 100)
     {
-        var url = $"/api/timesheet/entries?workerId={workerId}&skip={skip}&take={take}";
+        var url = $"/api/timesheet/entries?skip={skip}&take={take}";
 
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
         AddApiKeyHeader(req);
@@ -114,7 +113,7 @@ public sealed class ErpTimesheetApiClient
         using var res = await _http.SendAsync(req);
         res.EnsureSuccessStatusCode();
 
-        return await res.Content.ReadFromJsonAsync<List<TimesheetEntrySummaryDto>>();
+        return await res.Content.ReadFromJsonAsync<List<TimesheetEntrySummaryDto>>(_jsonOptions);
     }
 
     public async Task UpdateTimesheetEntryAsync(int id, UpdateTimesheetEntryDto dto)
@@ -129,9 +128,9 @@ public sealed class ErpTimesheetApiClient
         res.EnsureSuccessStatusCode();
     }
 
-    public async Task DeleteTimesheetEntryAsync(int id, int workerId)
+    public async Task DeleteTimesheetEntryAsync(int id)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/timesheet/entries/{id}?workerId={workerId}");
+        using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/timesheet/entries/{id}");
         AddApiKeyHeader(req);
 
         using var res = await _http.SendAsync(req);
@@ -151,13 +150,13 @@ public sealed class ErpTimesheetApiClient
         return await res.Content.ReadFromJsonAsync<WorkerSignatureDto>(_jsonOptions);
     }
 
-    public async Task SetWorkerSignatureAsync(int workerId, int actorWorkerId, string signatureName)
+    public async Task SetWorkerSignatureAsync(int workerId, string signatureName)
     {
         var dto = new UpdateWorkerSignatureDto { SignatureName = signatureName };
 
         using var req = new HttpRequestMessage(
             HttpMethod.Put,
-            $"/api/timesheet/workers/{workerId}/signature?actorWorkerId={actorWorkerId}")
+            $"/api/timesheet/workers/{workerId}/signature")
         {
             Content = JsonContent.Create(dto, options: _jsonOptions)
         };

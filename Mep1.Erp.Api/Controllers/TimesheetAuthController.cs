@@ -13,11 +13,13 @@ public sealed class TimesheetAuthController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IMemoryCache _cache;
+    private readonly Mep1.Erp.Api.Security.JwtTokenService _jwt;
 
-    public TimesheetAuthController(AppDbContext db, IMemoryCache cache)
+    public TimesheetAuthController(AppDbContext db, IMemoryCache cache, Mep1.Erp.Api.Security.JwtTokenService jwt)
     {
         _db = db;
         _cache = cache;
+        _jwt = jwt;
     }
 
     public sealed record LoginRequest(string Username, string Password);
@@ -27,7 +29,9 @@ public sealed class TimesheetAuthController : ControllerBase
         string Role,
         string Name,
         string Initials,
-        bool MustChangePassword
+        bool MustChangePassword,
+        string AccessToken,
+        DateTime ExpiresUtc
     );
 
     private sealed class LoginThrottleState
@@ -167,13 +171,17 @@ public sealed class TimesheetAuthController : ControllerBase
         if (worker is null)
             return Unauthorized("Invalid login."); // data integrity issue
 
+        var (token, expiresUtc) = _jwt.CreateToken(user.WorkerId, user.Role, user.Username);
+
         return Ok(new LoginResponse(
             user.WorkerId,
             user.Username,
             user.Role.ToString(),
             worker.Name,
             worker.Initials,
-            user.MustChangePassword
+            user.MustChangePassword,
+            token,
+            expiresUtc
         ));
     }
 

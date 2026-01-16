@@ -92,6 +92,8 @@ public sealed class LoginModel : PageModel
         HttpContext.Session.SetString("UserRole", login.Role ?? "Worker");
         HttpContext.Session.SetString("Username", login.Username ?? "");
         HttpContext.Session.SetString("MustChangePassword", login.MustChangePassword ? "true" : "false");
+        HttpContext.Session.SetString("AccessToken", login.AccessToken ?? "");
+        HttpContext.Session.SetString("AccessTokenExpiresUtc", login.ExpiresUtc.ToString("O"));
 
         // Remember-me cookie (only if ticked)
         if (Input.RememberMe)
@@ -125,7 +127,10 @@ public sealed class LoginModel : PageModel
             Role = login.Role ?? "Worker",
             Username = login.Username ?? "",
             MustChangePassword = login.MustChangePassword,
+            AccessToken = login.AccessToken ?? "",
+            ExpiresUtcUtcIso = login.ExpiresUtc.ToString("O")
         };
+
 
         var json = JsonSerializer.Serialize(payload);
         var protectedValue = protector.Protect(json);
@@ -150,5 +155,8 @@ public sealed class LoginModel : PageModel
         public string Role { get; set; } = "Worker";
         public string Username { get; set; } = "";
         public bool MustChangePassword { get; set; }
+        public string AccessToken { get; set; } = "";
+        public string ExpiresUtcUtcIso { get; set; } = "";
     }
+
 }

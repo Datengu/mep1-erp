@@ -8,13 +8,21 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<ErpApiSettings>(builder.Configuration.GetSection("ErpApi"));
 
+// Needed for BearerTokenHandler
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<BearerTokenHandler>();
+
 builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
 {
     var cfg = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ErpApiSettings>>().Value;
 
     http.BaseAddress = new Uri(cfg.BaseUrl);
-    http.DefaultRequestHeaders.Add("X-API-KEY", cfg.ApiKey);
-});
+
+    // IMPORTANT: must match API middleware header name exactly
+    // API checks "X-Api-Key"
+    http.DefaultRequestHeaders.Add("X-Api-Key", cfg.ApiKey);
+})
+.AddHttpMessageHandler<BearerTokenHandler>();
 
 // Data protection (used to encrypt/decrypt remember-me cookie)
 builder.Services.AddDataProtection();
@@ -116,6 +124,8 @@ app.Use(async (ctx, next) =>
                 ctx.Session.SetString("UserRole", payload.Role ?? "Worker");
                 ctx.Session.SetString("Username", payload.Username ?? "");
                 ctx.Session.SetString("MustChangePassword", payload.MustChangePassword ? "true" : "false");
+                ctx.Session.SetString("AccessToken", payload.AccessToken ?? "");
+                ctx.Session.SetString("AccessTokenExpiresUtc", payload.ExpiresUtcUtcIso ?? "");
             }
         }
         catch
@@ -142,4 +152,10 @@ file sealed class RememberPayload
     public string? Role { get; set; }
     public string? Username { get; set; }
     public bool MustChangePassword { get; set; }
+
+    // JWT (NEW)
+    public string? AccessToken { get; set; }
+
+    // Keep it stringly-typed to avoid DateTimeKind issues across serialisation
+    public string? ExpiresUtcUtcIso { get; set; }
 }

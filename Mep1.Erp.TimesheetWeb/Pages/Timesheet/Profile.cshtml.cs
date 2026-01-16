@@ -96,7 +96,6 @@ public class ProfileModel : PageModel
 
         await _api.SetWorkerSignatureAsync(
             workerId: WorkerId.Value,
-            actorWorkerId: WorkerId.Value,
             signatureName: sig);
 
         SuccessMessage = "Signature updated.";
