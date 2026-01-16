@@ -15,15 +15,17 @@ public sealed class AuthController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IMemoryCache _cache;
     private readonly JwtTokenService _jwt;
+    private readonly RefreshTokenService _refresh;
 
-    public AuthController(AppDbContext db, IMemoryCache cache, JwtTokenService jwt)
+    public AuthController(AppDbContext db, IMemoryCache cache, JwtTokenService jwt, RefreshTokenService refresh)
     {
         _db = db;
         _cache = cache;
         _jwt = jwt;
+        _refresh = refresh;
     }
 
-    public sealed record LoginRequest(string Username, string Password);
+    public sealed record LoginRequest(string Username, string Password, bool RememberMe);
 
     public sealed record LoginResponse(
         int WorkerId,
@@ -33,8 +35,12 @@ public sealed class AuthController : ControllerBase
         string Initials,
         bool MustChangePassword,
         string AccessToken,
-        DateTime ExpiresUtc
+        DateTime ExpiresUtc,
+        string? RefreshToken,
+        DateTime? RefreshExpiresUtc
     );
+
+    public sealed record LogoutRequest(string RefreshToken);
 
     private sealed class LoginThrottleState
     {
@@ -46,6 +52,15 @@ public sealed class AuthController : ControllerBase
     private const int MaxFailsPerWindow = 5;
     private static readonly TimeSpan FailWindow = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(1);
+
+    public sealed record RefreshRequest(string RefreshToken);
+
+    public sealed record RefreshResponse(
+        string AccessToken,
+        DateTime ExpiresUtc,
+        string RefreshToken,
+        DateTime RefreshExpiresUtc
+    );
 
     private static string NormalizeUsername(string? username)
         => (username ?? "").Trim().ToLowerInvariant();
@@ -143,7 +158,7 @@ public sealed class AuthController : ControllerBase
 
         var user = await _db.TimesheetUsers
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Username.ToLower() == normalizedUsername && x.IsActive);
+            .FirstOrDefaultAsync(x => x.UsernameNormalized == normalizedUsername && x.IsActive);
 
         if (user is null)
         {
@@ -168,6 +183,16 @@ public sealed class AuthController : ControllerBase
 
         var (token, expiresUtc) = _jwt.CreateToken(user.WorkerId, user.Role, user.Username);
 
+        string? refreshToken = null;
+        DateTime? refreshExpires = null;
+
+        if (request.RememberMe)
+        {
+            var issued = await _refresh.IssueAsync(user.Id);
+            refreshToken = issued.refreshToken;
+            refreshExpires = issued.expiresUtc;
+        }
+
         return Ok(new LoginResponse(
             user.WorkerId,
             user.Username,
@@ -176,7 +201,9 @@ public sealed class AuthController : ControllerBase
             worker.Initials,
             user.MustChangePassword,
             token,
-            expiresUtc
+            expiresUtc,
+            refreshToken,
+            refreshExpires
         ));
     }
 
@@ -207,6 +234,42 @@ public sealed class AuthController : ControllerBase
         user.PasswordChangedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+        return Ok();
+    }
+
+    [HttpPost("refresh")]
+    public async Task<ActionResult<RefreshResponse>> Refresh([FromBody] RefreshRequest req)
+    {
+        var validated = await _refresh.ValidateAsync(req.RefreshToken);
+        if (validated == null)
+            return Unauthorized("Invalid refresh token.");
+
+        var (user, oldRow) = validated.Value;
+
+        if (!user.IsActive)
+            return Unauthorized("User inactive.");
+
+        if (user.MustChangePassword)
+            return Unauthorized("Password change required.");
+
+        // rotate refresh token
+        var rotated = await _refresh.RotateAsync(oldRow);
+
+        // issue new access token (short)
+        var (access, expiresUtc) = _jwt.CreateToken(user.WorkerId, user.Role, user.Username);
+
+        return Ok(new RefreshResponse(
+            access,
+            expiresUtc,
+            rotated.newRefreshToken,
+            rotated.newRefreshExpiresUtc
+        ));
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest req)
+    {
+        await _refresh.RevokeAsync(req.RefreshToken);
         return Ok();
     }
 }

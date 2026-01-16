@@ -128,7 +128,12 @@ public sealed class PeopleController : ControllerBase
             return Conflict("This worker already has a portal account.");
 
         // Username unique
-        var usernameTaken = await _db.TimesheetUsers.AnyAsync(u => u.Username == username);
+        var normalized = NormalizeUsername(username);
+
+        var usernameTaken = await _db.TimesheetUsers
+            .AsNoTracking()
+            .AnyAsync(u => u.UsernameNormalized == normalized);
+
         if (usernameTaken)
             return Conflict("Username is already taken.");
 
@@ -155,7 +160,16 @@ public sealed class PeopleController : ControllerBase
         };
 
         _db.TimesheetUsers.Add(user);
-        await _db.SaveChangesAsync();
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Unique index on UsernameNormalized is the source of truth
+            return Conflict("Username is already taken.");
+        }
 
         var a = GetActorForAudit();
         await _audit.LogAsync(
@@ -256,6 +270,39 @@ public sealed class PeopleController : ControllerBase
         );
 
         return Ok(new ResetPortalPasswordResultDto(tempPassword));
+    }
+
+    [HttpGet("portal-access/username-available")]
+    public async Task<ActionResult<PortalUsernameAvailableDto>> CheckPortalUsernameAvailable(
+    [FromQuery] string username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+            return BadRequest("Username is required.");
+
+        var normalized = NormalizeUsername(username);
+
+        // Check if already taken
+        var exists = await _db.TimesheetUsers
+            .AsNoTracking()
+            .AnyAsync(u => u.UsernameNormalized == normalized);
+
+        if (!exists)
+        {
+            return Ok(new PortalUsernameAvailableDto(
+                Normalized: normalized,
+                Available: true,
+                Suggested: null
+            ));
+        }
+
+        // Generate next free suggestion
+        var suggested = await SuggestNextUsernameAsync(normalized);
+
+        return Ok(new PortalUsernameAvailableDto(
+            Normalized: normalized,
+            Available: false,
+            Suggested: suggested
+        ));
     }
 
     [HttpGet("summary")]
@@ -749,4 +796,37 @@ public sealed class PeopleController : ControllerBase
         return NoContent();
     }
 
+    private static string NormalizeUsername(string input)
+    {
+        var trimmed = input.Trim().ToLowerInvariant();
+
+        // letters, digits, dots only
+        var chars = trimmed
+            .Where(c => char.IsLetterOrDigit(c) || c == '.')
+            .ToArray();
+
+        return new string(chars);
+    }
+
+    private async Task<string> SuggestNextUsernameAsync(string baseNormalized)
+    {
+        // Pull all usernames that start with the base
+        var taken = await _db.TimesheetUsers
+            .AsNoTracking()
+            .Where(u => u.UsernameNormalized.StartsWith(baseNormalized))
+            .Select(u => u.UsernameNormalized)
+            .ToListAsync();
+
+        if (!taken.Contains(baseNormalized))
+            return baseNormalized;
+
+        for (int i = 2; i < 1000; i++)
+        {
+            var candidate = baseNormalized + i;
+            if (!taken.Contains(candidate))
+                return candidate;
+        }
+
+        throw new InvalidOperationException("Unable to generate username.");
+    }
 }
