@@ -1,16 +1,58 @@
 using Mep1.Erp.Api.Security;
 using Mep1.Erp.Api.Services;
+using Mep1.Erp.Core;
 using Mep1.Erp.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System;
 using System.IO;
+using System.Text;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// JWT auth
+builder.Services.AddSingleton<Mep1.Erp.Api.Security.JwtTokenService>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var issuer = builder.Configuration["Security:JwtIssuer"] ?? "mep1-erp";
+        var audience = builder.Configuration["Security:JwtAudience"] ?? "mep1-erp";
+        var signingKey = builder.Configuration["Security:JwtSigningKey"] ?? "";
+
+        if (string.IsNullOrWhiteSpace(signingKey))
+            throw new InvalidOperationException("Security:JwtSigningKey is missing.");
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = issuer,
+
+            ValidateAudience = true,
+            ValidAudience = audience,
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(2)
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOrOwner", p => p.RequireRole(
+        TimesheetUserRole.Admin.ToString(),
+        TimesheetUserRole.Owner.ToString()));
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddMemoryCache();
 builder.Services.AddSwaggerGen(c =>
@@ -79,6 +121,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseHttpsRedirection();
+
 // --- API Key auth (minimal) ---
 var portalApiKey = builder.Configuration["Security:PortalApiKey"];
 var adminApiKey = builder.Configuration["Security:AdminApiKey"];
@@ -146,11 +190,12 @@ app.Use(async (context, next) =>
 });
 // --- end API Key auth ---
 
-// --- Actor token (optional, per-endpoint enforcement) ---
+// --- Actor token (per-endpoint enforcement, should be obsolete after JWT added) ---
 app.UseMiddleware<ActorTokenMiddleware>();
 // --- end Actor token ---
 
-app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization(); // don’t expose the app publicly without proper auth in place.
+
 app.MapControllers();
 app.Run();
