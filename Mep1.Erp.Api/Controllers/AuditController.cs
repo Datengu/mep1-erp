@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Mep1.Erp.Api.Security;
 using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
 
@@ -8,6 +8,7 @@ namespace Mep1.Erp.Api.Controllers;
 
 [ApiController]
 [Route("api/audit")]
+[Authorize(Policy = "AdminOrOwner")]
 public sealed class AuditController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -20,22 +21,10 @@ public sealed class AuditController : ControllerBase
     private bool IsAdminKey()
         => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
 
-    private ActorContext? GetActor()
-        => HttpContext.Items["Actor"] as ActorContext;
-
-    private ActionResult? RequireAdminActor()
+    private ActionResult? RequireAdminKey()
     {
-        if (!IsAdminKey())
-            return Unauthorized("Admin API key required.");
-
-        var actor = GetActor();
-        if (actor is null)
-            return Unauthorized("Actor token required.");
-
-        if (!actor.IsAdminOrOwner)
-            return Unauthorized("Admin/Owner actor required.");
-
-        return null;
+        if (IsAdminKey()) return null;
+        return Unauthorized("Admin API key required.");
     }
 
     [HttpGet]
@@ -48,7 +37,7 @@ public sealed class AuditController : ControllerBase
         [FromQuery] int? actorWorkerId = null,
         [FromQuery] string? action = null)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         take = Math.Clamp(take, 1, 1000);

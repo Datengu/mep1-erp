@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows;
+using Mep1.Erp.Core;
 
 namespace Mep1.Erp.Desktop
 {
@@ -30,19 +31,39 @@ namespace Mep1.Erp.Desktop
                     return;
                 }
 
-                var dto = await _api.DesktopAdminLoginAsync(username, password);
+                // Unified JWT login
+                var dto = await _api.AuthLoginAsync(username, password);
 
-                // store in memory only
-                DesktopActorSession.Set(dto);
+                // Desktop access requires Admin/Owner
+                if (!Enum.TryParse<TimesheetUserRole>(dto.Role, ignoreCase: true, out var role))
+                    role = TimesheetUserRole.Worker;
 
-                // set header for all future calls from this client
-                _api.SetActorToken(dto.ActorToken);
+                if (role != TimesheetUserRole.Admin && role != TimesheetUserRole.Owner)
+                {
+                    StatusText.Text = "Desktop access requires Admin or Owner.";
+                    return;
+                }
+
+                // Set bearer token for all future API calls from this desktop client
+                _api.SetBearerToken(dto.AccessToken);
+
+                // Store some identity info in memory if you want it for UI display
+                DesktopActorSession.SetFromJwtLogin(
+                    workerId: dto.WorkerId,
+                    username: dto.Username,
+                    role: dto.Role,
+                    name: dto.Name,
+                    initials: dto.Initials,
+                    mustChangePassword: dto.MustChangePassword,
+                    expiresUtc: dto.ExpiresUtc
+                );
 
                 if (dto.MustChangePassword)
                 {
-                    StatusText.Text = "Your password must be changed (MustChangePassword=true). " +
-                                      "For go-live, change it via the portal change-password endpoint.";
-                    // You can choose to block here, but for “tight scope” I’m not forcing it.
+                    StatusText.Text =
+                        "Your password must be changed (MustChangePassword=true). " +
+                        "Change it via the portal or add a desktop change-password screen.";
+                    // Optional: block login here by returning.
                 }
 
                 DialogResult = true;

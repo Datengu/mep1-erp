@@ -5,6 +5,7 @@ using Mep1.Erp.Application;
 using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
@@ -13,6 +14,7 @@ namespace Mep1.Erp.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = "AdminOrOwner")]
 public class ProjectsController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -34,22 +36,25 @@ public class ProjectsController : ControllerBase
         return Unauthorized("Admin API key required.");
     }
 
-    private ActorContext? GetActor()
-        => HttpContext.Items["Actor"] as ActorContext;
-
-    private (int? WorkerId, string Role, string Source) GetActorForAudit()
+    private (int WorkerId, string Role, string Source) GetActorForAudit()
     {
-        var actor = GetActor();
-        if (actor != null)
-            return (actor.WorkerId, actor.Role.ToString(), "Desktop");
-
-        return (null, "AdminKey", "ApiKey");
+        var id = ClaimsActor.GetWorkerId(User);
+        var role = ClaimsActor.GetRole(User);
+        return (id, role.ToString(), GetClientApp());
     }
 
+    private string GetClientApp()
+    {
+        var kind = HttpContext.Items["ApiKeyKind"] as string;
+        return string.Equals(kind, "Admin", StringComparison.Ordinal) ? "Desktop" : "Portal";
+    }
 
     [HttpGet]
     public async Task<IActionResult> Get()
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var projects = await _db.Projects
             .AsNoTracking()
             .OrderBy(p => p.JobNameOrNumber)
@@ -71,6 +76,9 @@ public class ProjectsController : ControllerBase
     [HttpGet("summary")]
     public ActionResult<List<ProjectSummaryDto>> GetSummary()
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var rows = Reporting.GetProjectCostVsInvoiced(_db);
 
         // map JobNameOrNumber -> IsActive from DB
@@ -180,6 +188,9 @@ public class ProjectsController : ControllerBase
     [HttpGet("{jobKey}/drilldown")]
     public async Task<ActionResult<ProjectDrilldownDto>> GetDrilldown([FromRoute] string jobKey, [FromQuery] int recentTake = 25)
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var project = await _db.Projects
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
@@ -380,6 +391,9 @@ public class ProjectsController : ControllerBase
     [HttpGet("picklist/invoices")]
     public async Task<ActionResult<List<InvoiceProjectPicklistItemDto>>> GetInvoicePicklist()
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var rows = await _db.Projects
             .AsNoTracking()
             .Where(p => p.IsRealProject && p.CompanyId != null)

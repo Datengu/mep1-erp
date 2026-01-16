@@ -3,6 +3,7 @@ using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
 using Mep1.Erp.Api.Services;
 using Mep1.Erp.Api.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,7 @@ namespace Mep1.Erp.Api.Controllers;
 
 [ApiController]
 [Route("api/suppliers")]
+[Authorize(Policy = "AdminOrOwner")]
 public class SuppliersController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -31,21 +33,25 @@ public class SuppliersController : ControllerBase
         return Unauthorized("Admin API key required.");
     }
 
-    private ActorContext? GetActor()
-        => HttpContext.Items["Actor"] as ActorContext;
-
-    private (int? WorkerId, string Role, string Source) GetActorForAudit()
+    private (int WorkerId, string Role, string Source) GetActorForAudit()
     {
-        var actor = GetActor();
-        if (actor != null)
-            return (actor.WorkerId, actor.Role.ToString(), "Desktop");
+        var id = ClaimsActor.GetWorkerId(User);
+        var role = ClaimsActor.GetRole(User);
+        return (id, role.ToString(), GetClientApp());
+    }
 
-        return (null, "AdminKey", "ApiKey");
+    private string GetClientApp()
+    {
+        var kind = HttpContext.Items["ApiKeyKind"] as string;
+        return string.Equals(kind, "Admin", StringComparison.Ordinal) ? "Desktop" : "Portal";
     }
 
     [HttpGet]
     public async Task<ActionResult<List<SupplierDto>>> GetAll([FromQuery] bool includeInactive = false)
     {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         var q = _db.Suppliers.AsNoTracking();
 
         if (!includeInactive)

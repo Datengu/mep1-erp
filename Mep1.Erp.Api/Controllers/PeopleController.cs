@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using Mep1.Erp.Application;
@@ -12,6 +13,7 @@ namespace Mep1.Erp.Api.Controllers;
 
 [ApiController]
 [Route("api/people")]
+[Authorize(Policy = "AdminOrOwner")]
 public sealed class PeopleController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -34,32 +36,17 @@ public sealed class PeopleController : ControllerBase
         return Unauthorized("Admin API key required.");
     }
 
-    private ActorContext? GetActor()
-    => HttpContext.Items["Actor"] as ActorContext;
-
-    private (int? WorkerId, string Role, string Source) GetActorForAudit()
+    private (int WorkerId, string Role, string Source) GetActorForAudit()
     {
-        var actor = GetActor();
-        if (actor != null)
-            return (actor.WorkerId, actor.Role.ToString(), "Desktop");
-
-        // Admin API key used without an actor token (should be rare)
-        return (null, "AdminKey", "ApiKey");
+        var id = ClaimsActor.GetWorkerId(User);
+        var role = ClaimsActor.GetRole(User);
+        return (id, role.ToString(), GetClientApp());
     }
 
-    private ActionResult? RequireAdminActor()
+    private string GetClientApp()
     {
-        if (!IsAdminKey())
-            return Unauthorized("Admin API key required.");
-
-        var actor = GetActor();
-        if (actor is null)
-            return Unauthorized("Actor token required.");
-
-        if (!actor.IsAdminOrOwner)
-            return Unauthorized("Admin/Owner actor required.");
-
-        return null;
+        var kind = HttpContext.Items["ApiKeyKind"] as string;
+        return string.Equals(kind, "Admin", StringComparison.Ordinal) ? "Desktop" : "Portal";
     }
 
     private static string GenerateTempPassword(int length = 12)
@@ -83,7 +70,7 @@ public sealed class PeopleController : ControllerBase
     [HttpGet("{workerId:int}/portal-access")]
     public async Task<ActionResult<PortalAccessDto>> GetPortalAccess(int workerId)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         var user = await _db.TimesheetUsers
@@ -119,7 +106,7 @@ public sealed class PeopleController : ControllerBase
         int workerId,
         [FromBody] CreatePortalAccessRequestDto request)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         if (string.IsNullOrWhiteSpace(request.Username))
@@ -199,7 +186,7 @@ public sealed class PeopleController : ControllerBase
         int workerId,
         [FromBody] UpdatePortalAccessRequestDto request)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         var user = await _db.TimesheetUsers.FirstOrDefaultAsync(u => u.WorkerId == workerId);
@@ -243,7 +230,7 @@ public sealed class PeopleController : ControllerBase
     [HttpPost("{workerId:int}/portal-access/reset-password")]
     public async Task<ActionResult<ResetPortalPasswordResultDto>> ResetPortalPassword(int workerId)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         var user = await _db.TimesheetUsers.FirstOrDefaultAsync(u => u.WorkerId == workerId);
@@ -274,9 +261,7 @@ public sealed class PeopleController : ControllerBase
     [HttpGet("summary")]
     public ActionResult<List<PeopleSummaryRowDto>> GetPeopleSummary()
     {
-        using var db = new AppDbContext();
-
-        var rows = Reporting.GetPeopleSummary(db);
+        var rows = Reporting.GetPeopleSummary(_db);
 
         var dto = rows.Select(r => new PeopleSummaryRowDto
         {
@@ -296,12 +281,10 @@ public sealed class PeopleController : ControllerBase
     [HttpGet("{workerId:int}/drilldown")]
     public ActionResult<PersonDrilldownDto> GetPersonDrilldown(int workerId)
     {
-        using var db = new AppDbContext();
-
         var today = DateTime.Today.Date;
         var monthStart = new DateTime(today.Year, today.Month, 1);
 
-        var rates = db.WorkerRates
+        var rates = _db.WorkerRates
             .AsNoTracking()
             .Where(r => r.WorkerId == workerId)
             .OrderByDescending(r => r.ValidFrom)
@@ -314,7 +297,7 @@ public sealed class PeopleController : ControllerBase
             })
             .ToList();
 
-        var projects = Reporting.GetPersonProjectBreakdown(db, workerId, monthStart, today)
+        var projects = Reporting.GetPersonProjectBreakdown(_db, workerId, monthStart, today)
             .Select(p => new PersonProjectBreakdownRowDto
             {
                 ProjectLabel = p.ProjectLabel,
@@ -324,7 +307,7 @@ public sealed class PeopleController : ControllerBase
             })
             .ToList();
 
-        var recent = Reporting.GetPersonRecentEntries(db, workerId, take: 20)
+        var recent = Reporting.GetPersonRecentEntries(_db, workerId, take: 20)
             .Select(e => new PersonRecentEntryRowDto
             {
                 Date = e.Date,
@@ -349,7 +332,7 @@ public sealed class PeopleController : ControllerBase
     [HttpPatch("{workerId:int}/active")]
     public async Task<IActionResult> SetWorkerActive(int workerId, [FromBody] SetWorkerActiveRequest request)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         var worker = await _db.Workers.FirstOrDefaultAsync(w => w.Id == workerId);
@@ -482,7 +465,7 @@ public sealed class PeopleController : ControllerBase
     [HttpGet("{workerId:int}/edit")]
     public async Task<ActionResult<WorkerForEditDto>> GetWorkerForEdit(int workerId)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         var worker = await _db.Workers.AsNoTracking().FirstOrDefaultAsync(w => w.Id == workerId);
@@ -515,7 +498,7 @@ public sealed class PeopleController : ControllerBase
     [HttpPatch("{workerId:int}")]
     public async Task<IActionResult> UpdateWorkerDetails(int workerId, [FromBody] UpdateWorkerDetailsRequestDto req)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         var worker = await _db.Workers.FirstOrDefaultAsync(w => w.Id == workerId);
@@ -558,7 +541,7 @@ public sealed class PeopleController : ControllerBase
     [HttpPost("{workerId:int}/rates/change-current")]
     public async Task<IActionResult> ChangeCurrentRate(int workerId, [FromBody] ChangeCurrentRateRequestDto req)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         if (req.NewRatePerHour < 0m)
@@ -642,7 +625,7 @@ public sealed class PeopleController : ControllerBase
     [HttpPost("{workerId:int}/rates")]
     public async Task<IActionResult> AddHistoricalRate(int workerId, [FromBody] AddWorkerRateRequestDto req)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         if (req.RatePerHour < 0m)
@@ -690,7 +673,7 @@ public sealed class PeopleController : ControllerBase
     [HttpPatch("{workerId:int}/rates/{rateId:int}")]
     public async Task<IActionResult> UpdateRateAmount(int workerId, int rateId, [FromBody] UpdateWorkerRateAmountRequestDto req)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         if (req.RatePerHour < 0m)
@@ -720,7 +703,7 @@ public sealed class PeopleController : ControllerBase
     [HttpDelete("{workerId:int}/rates/{rateId:int}")]
     public async Task<IActionResult> DeleteRate(int workerId, int rateId)
     {
-        var guard = RequireAdminActor();
+        var guard = RequireAdminKey();
         if (guard != null) return guard;
 
         var rate = await _db.WorkerRates.FirstOrDefaultAsync(r => r.Id == rateId && r.WorkerId == workerId);

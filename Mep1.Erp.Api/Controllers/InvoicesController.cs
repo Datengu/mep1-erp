@@ -4,6 +4,7 @@ using Mep1.Erp.Application;
 using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ namespace Mep1.Erp.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = "AdminOrOwner")]
     public sealed class InvoicesController : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -31,32 +33,17 @@ namespace Mep1.Erp.Api.Controllers
             return Unauthorized("Admin API key required.");
         }
 
-        private ActorContext? GetActor()
-            => HttpContext.Items["Actor"] as ActorContext;
-
-        private (int? WorkerId, string Role, string Source) GetActorForAudit()
+        private (int WorkerId, string Role, string Source) GetActorForAudit()
         {
-            var actor = GetActor();
-            if (actor != null)
-                return (actor.WorkerId, actor.Role.ToString(), "Desktop");
-
-            // Admin API key used without an actor token (should be rare)
-            return (null, "AdminKey", "ApiKey");
+            var id = ClaimsActor.GetWorkerId(User);
+            var role = ClaimsActor.GetRole(User);
+            return (id, role.ToString(), GetClientApp());
         }
 
-        private ActionResult? RequireAdminActor()
+        private string GetClientApp()
         {
-            if (!IsAdminKey())
-                return Unauthorized("Admin API key required.");
-
-            var actor = GetActor();
-            if (actor is null)
-                return Unauthorized("Actor token required.");
-
-            if (!actor.IsAdminOrOwner)
-                return Unauthorized("Admin/Owner actor required.");
-
-            return null;
+            var kind = HttpContext.Items["ApiKeyKind"] as string;
+            return string.Equals(kind, "Admin", StringComparison.Ordinal) ? "Desktop" : "Portal";
         }
 
         private static bool TryParseRole(string role, out TimesheetUserRole parsed)
@@ -65,6 +52,9 @@ namespace Mep1.Erp.Api.Controllers
         [HttpGet]
         public ActionResult<List<InvoiceListEntryDto>> GetInvoices()
         {
+            var guard = RequireAdminKey();
+            if (guard != null) return guard;
+
             var rows = Reporting.GetInvoiceList(_db);
 
             var dto = rows.Select(r => new InvoiceListEntryDto
@@ -116,8 +106,6 @@ namespace Mep1.Erp.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<CreateInvoiceResponseDto>> Create([FromBody] CreateInvoiceRequestDto dto)
         {
-            // Follow your existing controller's auth style.
-            // If your InvoicesController already has a guard method, keep using it.
             var guard = RequireAdminKey();
             if (guard != null) return guard;
 

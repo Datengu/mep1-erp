@@ -105,13 +105,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Audit Log
 builder.Services.AddScoped<AuditLogger>();
 
-// Actor token auth (desktop identity)
-builder.Services.AddSingleton(sp =>
-{
-    var signingKey = builder.Configuration["Security:ActorTokenSigningKey"] ?? "";
-    return new ActorTokenService(signingKey);
-});
-
 var app = builder.Build();
 
 //Do not enable Swagger in Production unless protected.
@@ -189,10 +182,6 @@ app.Use(async (context, next) =>
     await context.Response.WriteAsync("Invalid API key.");
 });
 // --- end API Key auth ---
-
-// --- Actor token (per-endpoint enforcement, should be obsolete after JWT added) ---
-app.UseMiddleware<ActorTokenMiddleware>();
-// --- end Actor token ---
 
 app.UseAuthentication();
 app.UseAuthorization(); // don’t expose the app publicly without proper auth in place.

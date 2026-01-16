@@ -60,7 +60,7 @@ public sealed class ErpTimesheetApiClient
     {
         var body = new TimesheetLoginRequest(username, password);
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/timesheet/auth/login")
+        using var req = new HttpRequestMessage(HttpMethod.Post, "api/auth/login")
         {
             Content = JsonContent.Create(body, options: _jsonOptions)
         };
@@ -185,7 +185,7 @@ public sealed class ErpTimesheetApiClient
     {
         var body = new ChangePasswordRequest(username, currentPassword, newPassword);
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/timesheet/auth/change-password")
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/auth/change-password")
         {
             Content = JsonContent.Create(body, options: _jsonOptions)
         };
