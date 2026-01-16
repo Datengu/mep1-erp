@@ -13,6 +13,8 @@ public sealed class TimesheetUser
 
     public string Username { get; set; } = "";
 
+    public string UsernameNormalized { get; set; } = "";
+
     public string PasswordHash { get; set; } = "";
 
     // Link to your existing People/Worker record.

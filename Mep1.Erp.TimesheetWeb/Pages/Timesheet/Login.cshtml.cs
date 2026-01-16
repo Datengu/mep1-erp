@@ -1,6 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Text.Json;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -10,10 +14,6 @@ namespace Mep1.Erp.TimesheetWeb.Pages.Timesheet;
 
 public sealed class LoginModel : PageModel
 {
-    private const string RememberCookieName = "MEP1_REMEMBER";
-    private const string RememberProtectorPurpose = "Mep1.Erp.TimesheetWeb.RememberMe.v1";
-    private static readonly TimeSpan RememberDuration = TimeSpan.FromDays(30);
-
     private readonly ErpTimesheetApiClient _api;
 
     public LoginModel(ErpTimesheetApiClient api)
@@ -42,8 +42,7 @@ public sealed class LoginModel : PageModel
 
     public void OnGet()
     {
-        // If already logged in, go straight to ReturnUrl (or EnterHours)
-        if (HttpContext.Session.GetInt32("WorkerId") is not null)
+        if (User.Identity?.IsAuthenticated == true)
         {
             if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
             {
@@ -64,7 +63,7 @@ public sealed class LoginModel : PageModel
 
         try
         {
-            login = await _api.LoginAsync(Input.Username, Input.Password);
+            login = await _api.LoginAsync(Input.Username, Input.Password, Input.RememberMe);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
         {
@@ -85,26 +84,34 @@ public sealed class LoginModel : PageModel
             return Page();
         }
 
-        // Session (current behaviour)
-        HttpContext.Session.SetInt32("WorkerId", login.WorkerId);
-        HttpContext.Session.SetString("WorkerName", login.Name ?? "");
-        HttpContext.Session.SetString("WorkerInitials", login.Initials ?? "");
-        HttpContext.Session.SetString("UserRole", login.Role ?? "Worker");
-        HttpContext.Session.SetString("Username", login.Username ?? "");
-        HttpContext.Session.SetString("MustChangePassword", login.MustChangePassword ? "true" : "false");
-        HttpContext.Session.SetString("AccessToken", login.AccessToken ?? "");
-        HttpContext.Session.SetString("AccessTokenExpiresUtc", login.ExpiresUtc.ToString("O"));
+        var claims = BuildClaimsFromJwt(login.AccessToken);
 
-        // Remember-me cookie (only if ticked)
+        // Store the raw access token in a claim so your API client can attach it.
+        // Cookie auth cookie is encrypted/signed by ASP.NET Core.
+        claims.Add(new Claim("access_token", login.AccessToken ?? ""));
         if (Input.RememberMe)
+            claims.Add(new Claim("refresh_token", login.RefreshToken ?? ""));
+        claims.Add(new Claim("must_change_password", login.MustChangePassword ? "true" : "false"));
+        claims.Add(new Claim("display_name", login.Name ?? ""));
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        var authProps = new AuthenticationProperties
         {
-            SetRememberMeCookie(login);
-        }
-        else
+            IsPersistent = Input.RememberMe,
+            AllowRefresh = true
+        };
+
+        if (Input.RememberMe && login.RefreshExpiresUtc.HasValue)
         {
-            // If user logs in without remember-me, ensure any old remember cookie is removed.
-            Response.Cookies.Delete(RememberCookieName);
+            authProps.ExpiresUtc = login.RefreshExpiresUtc.Value;
         }
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            authProps);
 
         if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
         {
@@ -114,49 +121,15 @@ public sealed class LoginModel : PageModel
         return RedirectToPage("/Timesheet/EnterHours");
     }
 
-    private void SetRememberMeCookie(ErpTimesheetApiClient.TimesheetLoginResponse login)
+    private static List<Claim> BuildClaimsFromJwt(string? token)
     {
-        var provider = HttpContext.RequestServices.GetRequiredService<IDataProtectionProvider>();
-        var protector = provider.CreateProtector(RememberProtectorPurpose);
+        if (string.IsNullOrWhiteSpace(token))
+            throw new InvalidOperationException("Access token missing.");
 
-        var payload = new RememberPayload
-        {
-            WorkerId = login.WorkerId,
-            Name = login.Name ?? "",
-            Initials = login.Initials ?? "",
-            Role = login.Role ?? "Worker",
-            Username = login.Username ?? "",
-            MustChangePassword = login.MustChangePassword,
-            AccessToken = login.AccessToken ?? "",
-            ExpiresUtcUtcIso = login.ExpiresUtc.ToString("O")
-        };
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
 
-
-        var json = JsonSerializer.Serialize(payload);
-        var protectedValue = protector.Protect(json);
-
-        var opts = new CookieOptions
-        {
-            HttpOnly = true,
-            IsEssential = true,
-            SameSite = SameSiteMode.Lax,
-            Secure = Request.IsHttps,
-            Expires = DateTimeOffset.UtcNow.Add(RememberDuration)
-        };
-
-        Response.Cookies.Append(RememberCookieName, protectedValue, opts);
+        // Keep JWT claims (wid, usr, role, plus standard ones)
+        return jwt.Claims.ToList();
     }
-
-    private sealed class RememberPayload
-    {
-        public int WorkerId { get; set; }
-        public string Name { get; set; } = "";
-        public string Initials { get; set; } = "";
-        public string Role { get; set; } = "Worker";
-        public string Username { get; set; } = "";
-        public bool MustChangePassword { get; set; }
-        public string AccessToken { get; set; } = "";
-        public string ExpiresUtcUtcIso { get; set; } = "";
-    }
-
 }

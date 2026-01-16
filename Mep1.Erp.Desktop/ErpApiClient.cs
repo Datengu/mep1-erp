@@ -123,6 +123,17 @@ namespace Mep1.Erp.Desktop
             return result;
         }
 
+        public async Task<PortalUsernameAvailableDto> GetPortalUsernameAvailabilityAsync(string username)
+        {
+            var url = $"api/people/portal-access/username-available?username={Uri.EscapeDataString(username ?? "")}";
+
+            var result = await _http.GetFromJsonAsync<PortalUsernameAvailableDto>(url);
+            if (result == null)
+                throw new InvalidOperationException("Portal username availability response was empty.");
+
+            return result;
+        }
+
         public async Task<List<ProjectSummaryDto>> GetProjectSummariesAsync()
         {
             var result = await _http.GetFromJsonAsync<List<ProjectSummaryDto>>("api/projects/summary");

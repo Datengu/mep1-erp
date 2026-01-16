@@ -20,11 +20,10 @@ namespace Mep1.Erp.TimesheetWeb.Pages
                 return RedirectToPage("/Timesheet/Profile");
             }
 
-            var workerId = HttpContext.Session.GetInt32("WorkerId");
-            if (workerId is not null)
-            {
+            if (User.Identity?.IsAuthenticated != true)
                 return RedirectToPage("/Timesheet/EnterHours");
-            }
+
+            var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
 
             return RedirectToPage("/Timesheet/Login");
         }

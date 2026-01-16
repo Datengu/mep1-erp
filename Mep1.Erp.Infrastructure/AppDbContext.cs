@@ -27,6 +27,7 @@ namespace Mep1.Erp.Infrastructure
         public DbSet<TimesheetUser> TimesheetUsers => Set<TimesheetUser>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
         public DbSet<Company> Companies => Set<Company>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -129,6 +130,13 @@ namespace Mep1.Erp.Infrastructure
 
                 e.Property(x => x.MustChangePassword)
                  .HasDefaultValue(false);
+
+                e.Property(x => x.UsernameNormalized)
+                    .IsRequired()
+                    .HasMaxLength(200);
+
+                e.HasIndex(x => x.UsernameNormalized)
+                    .IsUnique();
             });
 
             modelBuilder.Entity<AuditLog>(e =>
@@ -143,6 +151,51 @@ namespace Mep1.Erp.Infrastructure
                 e.Property(x => x.EntityId).IsRequired().HasMaxLength(64);
             });
 
+            modelBuilder.Entity<RefreshToken>(e =>
+            {
+                e.ToTable("RefreshTokens");
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.TokenHash).IsRequired().HasMaxLength(255);
+                e.HasIndex(x => x.TokenHash).IsUnique();
+
+                e.HasOne(x => x.TimesheetUser)
+                    .WithMany() // or .WithMany(u => u.RefreshTokens) if you add nav prop
+                    .HasForeignKey(x => x.TimesheetUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.Property(x => x.CreatedUtc).IsRequired();
+                e.Property(x => x.ExpiresUtc).IsRequired();
+            });
         }
+
+        private static string NormalizeUsername(string? username)
+            => (username ?? "").Trim().ToLowerInvariant();
+
+        private void ApplyTimesheetUserNormalization()
+        {
+            foreach (var entry in ChangeTracker.Entries<TimesheetUser>())
+            {
+                if (entry.State is EntityState.Added or EntityState.Modified)
+                {
+                    // Only touch it if Username is present
+                    var username = entry.Entity.Username;
+                    entry.Entity.UsernameNormalized = NormalizeUsername(username);
+                }
+            }
+        }
+
+        public override int SaveChanges()
+        {
+            ApplyTimesheetUserNormalization();
+            return base.SaveChanges();
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            ApplyTimesheetUserNormalization();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
     }
 }
