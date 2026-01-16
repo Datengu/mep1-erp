@@ -1,19 +1,21 @@
 ﻿using Mep1.Erp.Api.Services;
+using Mep1.Erp.Api.Security;
 using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace Mep1.Erp.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/timesheet")]
 public sealed class TimesheetController : ControllerBase
 {
     private readonly AppDbContext _db;
-
     private readonly AuditLogger _audit;
 
     public TimesheetController(AppDbContext db, AuditLogger audit)
@@ -38,32 +40,22 @@ public sealed class TimesheetController : ControllerBase
         }
     }
 
-    [HttpPost("login")]
-    public async Task<ActionResult<TimesheetLoginResultDto>> Login(
-        LoginTimesheetDto dto)
+    private (int actorWorkerId, TimesheetUserRole actorRole, int subjectWorkerId) ResolveActorAndSubject(int? subjectWorkerId)
     {
-        var user = await _db.TimesheetUsers
-            .FirstOrDefaultAsync(x =>
-                x.Username == dto.Username &&
-                x.IsActive);
+        var actorId = ClaimsActor.GetWorkerId(User);
+        var role = ClaimsActor.GetRole(User);
 
-        if (user == null)
-            return Unauthorized();
+        var subject = actorId;
 
-        if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-            return Unauthorized();
+        if (subjectWorkerId.HasValue && subjectWorkerId.Value > 0 && subjectWorkerId.Value != actorId)
+        {
+            if (role != TimesheetUserRole.Admin && role != TimesheetUserRole.Owner)
+                throw new UnauthorizedAccessException("Not permitted to act on behalf of another worker.");
 
-        var worker = await _db.Workers
-            .FirstOrDefaultAsync(w => w.Id == user.WorkerId);
+            subject = subjectWorkerId.Value;
+        }
 
-        if (worker == null)
-            return Unauthorized(); // data integrity issue
-
-        return new TimesheetLoginResultDto(
-            worker.Id,
-            worker.Name,
-            worker.Initials
-        );
+        return (actorId, role, subject);
     }
 
     // Active projects for dropdown (real projects + internal jobs)
@@ -72,7 +64,7 @@ public sealed class TimesheetController : ControllerBase
     {
         var items = await _db.Projects
             .AsNoTracking()
-            .Where(p => p.IsActive) // ✅ include internal rows too
+            .Where(p => p.IsActive) // include internal rows too
             .OrderBy(p => p.IsRealProject) // real projects first
             .ThenBy(p => p.Category)
             .ThenBy(p => p.JobNameOrNumber)
@@ -90,7 +82,7 @@ public sealed class TimesheetController : ControllerBase
 
     // Submit a timesheet entry
     [HttpPost("entries")]
-    public async Task<ActionResult> CreateEntry([FromBody] CreateTimesheetEntryDto dto)
+    public async Task<ActionResult> CreateEntry([FromBody] CreateTimesheetEntryDto dto, [FromQuery] int? subjectWorkerId = null)
     {
         // Trim/normalize first so validation uses the final Code
         dto = dto with
@@ -100,8 +92,12 @@ public sealed class TimesheetController : ControllerBase
             TaskDescription = dto.TaskDescription?.Trim()
         };
 
-        if (dto.WorkerId <= 0) return BadRequest("WorkerId is required.");
+        var (actorId, actorRole, subjectId) = ResolveActorAndSubject(subjectWorkerId);
+
         if (string.IsNullOrWhiteSpace(dto.JobKey)) return BadRequest("JobKey is required.");
+
+        var workerExists = await _db.Workers.AnyAsync(w => w.Id == subjectId);
+        if (!workerExists) return BadRequest("Worker not found.");
 
         // Allow 0 hours ONLY for HOL / SI
         var allowZeroHours = dto.Code == "HOL" || dto.Code == "SI";
@@ -123,12 +119,9 @@ public sealed class TimesheetController : ControllerBase
 
         if (string.Equals(dto.Code, "VO", StringComparison.OrdinalIgnoreCase) &&
             string.IsNullOrWhiteSpace(dto.CcfRef))
-            {
-                return BadRequest("CcfRef is required when Code is VO.");
-            }
-
-        var workerExists = await _db.Workers.AnyAsync(w => w.Id == dto.WorkerId);
-        if (!workerExists) return BadRequest("Worker not found.");
+        {
+            return BadRequest("CcfRef is required when Code is VO.");
+        }
 
         var project = await _db.Projects
             .AsNoTracking()
@@ -140,7 +133,7 @@ public sealed class TimesheetController : ControllerBase
 
         var isProjectWork = string.Equals(project.Category, "Project", StringComparison.OrdinalIgnoreCase);
 
-        string? workTypeToStore = null;
+        string? workTypeToStore;
 
         if (isProjectWork)
         {
@@ -161,14 +154,15 @@ public sealed class TimesheetController : ControllerBase
             };
         }
 
+        // IMPORTANT: nextEntryId must be calculated for the SUBJECT, not dto.WorkerId
         var nextEntryId = await _db.TimesheetEntries
-            .Where(e => e.WorkerId == dto.WorkerId)
+            .Where(e => e.WorkerId == subjectId)
             .Select(e => (int?)e.EntryId)
             .MaxAsync() ?? 0;
 
         var entry = new TimesheetEntry
         {
-            WorkerId = dto.WorkerId,
+            WorkerId = subjectId,
             ProjectId = project.Id,
             EntryId = nextEntryId + 1,
             Date = dto.Date.Date,
@@ -191,27 +185,28 @@ public sealed class TimesheetController : ControllerBase
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(
-            actorWorkerId: dto.WorkerId,
-            actorRole: "Worker",
+            actorWorkerId: actorId,
+            actorRole: actorRole.ToString(),
             actorSource: "Portal",
             action: "TimesheetEntry.Create",
             entityType: "TimesheetEntry",
             entityId: entry.Id.ToString(),
-            summary: $"{dto.Date:yyyy-MM-dd} {dto.Hours}h {dto.Code}"
+            summary: subjectId == actorId
+                ? $"{dto.Date:yyyy-MM-dd} {dto.Hours}h {dto.Code}"
+                : $"OnBehalf({subjectId}) {dto.Date:yyyy-MM-dd} {dto.Hours}h {dto.Code}"
         );
 
         return Ok(new { entry.Id });
     }
 
-    // Fetch a worker's submitted timesheet entries (newest first)
+    // Fetch submitted entries (subject defaults to actor; admin/owner can specify subjectWorkerId)
     [HttpGet("entries")]
     public async Task<ActionResult<List<TimesheetEntrySummaryDto>>> GetEntries(
-        [FromQuery] int workerId,
+        [FromQuery] int? subjectWorkerId = null,
         [FromQuery] int skip = 0,
         [FromQuery] int take = 100)
     {
-        if (workerId <= 0)
-            return BadRequest("workerId is required.");
+        var (_, _, subjectId) = ResolveActorAndSubject(subjectWorkerId);
 
         if (skip < 0) skip = 0;
 
@@ -221,7 +216,7 @@ public sealed class TimesheetController : ControllerBase
 
         var rows = await _db.TimesheetEntries
             .AsNoTracking()
-            .Where(e => e.WorkerId == workerId && !e.IsDeleted)
+            .Where(e => e.WorkerId == subjectId && !e.IsDeleted)
             .OrderByDescending(e => e.Date)
             .ThenByDescending(e => e.EntryId)
             .Select(e => new
@@ -266,13 +261,54 @@ public sealed class TimesheetController : ControllerBase
         return Ok(items);
     }
 
+    [HttpGet("entries/{id:int}")]
+    public async Task<ActionResult<TimesheetEntryEditDto>> GetEntry(int id, [FromQuery] int? subjectWorkerId = null)
+    {
+        var (_, _, subjectId) = ResolveActorAndSubject(subjectWorkerId);
+
+        var row = await _db.TimesheetEntries
+            .AsNoTracking()
+            .Where(e => e.Id == id && e.WorkerId == subjectId && !e.IsDeleted)
+            .Select(e => new
+            {
+                e.Id,
+                e.WorkerId,
+                JobKey = e.Project.JobNameOrNumber,
+                e.Date,
+                e.Hours,
+                e.Code,
+                e.TaskDescription,
+                e.CcfRef,
+                e.WorkType,
+                e.LevelsJson,
+                e.AreasJson
+            })
+            .FirstOrDefaultAsync();
+
+        if (row is null) return NotFound();
+
+        return new TimesheetEntryEditDto(
+            row.Id,
+            row.WorkerId,
+            row.JobKey,
+            row.Date,
+            row.Hours,
+            row.Code,
+            row.TaskDescription,
+            row.CcfRef,
+            row.WorkType,
+            ParseJsonList(row.LevelsJson),
+            ParseJsonList(row.AreasJson)
+        );
+    }
+
     [HttpPut("entries/{id:int}")]
-    public async Task<IActionResult> UpdateEntry(int id, [FromBody] UpdateTimesheetEntryDto dto)
+    public async Task<IActionResult> UpdateEntry(int id, [FromBody] UpdateTimesheetEntryDto dto, [FromQuery] int? subjectWorkerId = null)
     {
         if (id <= 0) return BadRequest("Invalid id.");
-        if (dto.WorkerId <= 0) return BadRequest("WorkerId is required.");
 
-        // Basic validation
+        var (actorId, actorRole, subjectId) = ResolveActorAndSubject(subjectWorkerId);
+
         if (dto.Date.Date > DateTime.Today)
             return BadRequest("Future dates are not allowed.");
 
@@ -282,29 +318,20 @@ public sealed class TimesheetController : ControllerBase
             return BadRequest("Hours must be in 0.5 increments.");
 
         // Fetch entry
-        var entry = await _db.TimesheetEntries
-            .FirstOrDefaultAsync(e => e.Id == id);
+        var entry = await _db.TimesheetEntries.FirstOrDefaultAsync(e => e.Id == id);
+        if (entry is null) return NotFound();
+        if (entry.IsDeleted) return BadRequest("Cannot edit a deleted entry.");
 
-        if (entry is null)
-            return NotFound();
-
-        // Ownership check
-        if (entry.WorkerId != dto.WorkerId)
-            return StatusCode(StatusCodes.Status403Forbidden, "You can only edit your own entries.");
-
-        if (entry.IsDeleted)
-            return BadRequest("Cannot edit a deleted entry.");
-
-        // Validate project exists (and active if you want that rule)
-        var project = await _db.Projects
-            .FirstOrDefaultAsync(p => p.JobNameOrNumber == dto.JobKey);
-
-        if (project is null)
-            return BadRequest("Invalid job.");
+        // Subject ownership check (admin/owner can act on behalf, otherwise subject==actor)
+        if (entry.WorkerId != subjectId)
+            return StatusCode(StatusCodes.Status403Forbidden, "You can only edit entries for the selected worker.");
+        // Validate project exists
+        var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == dto.JobKey);
+        if (project is null) return BadRequest("Invalid job.");
 
         var isProjectWork = string.Equals(project.Category, "Project", StringComparison.OrdinalIgnoreCase);
 
-        string? workTypeToStore = null;
+        string? workTypeToStore;
 
         if (isProjectWork)
         {
@@ -324,8 +351,6 @@ public sealed class TimesheetController : ControllerBase
             };
         }
 
-
-        // Business rules: HOL/SI/BH => hours 0, description optional
         var code = (dto.Code ?? "").Trim().ToUpperInvariant();
 
         decimal hours = dto.Hours;
@@ -335,10 +360,8 @@ public sealed class TimesheetController : ControllerBase
         if (code is "HOL" or "SI" or "BH")
         {
             hours = 0m;
-            // taskDescription can be left empty
         }
 
-        // Apply updates
         entry.Date = dto.Date.Date;
         entry.Hours = hours;
         entry.Code = code;
@@ -347,104 +370,61 @@ public sealed class TimesheetController : ControllerBase
         entry.CcfRef = ccfRef;
 
         entry.UpdatedAtUtc = DateTime.UtcNow;
-        entry.UpdatedByWorkerId = dto.WorkerId;
+        entry.UpdatedByWorkerId = actorId; // IMPORTANT: updated by actor, not subject
 
         entry.WorkType = workTypeToStore;
-
         entry.LevelsJson = JsonSerializer.Serialize(dto.Levels ?? new List<string>());
         entry.AreasJson = JsonSerializer.Serialize(dto.Areas ?? new List<string>());
 
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(
-            actorWorkerId: dto.WorkerId,
-            actorRole: "Worker",
+            actorWorkerId: actorId,
+            actorRole: actorRole.ToString(),
             actorSource: "Portal",
             action: "TimesheetEntry.Update",
             entityType: "TimesheetEntry",
             entityId: entry.Id.ToString(),
-            summary: $"Updated {entry.Date:yyyy-MM-dd}"
+            summary: subjectId == actorId
+                ? $"Updated {entry.Date:yyyy-MM-dd}"
+                : $"OnBehalf({subjectId}) Updated {entry.Date:yyyy-MM-dd}"
         );
 
         return NoContent();
     }
 
-    [HttpGet("entries/{id:int}")]
-    public async Task<ActionResult<TimesheetEntryEditDto>> GetEntry(int id, [FromQuery] int workerId)
-    {
-        if (workerId <= 0) return BadRequest("workerId is required.");
-
-        var row = await _db.TimesheetEntries
-            .AsNoTracking()
-            .Where(e => e.Id == id && e.WorkerId == workerId && !e.IsDeleted)
-            .Select(e => new
-            {
-                e.Id,
-                e.WorkerId,
-                JobKey = e.Project.JobNameOrNumber,
-                e.Date,
-                e.Hours,
-                e.Code,
-                e.TaskDescription,
-                e.CcfRef,
-                e.WorkType,
-                e.LevelsJson,
-                e.AreasJson
-            })
-            .FirstOrDefaultAsync();
-
-        if (row is null) return NotFound();
-
-        var dto = new TimesheetEntryEditDto(
-            row.Id,
-            row.WorkerId,
-            row.JobKey,
-            row.Date,
-            row.Hours,
-            row.Code,
-            row.TaskDescription,
-            row.CcfRef,
-            row.WorkType,
-            ParseJsonList(row.LevelsJson),
-            ParseJsonList(row.AreasJson)
-        );
-
-        return dto;
-    }
-
     [HttpDelete("entries/{id:int}")]
-    public async Task<IActionResult> DeleteEntry(int id, [FromQuery] int workerId)
+    public async Task<IActionResult> DeleteEntry(int id, [FromQuery] int? subjectWorkerId = null)
     {
         if (id <= 0) return BadRequest("Invalid id.");
-        if (workerId <= 0) return BadRequest("workerId is required.");
 
-        var entry = await _db.TimesheetEntries
-            .FirstOrDefaultAsync(e => e.Id == id);
+        var (actorId, actorRole, subjectId) = ResolveActorAndSubject(subjectWorkerId);
 
-        if (entry is null)
-            return NotFound();
+        var entry = await _db.TimesheetEntries.FirstOrDefaultAsync(e => e.Id == id);
+        if (entry is null) return NotFound();
 
-        // Ownership check
-        if (entry.WorkerId != workerId)
-            return StatusCode(StatusCodes.Status403Forbidden, "You can only delete your own entries.");
+        if (entry.WorkerId != subjectId)
+            return StatusCode(StatusCodes.Status403Forbidden, "You can only delete entries for the selected worker.");
 
         if (entry.IsDeleted)
             return NoContent(); // idempotent delete
 
         entry.IsDeleted = true;
         entry.DeletedAtUtc = DateTime.UtcNow;
-        entry.DeletedByWorkerId = workerId;
+        entry.DeletedByWorkerId = actorId; // actor, not subject
 
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(
-            actorWorkerId: workerId,
-            actorRole: "Worker",
+            actorWorkerId: actorId,
+            actorRole: actorRole.ToString(),
             actorSource: "Portal",
             action: "TimesheetEntry.Delete",
             entityType: "TimesheetEntry",
             entityId: entry.Id.ToString(),
-            summary: $"Deleted entry {entry.EntryId}"
+            summary: subjectId == actorId
+                ? $"Deleted entry {entry.EntryId}"
+                : $"OnBehalf({subjectId}) Deleted entry {entry.EntryId}"
         );
 
         return NoContent();
@@ -474,18 +454,14 @@ public sealed class TimesheetController : ControllerBase
     }
 
     [HttpPut("workers/{workerId:int}/signature")]
-    public async Task<IActionResult> UpdateWorkerSignature(
-        int workerId,
-        [FromQuery] int actorWorkerId,
-        [FromBody] UpdateWorkerSignatureDto dto)
+    public async Task<IActionResult> UpdateWorkerSignature(int workerId, [FromBody] UpdateWorkerSignatureDto dto)
     {
-        if (actorWorkerId <= 0)
-            return BadRequest("actorWorkerId is required.");
-
         if (workerId <= 0) return BadRequest("Invalid workerId.");
         if (dto is null) return BadRequest("Body required.");
 
-        // Who is the Owner?
+        var actorId = ClaimsActor.GetWorkerId(User);
+        var actorRole = ClaimsActor.GetRole(User);
+
         var ownerUser = await _db.TimesheetUsers
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.IsActive && u.Role == TimesheetUserRole.Owner);
@@ -493,16 +469,17 @@ public sealed class TimesheetController : ControllerBase
         if (ownerUser is null)
             return StatusCode(StatusCodes.Status500InternalServerError, "Owner user not configured.");
 
-        // If attempting to update OWNER signature => only OWNER can do it
+        // Owner signature: only the owner can change it
         if (workerId == ownerUser.WorkerId)
         {
-            if (actorWorkerId != ownerUser.WorkerId)
+            if (actorId != ownerUser.WorkerId)
                 return StatusCode(StatusCodes.Status403Forbidden, "Only the Owner can update the Owner signature.");
         }
         else
         {
-            // Otherwise, only self can update
-            if (actorWorkerId != workerId)
+            // Everyone else: self OR admin/owner
+            var canEditOther = actorRole == TimesheetUserRole.Admin || actorRole == TimesheetUserRole.Owner;
+            if (actorId != workerId && !canEditOther)
                 return StatusCode(StatusCodes.Status403Forbidden, "You can only update your own signature.");
         }
 
@@ -510,7 +487,6 @@ public sealed class TimesheetController : ControllerBase
         if (string.IsNullOrWhiteSpace(signature))
             return BadRequest("SignatureName is required.");
 
-        // Optional safety: keep it simple
         if (signature.Length > 80)
             return BadRequest("SignatureName too long.");
 
@@ -519,7 +495,7 @@ public sealed class TimesheetController : ControllerBase
             return NotFound();
 
         worker.SignatureName = signature;
-        worker.SignatureCapturedAtUtc ??= DateTime.UtcNow; // only set first time (optional)
+        worker.SignatureCapturedAtUtc ??= DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return NoContent();
@@ -553,5 +529,4 @@ public sealed class TimesheetController : ControllerBase
 
         return Ok(ownerWorker);
     }
-
 }
