@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
 namespace Mep1.Erp.Desktop
@@ -414,5 +415,29 @@ namespace Mep1.Erp.Desktop
             return result;
         }
 
+        public async Task<AuthLoginResponseDto> AuthLoginAsync(string username, string password)
+        {
+            var resp = await _http.PostAsJsonAsync("api/auth/login",
+                new AuthLoginRequestDto(username, password));
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"Login failed ({(int)resp.StatusCode}): {body}");
+            }
+
+            var dto = await resp.Content.ReadFromJsonAsync<AuthLoginResponseDto>();
+            if (dto == null) throw new Exception("Login returned empty response.");
+
+            return dto;
+        }
+
+        public void SetBearerToken(string? jwt)
+        {
+            _http.DefaultRequestHeaders.Authorization = null;
+
+            if (!string.IsNullOrWhiteSpace(jwt))
+                _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
+        }
     }
 }

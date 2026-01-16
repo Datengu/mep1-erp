@@ -1,21 +1,22 @@
-﻿using DocumentFormat.OpenXml.Math;
-using Mep1.Erp.Core.Contracts;
-using Mep1.Erp.Infrastructure;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Mep1.Erp.Api.Security;
+using Mep1.Erp.Core;
+using Mep1.Erp.Core.Contracts;
+using Mep1.Erp.Infrastructure;
 
 namespace Mep1.Erp.Api.Controllers;
 
 [ApiController]
-[Route("api/timesheet/auth")]
-public sealed class TimesheetAuthController : ControllerBase
+[Route("api/auth")]
+public sealed class AuthController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IMemoryCache _cache;
-    private readonly Mep1.Erp.Api.Security.JwtTokenService _jwt;
+    private readonly JwtTokenService _jwt;
 
-    public TimesheetAuthController(AppDbContext db, IMemoryCache cache, Mep1.Erp.Api.Security.JwtTokenService jwt)
+    public AuthController(AppDbContext db, IMemoryCache cache, JwtTokenService jwt)
     {
         _db = db;
         _cache = cache;
@@ -23,6 +24,7 @@ public sealed class TimesheetAuthController : ControllerBase
     }
 
     public sealed record LoginRequest(string Username, string Password);
+
     public sealed record LoginResponse(
         int WorkerId,
         string Username,
@@ -49,7 +51,7 @@ public sealed class TimesheetAuthController : ControllerBase
         => (username ?? "").Trim().ToLowerInvariant();
 
     private string CacheKeyFor(string normalizedUsername)
-        => $"ts_login_throttle::{normalizedUsername}";
+        => $"login_throttle::{normalizedUsername}";
 
     private bool TryIsLocked(string normalizedUsername, out TimeSpan? retryAfter)
     {
@@ -87,7 +89,6 @@ public sealed class TimesheetAuthController : ControllerBase
             LockedUntil = null
         };
 
-        // If lockout expired, clear it and start fresh
         if (state.LockedUntil is not null && now >= state.LockedUntil.Value)
         {
             state.LockedUntil = null;
@@ -95,7 +96,6 @@ public sealed class TimesheetAuthController : ControllerBase
             state.WindowStart = now;
         }
 
-        // If window expired, reset window + count
         if (now - state.WindowStart > FailWindow)
         {
             state.WindowStart = now;
@@ -104,7 +104,6 @@ public sealed class TimesheetAuthController : ControllerBase
 
         state.FailCount++;
 
-        // Lock if too many failures
         if (state.FailCount >= MaxFailsPerWindow)
         {
             state.LockedUntil = now.Add(LockoutDuration);
@@ -112,7 +111,6 @@ public sealed class TimesheetAuthController : ControllerBase
             state.WindowStart = now;
         }
 
-        // Keep the cache entry around a bit longer than the lockout/window
         var absoluteExpire = (state.LockedUntil ?? state.WindowStart.Add(FailWindow)).AddMinutes(30);
 
         _cache.Set(key, state, new MemoryCacheEntryOptions
@@ -137,10 +135,8 @@ public sealed class TimesheetAuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return Unauthorized("Invalid login.");
 
-        // Throttle / lockout (username-only)
         if (TryIsLocked(normalizedUsername, out var retryAfter) && retryAfter is not null)
         {
-            // 429 is a decent “slow down” signal
             Response.Headers["Retry-After"] = Math.Ceiling(retryAfter.Value.TotalSeconds).ToString();
             return StatusCode(StatusCodes.Status429TooManyRequests, "Too many failed attempts. Try again later.");
         }
@@ -161,7 +157,6 @@ public sealed class TimesheetAuthController : ControllerBase
             return Unauthorized("Invalid login.");
         }
 
-        // Success: clear throttle state
         ClearLoginThrottle(normalizedUsername);
 
         var worker = await _db.Workers
@@ -169,7 +164,7 @@ public sealed class TimesheetAuthController : ControllerBase
             .FirstOrDefaultAsync(w => w.Id == user.WorkerId);
 
         if (worker is null)
-            return Unauthorized("Invalid login."); // data integrity issue
+            return Unauthorized("Invalid login.");
 
         var (token, expiresUtc) = _jwt.CreateToken(user.WorkerId, user.Role, user.Username);
 
@@ -185,12 +180,12 @@ public sealed class TimesheetAuthController : ControllerBase
         ));
     }
 
-
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequestDto request)
     {
-        var username = request.Username.Trim();
-        if (string.IsNullOrWhiteSpace(request.Username) ||
+        var normalizedUsername = NormalizeUsername(request.Username);
+
+        if (string.IsNullOrWhiteSpace(normalizedUsername) ||
             string.IsNullOrWhiteSpace(request.CurrentPassword) ||
             string.IsNullOrWhiteSpace(request.NewPassword))
             return BadRequest("Invalid request.");
@@ -199,9 +194,7 @@ public sealed class TimesheetAuthController : ControllerBase
             return BadRequest("Password must be at least 8 characters.");
 
         var user = await _db.TimesheetUsers
-            .FirstOrDefaultAsync(u =>
-                u.Username == request.Username &&
-                u.IsActive);
+            .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername && u.IsActive);
 
         if (user is null)
             return Unauthorized("Invalid login.");
@@ -214,7 +207,6 @@ public sealed class TimesheetAuthController : ControllerBase
         user.PasswordChangedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
-
         return Ok();
     }
 }

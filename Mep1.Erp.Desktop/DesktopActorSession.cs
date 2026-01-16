@@ -38,4 +38,22 @@ public static class DesktopActorSession
         ActorToken = null;
         ExpiresUtc = default;
     }
+
+    public static void SetFromJwtLogin(
+    int workerId,
+    string username,
+    string role,
+    string name,
+    string initials,
+    bool mustChangePassword,
+    DateTime expiresUtc)
+    {
+        ActorWorkerId = workerId;
+        Username = username;
+        Role = role;
+        Name = name;
+        Initials = initials;
+        MustChangePassword = mustChangePassword;
+        ExpiresUtc = expiresUtc;
+    }
 }

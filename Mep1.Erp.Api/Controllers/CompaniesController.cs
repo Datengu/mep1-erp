@@ -1,6 +1,8 @@
-﻿using Mep1.Erp.Api.Services;
+﻿using Mep1.Erp.Api.Security;
+using Mep1.Erp.Api.Services;
 using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +10,7 @@ namespace Mep1.Erp.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = "AdminOrOwner")]
 public sealed class CompaniesController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -19,9 +22,34 @@ public sealed class CompaniesController : ControllerBase
         _audit = audit;
     }
 
-    [HttpGet]
-    public async Task<List<CompanyListItemDto>> Get()
+    private bool IsAdminKey()
+    => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
+
+    private ActionResult? RequireAdminKey()
     {
+        if (IsAdminKey()) return null;
+        return Unauthorized("Admin API key required.");
+    }
+
+    private (int WorkerId, string Role, string Source) GetActorForAudit()
+    {
+        var id = ClaimsActor.GetWorkerId(User);
+        var role = ClaimsActor.GetRole(User);
+        return (id, role.ToString(), GetClientApp());
+    }
+
+    private string GetClientApp()
+    {
+        var kind = HttpContext.Items["ApiKeyKind"] as string;
+        return string.Equals(kind, "Admin", StringComparison.Ordinal) ? "Desktop" : "Portal";
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<CompanyListItemDto>>> Get()
+    {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
         return await _db.Companies
             .AsNoTracking()
             .OrderBy(c => c.Code)
