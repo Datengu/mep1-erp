@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -9,12 +10,12 @@ namespace Mep1.Erp.TimesheetWeb.Services;
 public sealed class RefreshOnUnauthorizedHandler : DelegatingHandler
 {
     private readonly IHttpContextAccessor _ctx;
-    private readonly ErpTimesheetApiClient _api;
+    private readonly IHttpClientFactory _httpFactory;
 
-    public RefreshOnUnauthorizedHandler(IHttpContextAccessor ctx, ErpTimesheetApiClient api)
+    public RefreshOnUnauthorizedHandler(IHttpContextAccessor ctx, IHttpClientFactory httpFactory)
     {
         _ctx = ctx;
-        _api = api;
+        _httpFactory = httpFactory;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -35,9 +36,20 @@ public sealed class RefreshOnUnauthorizedHandler : DelegatingHandler
         if (string.IsNullOrWhiteSpace(refreshToken))
             return res;
 
-        // attempt refresh
-        var refreshed = await _api.RefreshAsync(refreshToken);
-        if (refreshed is null)
+        // attempt refresh via auth-only client (NO refresh handler in pipeline)
+        var authClient = _httpFactory.CreateClient("ErpAuth");
+
+        using var refreshReq = new HttpRequestMessage(HttpMethod.Post, "api/auth/refresh")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { RefreshToken = refreshToken })
+        };
+
+        using var refreshRes = await authClient.SendAsync(refreshReq, cancellationToken);
+        if (!refreshRes.IsSuccessStatusCode)
+            return res;
+
+        var refreshed = await refreshRes.Content.ReadFromJsonAsync<RefreshResponse>(cancellationToken: cancellationToken);
+        if (refreshed == null)
             return res;
 
         // update auth cookie claims
@@ -88,13 +100,18 @@ public sealed class RefreshOnUnauthorizedHandler : DelegatingHandler
 
         var principal = new ClaimsPrincipal(identity);
 
+        var authResult = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
         await ctx.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
-            new AuthenticationProperties
-            {
-                IsPersistent = true, // if they have refresh_token claim, they opted into remember-me
-                AllowRefresh = true
-            });
+            authResult.Properties ?? new AuthenticationProperties { AllowRefresh = true });
     }
+
+    private sealed record RefreshResponse(
+        string AccessToken,
+        DateTime ExpiresUtc,
+        string RefreshToken,
+        DateTime RefreshExpiresUtc
+    );
 }

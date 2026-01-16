@@ -12,6 +12,14 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<RefreshOnUnauthorizedHandler>();
 builder.Services.AddTransient<BearerTokenHandler>();
 
+builder.Services.AddHttpClient("ErpAuth", (sp, http) =>
+{
+    var cfg = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ErpApiSettings>>().Value;
+
+    http.BaseAddress = new Uri(cfg.BaseUrl);
+    http.DefaultRequestHeaders.Add("X-Api-Key", cfg.ApiKey);
+});
+
 builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
 {
     var cfg = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ErpApiSettings>>().Value;
