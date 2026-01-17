@@ -8,6 +8,10 @@ public sealed class AuditLog
 
     public int? ActorWorkerId { get; set; }
 
+    public int? SubjectWorkerId { get; set; }
+
+    public bool IsOnBehalf { get; set; } // (derived but queryable)
+
     public string ActorRole { get; set; } = "";
 
     public string ActorSource { get; set; } = ""; // Portal / Desktop / ApiKey

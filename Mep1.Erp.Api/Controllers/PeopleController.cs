@@ -174,6 +174,7 @@ public sealed class PeopleController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "People.PortalAccess.Create",
@@ -230,6 +231,7 @@ public sealed class PeopleController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "People.PortalAccess.Update",
@@ -261,6 +263,7 @@ public sealed class PeopleController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "People.PortalAccess.ResetPassword",
@@ -403,6 +406,7 @@ public sealed class PeopleController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "People.Worker.SetActive",
@@ -574,6 +578,7 @@ public sealed class PeopleController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "People.Worker.UpdateDetails",
@@ -620,6 +625,7 @@ public sealed class PeopleController : ControllerBase
             var a0 = GetActorForAudit();
             await _audit.LogAsync(
                 actorWorkerId: a0.WorkerId,
+                subjectWorkerId: a0.WorkerId,
                 actorRole: a0.Role,
                 actorSource: a0.Source,
                 action: "People.Rates.UpdateCurrentAmount",
@@ -658,6 +664,7 @@ public sealed class PeopleController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "People.Rates.ChangeCurrent",
@@ -706,6 +713,7 @@ public sealed class PeopleController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "People.Rates.AddHistorical",
@@ -736,6 +744,7 @@ public sealed class PeopleController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "People.Rates.UpdateAmount",
@@ -785,6 +794,7 @@ public sealed class PeopleController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "People.Rates.Delete",

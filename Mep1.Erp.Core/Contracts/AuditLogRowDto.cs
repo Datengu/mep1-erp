@@ -6,6 +6,8 @@ public sealed class AuditLogRowDto
     public DateTime OccurredUtc { get; set; }
 
     public int? ActorWorkerId { get; set; }
+    public int? SubjectWorkerId { get; set; }
+    public bool IsOnBehalf { get; set; }
     public string ActorRole { get; set; } = "";
     public string ActorSource { get; set; } = "";
 

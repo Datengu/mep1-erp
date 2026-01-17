@@ -78,6 +78,8 @@ public sealed class AuditController : ControllerBase
                 Id = x.Id,
                 OccurredUtc = x.OccurredUtc,
                 ActorWorkerId = x.ActorWorkerId,
+                SubjectWorkerId = x.SubjectWorkerId,
+                IsOnBehalf = x.IsOnBehalf,
                 ActorRole = x.ActorRole,
                 ActorSource = x.ActorSource,
                 Action = x.Action,

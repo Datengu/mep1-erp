@@ -14,6 +14,7 @@ public sealed class AuditLogger
 
     public async Task LogAsync(
         int? actorWorkerId,
+        int? subjectWorkerId,
         string actorRole,
         string actorSource,
         string action,
@@ -23,11 +24,14 @@ public sealed class AuditLogger
     {
         try
         {
-
             var log = new AuditLog
             {
                 OccurredUtc = DateTime.UtcNow,
                 ActorWorkerId = actorWorkerId,
+                SubjectWorkerId = subjectWorkerId,
+                IsOnBehalf = actorWorkerId.HasValue
+                             && subjectWorkerId.HasValue
+                             && actorWorkerId.Value != subjectWorkerId.Value,
                 ActorRole = actorRole,
                 ActorSource = actorSource,
                 Action = action,
@@ -42,7 +46,6 @@ public sealed class AuditLogger
         catch
         {
             // swallow - audit must never block core actions
-            // later: optional fallback to file logging or in-memory buffer
         }
     }
 }

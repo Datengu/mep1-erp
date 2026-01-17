@@ -88,6 +88,7 @@ public class SuppliersController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "Suppliers.Create",
@@ -120,6 +121,7 @@ public class SuppliersController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "Suppliers.Update",
@@ -146,6 +148,7 @@ public class SuppliersController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "Suppliers.Deactivate",

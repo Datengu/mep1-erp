@@ -40,22 +40,37 @@ public sealed class TimesheetController : ControllerBase
         }
     }
 
-    private (int actorWorkerId, TimesheetUserRole actorRole, int subjectWorkerId) ResolveActorAndSubject(int? subjectWorkerId)
+    private bool TryResolveActorAndSubject(
+        int? subjectWorkerId,
+        out int actorWorkerId,
+        out TimesheetUserRole actorRole,
+        out int resolvedSubjectWorkerId,
+        out ActionResult? error)
     {
-        var actorId = ClaimsActor.GetWorkerId(User);
-        var role = ClaimsActor.GetRole(User);
+        actorWorkerId = ClaimsActor.GetWorkerId(User);
+        actorRole = ClaimsActor.GetRole(User);
 
-        var subject = actorId;
+        resolvedSubjectWorkerId = actorWorkerId;
+        error = null;
 
-        if (subjectWorkerId.HasValue && subjectWorkerId.Value > 0 && subjectWorkerId.Value != actorId)
+        // No subject => self
+        if (!subjectWorkerId.HasValue || subjectWorkerId.Value <= 0)
+            return true;
+
+        // Subject == self => self
+        if (subjectWorkerId.Value == actorWorkerId)
+            return true;
+
+        // On-behalf: only Admin/Owner
+        if (actorRole != TimesheetUserRole.Admin && actorRole != TimesheetUserRole.Owner)
         {
-            if (role != TimesheetUserRole.Admin && role != TimesheetUserRole.Owner)
-                throw new UnauthorizedAccessException("Not permitted to act on behalf of another worker.");
-
-            subject = subjectWorkerId.Value;
+            error = StatusCode(StatusCodes.Status403Forbidden,
+                "Not permitted to act on behalf of another worker.");
+            return false;
         }
 
-        return (actorId, role, subject);
+        resolvedSubjectWorkerId = subjectWorkerId.Value;
+        return true;
     }
 
     // Active projects for dropdown (real projects + internal jobs)
@@ -92,7 +107,14 @@ public sealed class TimesheetController : ControllerBase
             TaskDescription = dto.TaskDescription?.Trim()
         };
 
-        var (actorId, actorRole, subjectId) = ResolveActorAndSubject(subjectWorkerId);
+        if (!TryResolveActorAndSubject(subjectWorkerId,
+                out var actorId,
+                out var actorRole,
+                out var subjectId,
+                out var err))
+        {
+            return err!;
+        }
 
         if (string.IsNullOrWhiteSpace(dto.JobKey)) return BadRequest("JobKey is required.");
 
@@ -186,6 +208,7 @@ public sealed class TimesheetController : ControllerBase
 
         await _audit.LogAsync(
             actorWorkerId: actorId,
+            subjectWorkerId: subjectId,
             actorRole: actorRole.ToString(),
             actorSource: "Portal",
             action: "TimesheetEntry.Create",
@@ -206,7 +229,14 @@ public sealed class TimesheetController : ControllerBase
         [FromQuery] int skip = 0,
         [FromQuery] int take = 100)
     {
-        var (_, _, subjectId) = ResolveActorAndSubject(subjectWorkerId);
+        if (!TryResolveActorAndSubject(subjectWorkerId,
+                out _,
+                out _,
+                out var subjectId,
+                out var err))
+        {
+            return err!;
+        }
 
         if (skip < 0) skip = 0;
 
@@ -264,7 +294,14 @@ public sealed class TimesheetController : ControllerBase
     [HttpGet("entries/{id:int}")]
     public async Task<ActionResult<TimesheetEntryEditDto>> GetEntry(int id, [FromQuery] int? subjectWorkerId = null)
     {
-        var (_, _, subjectId) = ResolveActorAndSubject(subjectWorkerId);
+        if (!TryResolveActorAndSubject(subjectWorkerId,
+                out _,
+                out _,
+                out var subjectId,
+                out var err))
+        {
+            return err!;
+        }
 
         var row = await _db.TimesheetEntries
             .AsNoTracking()
@@ -307,7 +344,14 @@ public sealed class TimesheetController : ControllerBase
     {
         if (id <= 0) return BadRequest("Invalid id.");
 
-        var (actorId, actorRole, subjectId) = ResolveActorAndSubject(subjectWorkerId);
+        if (!TryResolveActorAndSubject(subjectWorkerId,
+                out var actorId,
+                out var actorRole,
+                out var subjectId,
+                out var err))
+        {
+            return err!;
+        }
 
         if (dto.Date.Date > DateTime.Today)
             return BadRequest("Future dates are not allowed.");
@@ -380,6 +424,7 @@ public sealed class TimesheetController : ControllerBase
 
         await _audit.LogAsync(
             actorWorkerId: actorId,
+            subjectWorkerId: subjectId,
             actorRole: actorRole.ToString(),
             actorSource: "Portal",
             action: "TimesheetEntry.Update",
@@ -398,7 +443,14 @@ public sealed class TimesheetController : ControllerBase
     {
         if (id <= 0) return BadRequest("Invalid id.");
 
-        var (actorId, actorRole, subjectId) = ResolveActorAndSubject(subjectWorkerId);
+        if (!TryResolveActorAndSubject(subjectWorkerId,
+                out var actorId,
+                out var actorRole,
+                out var subjectId,
+                out var err))
+        {
+            return err!;
+        }
 
         var entry = await _db.TimesheetEntries.FirstOrDefaultAsync(e => e.Id == id);
         if (entry is null) return NotFound();
@@ -417,6 +469,7 @@ public sealed class TimesheetController : ControllerBase
 
         await _audit.LogAsync(
             actorWorkerId: actorId,
+            subjectWorkerId: subjectId,
             actorRole: actorRole.ToString(),
             actorSource: "Portal",
             action: "TimesheetEntry.Delete",

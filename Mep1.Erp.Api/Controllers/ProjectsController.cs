@@ -162,6 +162,7 @@ public class ProjectsController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "Projects.Create",
@@ -275,6 +276,7 @@ public class ProjectsController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "Projects.SupplierCost.Create",
@@ -313,6 +315,7 @@ public class ProjectsController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "Projects.SupplierCost.Update",
@@ -344,6 +347,7 @@ public class ProjectsController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "Projects.SupplierCost.Delete",
@@ -376,6 +380,7 @@ public class ProjectsController : ControllerBase
         var a = GetActorForAudit();
         await _audit.LogAsync(
             actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
             actorRole: a.Role,
             actorSource: a.Source,
             action: "Projects.SetActive",
