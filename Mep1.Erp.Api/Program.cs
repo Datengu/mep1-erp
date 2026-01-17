@@ -19,6 +19,7 @@ builder.Services.AddControllers();
 
 // JWT auth
 builder.Services.AddSingleton<Mep1.Erp.Api.Security.JwtTokenService>();
+builder.Services.AddScoped<RefreshTokenService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
