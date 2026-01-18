@@ -2185,6 +2185,8 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="UTC" Binding="{Binding OccurredUtc, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="160"/>
                             <DataGridTextColumn Header="ActorId" Binding="{Binding ActorWorkerId}" Width="70"/>
+                            <DataGridTextColumn Header="SubjectId" Binding="{Binding SubjectWorkerId}" Width="75"/>
+                            <DataGridCheckBoxColumn Header="OnBehalf" Binding="{Binding IsOnBehalf}" Width="75"/>
                             <DataGridTextColumn Header="Role" Binding="{Binding ActorRole}" Width="90"/>
                             <DataGridTextColumn Header="Source" Binding="{Binding ActorSource}" Width="90"/>
                             <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="140"/>
