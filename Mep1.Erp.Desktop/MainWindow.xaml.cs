@@ -1011,6 +1011,10 @@ namespace Mep1.Erp.Desktop
                 _timesheetPrevProjectWasSpecial = IsSpecialTimesheetProjectLabel(prevLabel);
 
                 ApplyTimesheetAllRules();
+
+                OnPropertyChanged(nameof(IsTimesheetWorkTypeEnabled));
+                OnPropertyChanged(nameof(IsTimesheetWorkDetailsVisible));
+
             }
         }
 
@@ -1177,6 +1181,56 @@ namespace Mep1.Erp.Desktop
             }
             return list;
         }
+
+        public sealed record TimesheetWorkTypeOption(string Code, string Label);
+
+        public List<TimesheetWorkTypeOption> TimesheetWorkTypeOptions { get; } = new()
+        {
+            new TimesheetWorkTypeOption("S", "Sheet"),
+            new TimesheetWorkTypeOption("M", "Modelling")
+        };
+
+        private bool IsSelectedTimesheetJobProjectCategory()
+        {
+            // TimesheetProjectOptionDto includes Category from API
+            var cat = (SelectedTimesheetProject?.Category ?? "").Trim();
+            return cat.Equals("Project", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public bool IsTimesheetWorkTypeEnabled => IsSelectedTimesheetJobProjectCategory();
+
+        public List<string> TimesheetLevelOptions { get; } = new()
+        {
+            // Below ground
+            "B4", "B3", "B2", "B1", "LG", "UG",
+
+            // Ground / podium / mezzanine
+            "G", "POD", "M",
+
+            // Upper floors
+            "L01","L02","L03","L04","L05","L06","L07","L08","L09","L10",
+            "L11","L12","L13","L14","L15","L16","L17","L18","L19","L20",
+            "L21","L22","L23","L24","L25","L26","L27","L28","L29","L30",
+
+            // Roof / plant
+            "P", "RF"
+        };
+
+        private List<string> _timesheetSelectedLevels = new();
+        public List<string> TimesheetSelectedLevels
+        {
+            get => _timesheetSelectedLevels;
+            set => SetField(ref _timesheetSelectedLevels, value, nameof(TimesheetSelectedLevels));
+        }
+
+        private string _timesheetAreasRawText = "";
+        public string TimesheetAreasRawText
+        {
+            get => _timesheetAreasRawText;
+            set => SetField(ref _timesheetAreasRawText, value, nameof(TimesheetAreasRawText));
+        }
+
+        public bool IsTimesheetWorkDetailsVisible => IsSelectedTimesheetJobProjectCategory();
 
         // ---------------------------------------------
         // Invoice filtering
@@ -3681,7 +3735,46 @@ namespace Mep1.Erp.Desktop
             // Clean other fields
             var ccf = string.IsNullOrWhiteSpace(TimesheetCcfRefText) ? null : TimesheetCcfRefText.Trim();
             var task = string.IsNullOrWhiteSpace(TimesheetTaskDescriptionText) ? null : TimesheetTaskDescriptionText.Trim();
-            var workType = string.IsNullOrWhiteSpace(TimesheetWorkTypeText) ? null : TimesheetWorkTypeText.Trim();
+
+            var isProjectJob = IsSelectedTimesheetJobProjectCategory();
+
+            if (isProjectJob)
+            {
+                validatedLevels = TimesheetSelectedLevels
+                    .Where(l => TimesheetLevelOptions.Contains(l, StringComparer.OrdinalIgnoreCase))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                validatedAreas = ParseAreas(TimesheetAreasRawText);
+            }
+            else
+            {
+                TimesheetSelectedLevels.Clear();
+                TimesheetAreasRawText = "";
+            }
+
+            string? workType = null;
+
+            if (isProjectJob)
+            {
+                var wt = (TimesheetWorkTypeText ?? "").Trim().ToUpperInvariant();
+
+                if (wt != "S" && wt != "M")
+                {
+                    errorMessage = "Work type is required for Project jobs.";
+                    return false;
+                }
+
+                workType = wt;
+            }
+            else
+            {
+                // Non-project job: must not send work type
+                if (!string.IsNullOrWhiteSpace(TimesheetWorkTypeText))
+                    TimesheetWorkTypeText = ""; // keep UI predictable
+
+                workType = null;
+            }
 
             // VO requires CCF Ref
             if (code == "VO" && string.IsNullOrWhiteSpace(ccf))
@@ -3710,9 +3803,12 @@ namespace Mep1.Erp.Desktop
             cleanedTaskDescription = task;
             cleanedWorkType = workType;
 
-            // v1: levels/areas not in UI yet
-            validatedLevels = new List<string>();
-            validatedAreas = new List<string>();
+            // If modelling, require levels (recommended)
+            if (isProjectJob && workType == "M" && validatedLevels.Count == 0)
+            {
+                errorMessage = "At least one level is required for Modelling work.";
+                return false;
+            }
 
             return true;
         }
@@ -3777,6 +3873,13 @@ namespace Mep1.Erp.Desktop
             bool isSick = jobName.Equals("Sick", StringComparison.OrdinalIgnoreCase);
             bool isFeeProposal = jobName.Equals("Fee Proposal", StringComparison.OrdinalIgnoreCase);
             bool isTender = jobName.Equals("Tender Presentation", StringComparison.OrdinalIgnoreCase);
+
+            // WorkType is only applicable to "Project" category jobs
+            if (!IsSelectedTimesheetJobProjectCategory())
+            {
+                if (!string.IsNullOrWhiteSpace(TimesheetWorkTypeText))
+                    TimesheetWorkTypeText = "";
+            }
 
             if (isHoliday)
             {
@@ -3905,5 +4008,34 @@ namespace Mep1.Erp.Desktop
                 IsTimesheetTaskLocked = false;
             }
         }
+
+        private void TimesheetLevels_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.ListBox lb)
+                return;
+
+            var items = lb.SelectedItems
+                .OfType<string>()
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            TimesheetSelectedLevels = items;
+        }
+
+        private static List<string> ParseAreas(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return new List<string>();
+
+            return raw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(a => a.Trim())
+                .Where(a => a.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
     }
 }
