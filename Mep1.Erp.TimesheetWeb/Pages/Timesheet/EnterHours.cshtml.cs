@@ -18,27 +18,6 @@ public sealed class EnterHoursModel : PageModel
 
     private List<TimesheetProjectOptionDto> _projectsCache = new();
 
-    private static readonly (string Code, string Description)[] TimesheetCodeList =
-    {
-        ("P", "Programmed Drawing Input"),
-        ("IC", "Updating to Internal Comments"),
-        ("EC", "Updating to External Comments"),
-        ("GM", "General Management"),
-        ("M", "Meetings"),
-        ("RD", "Record Drawings"),
-        ("S", "Surveys"),
-        ("T", "Training"),
-        ("BIM", "BIM Works"),
-        ("DC", "Document Control"),
-        ("FP", "Fee Proposal"),
-        ("BU", "Business Works"),
-        ("QA", "Drawing QA Check"),
-        ("TP", "Tender Presentation"),
-        ("VO", "Variations"),
-        ("SI", "Sick"),
-        ("HOL", "Holiday")
-    };
-
     public List<SelectListItem> ProjectOptions { get; private set; } = new();
     public List<SelectListItem> CodeOptions { get; private set; } = new();
 
@@ -285,7 +264,9 @@ public sealed class EnterHoursModel : PageModel
             .Select(p => new SelectListItem(p.Label, p.JobKey))
             .ToList();
 
-        CodeOptions = TimesheetCodeList
+        var codes = await _api.GetTimesheetCodesAsync() ?? new List<TimesheetCodeDto>();
+
+        CodeOptions = codes
             .Select(c => new SelectListItem($"{c.Code} - {c.Description}", c.Code))
             .ToList();
 

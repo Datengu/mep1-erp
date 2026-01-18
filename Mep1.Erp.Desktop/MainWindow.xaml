@@ -72,6 +72,8 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
 
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
     </Window.Resources>
 
     <Grid Background="#FF1E1E1E">
@@ -2195,6 +2197,182 @@
                             <DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/>
                         </DataGrid.Columns>
                     </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- 🔹 TIMESHEET TAB -->
+            <TabItem Header="Timesheet">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Top controls (with labels) -->
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="260"/>
+                            <ColumnDefinition Width="280"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Entering for -->
+                        <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,12,0">
+                            <TextBlock Text="Entering for" Margin="0,0,0,2"/>
+                            <ComboBox Width="260"
+                                      ItemsSource="{Binding People}"
+                                      SelectedItem="{Binding TimesheetSelectedWorker}"
+                                      DisplayMemberPath="Name"
+                                      IsEditable="False"/>
+                        </StackPanel>
+
+                        <!-- Project -->
+                        <StackPanel Grid.Column="1" Orientation="Vertical" Margin="0,0,12,0">
+                            <TextBlock Text="Project" Margin="0,0,0,2"/>
+                            <ComboBox Width="280"
+                                      ItemsSource="{Binding TimesheetProjects}"
+                                      SelectedItem="{Binding SelectedTimesheetProject}"
+                                      DisplayMemberPath="Label"
+                                      IsEditable="False"/>
+                        </StackPanel>
+
+                        <!-- Refresh -->
+                        <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Bottom">
+                            <TextBlock Text=" " Margin="0,0,0,2"/>
+                            <Button Content="Refresh"
+                                    Padding="12,5"
+                                    Click="RefreshTimesheet_Click"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Entry form (with labels) -->
+                    <Grid Grid.Row="1" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="220"/>
+                            <!--<ColumnDefinition Width="220"/>-->
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="140"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Date -->
+                        <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,10,0">
+                            <TextBlock Text="Date" Margin="0,0,0,2"/>
+                            <DatePicker x:Name="TimesheetDatePicker"
+                                        SelectedDate="{Binding TimesheetDate}"/>
+                        </StackPanel>
+
+                        <!-- Hours -->
+                        <StackPanel Grid.Column="1" Orientation="Vertical" Margin="0,0,10,0">
+                            <TextBlock Text="Hours" Margin="0,0,0,2"/>
+                            <ComboBox ItemsSource="{Binding TimesheetHourOptions}"
+                                      Text="{Binding TimesheetHoursText, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEditable="True"
+                                      IsTextSearchEnabled="True"
+                                      StaysOpenOnEdit="True"
+                                      IsEnabled="{Binding IsTimesheetHoursEnabled}"
+                                      ToolTip="Hours (0 to 24 in 0.5 steps)"
+                                      MaxDropDownHeight="300"/>
+                        </StackPanel>
+
+                        <!-- Code -->
+                        <StackPanel Grid.Column="2" Orientation="Vertical" Margin="0,0,10,0">
+                            <TextBlock Text="Code" Margin="0,0,0,2"/>
+                            <ComboBox Grid.Column="2"
+                                      ItemsSource="{Binding TimesheetCodes}"
+                                      SelectedValue="{Binding TimesheetCodeText, UpdateSourceTrigger=PropertyChanged}"
+                                      SelectedValuePath="Code"
+                                      IsEditable="True"
+                                      IsEnabled="{Binding IsTimesheetCodeEnabled}"
+                                      IsTextSearchEnabled="True"
+                                      TextSearch.TextPath="Code"
+                                      StaysOpenOnEdit="True"
+                                      Margin="0,0,10,0"
+                                      ToolTip="Code">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock>
+                                            <Run Text="{Binding Code}"/>
+                                            <Run Text=" - "/>
+                                            <Run Text="{Binding Description}"/>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- CCF Ref (VO only) -->
+                        <StackPanel Grid.Column="3"
+                                    Orientation="Vertical"
+                                    Margin="0,0,10,0"
+                                    Visibility="{Binding IsTimesheetCcfRefVisible, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="CCF Ref" Margin="0,0,0,2"/>
+                            <TextBox Text="{Binding TimesheetCcfRefText}"
+                                     ToolTip="CCF Ref (required for VO)"/>
+                        </StackPanel>
+
+                        <!-- Work type -->
+                        <!--<StackPanel Grid.Column="4" Orientation="Vertical" Margin="0,0,10,0">
+                            <TextBlock Text="Work Type" Margin="0,0,0,2"/>
+                            <TextBox Text="{Binding TimesheetWorkTypeText}"
+                                     ToolTip="Work Type (optional)"/>
+                        </StackPanel>-->
+
+                        <!-- Task description -->
+                        <StackPanel Grid.Column="4" Orientation="Vertical" Margin="0,0,10,0">
+                            <TextBlock Text="Task" Margin="0,0,0,2"/>
+                            <TextBox Text="{Binding TimesheetTaskDescriptionText}"
+                                     IsEnabled="{Binding IsTimesheetTaskEnabled}"
+                                     ToolTip="Task description (optional)"/>
+                        </StackPanel>
+
+                        <!-- Add Entry -->
+                        <StackPanel Grid.Column="5" Orientation="Vertical" VerticalAlignment="Bottom">
+                            <TextBlock Text=" " Margin="0,0,0,2"/>
+                            <Button Content="Add Entry"
+                                    Padding="12,5"
+                                    Click="CreateTimesheetEntry_Click"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Recent entries -->
+                    <DataGrid Grid.Row="2"
+                              ItemsSource="{Binding TimesheetEntries}"
+                              Style="{StaticResource DarkDataGridStyle}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Date"
+                                                Binding="{Binding Date, StringFormat=yyyy-MM-dd}"
+                                                Width="120"/>
+
+                            <DataGridTextColumn Header="Project"
+                                                Binding="{Binding JobKey}"
+                                                Width="160"/>
+
+                            <DataGridTextColumn Header="Code"
+                                                Binding="{Binding Code}"
+                                                Width="110"/>
+
+                            <DataGridTextColumn Header="Hours"
+                                                Binding="{Binding Hours, StringFormat={}{0:N2}}"
+                                                Width="90"/>
+
+                            <DataGridTextColumn Header="Task"
+                                                Binding="{Binding TaskDescription}"
+                                                Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Status -->
+                    <TextBlock Grid.Row="3"
+                               Text="{Binding TimesheetStatusText}"
+                               Opacity="0.75"
+                               Margin="0,8,0,0"/>
                 </Grid>
             </TabItem>
 

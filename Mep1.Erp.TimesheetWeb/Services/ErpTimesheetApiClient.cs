@@ -248,4 +248,16 @@ public sealed class ErpTimesheetApiClient
         using var res = await _http.SendAsync(req);
         // you can ignore failures or call EnsureSuccessStatusCode()
     }
+
+    public async Task<List<TimesheetCodeDto>> GetTimesheetCodesAsync()
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/timesheet/codes");
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        res.EnsureSuccessStatusCode();
+
+        return await res.Content.ReadFromJsonAsync<List<TimesheetCodeDto>>(_jsonOptions)
+               ?? new();
+    }
 }

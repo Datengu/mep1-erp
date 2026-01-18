@@ -1,5 +1,6 @@
-﻿using Mep1.Erp.Api.Services;
-using Mep1.Erp.Api.Security;
+﻿using Mep1.Erp.Api.Security;
+using Mep1.Erp.Api.Services;
+using Mep1.Erp.Api.Timesheet;
 using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
@@ -95,6 +96,12 @@ public sealed class TimesheetController : ControllerBase
         return Ok(items);
     }
 
+    [HttpGet("codes")]
+    public ActionResult<List<TimesheetCodeDto>> GetTimesheetCodes()
+    {
+        return Ok(TimesheetCodeProvider.Codes);
+    }
+
     // Submit a timesheet entry
     [HttpPost("entries")]
     public async Task<ActionResult> CreateEntry([FromBody] CreateTimesheetEntryDto dto, [FromQuery] int? subjectWorkerId = null)
@@ -130,11 +137,9 @@ public sealed class TimesheetController : ControllerBase
             return BadRequest("Hours must be between 0 and 24.");
         }
 
-        // Minimal validation for now (v0.1): enforce a known set
-        var allowedCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "P","IC","EC","GM","M","RD","S","T","BIM","DC","FP","BU","QA","TP","VO","SI","HOL"
-        };
+        var allowedCodes = TimesheetCodeProvider.Codes
+            .Select(c => c.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         if (string.IsNullOrWhiteSpace(dto.Code)) return BadRequest("Code is required.");
         if (!allowedCodes.Contains(dto.Code)) return BadRequest("Invalid Code.");

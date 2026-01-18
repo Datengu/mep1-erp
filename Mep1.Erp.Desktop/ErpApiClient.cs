@@ -450,5 +450,61 @@ namespace Mep1.Erp.Desktop
             if (!string.IsNullOrWhiteSpace(jwt))
                 _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
         }
+
+        public async Task<List<TimesheetProjectOptionDto>> GetTimesheetActiveProjectsAsync()
+        {
+            var result = await _http.GetFromJsonAsync<List<TimesheetProjectOptionDto>>("api/timesheet/projects");
+            return result ?? new List<TimesheetProjectOptionDto>();
+        }
+
+        public async Task<List<TimesheetEntrySummaryDto>> GetTimesheetEntriesAsync(
+            int skip = 0,
+            int take = 50,
+            int? subjectWorkerId = null)
+        {
+            var qs = new List<string>
+            {
+                $"skip={skip}",
+                $"take={take}"
+            };
+
+            if (subjectWorkerId.HasValue && subjectWorkerId.Value > 0)
+                qs.Add("subjectWorkerId=" + subjectWorkerId.Value);
+
+            var url = "api/timesheet/entries?" + string.Join("&", qs);
+
+            var result = await _http.GetFromJsonAsync<List<TimesheetEntrySummaryDto>>(url);
+            return result ?? new List<TimesheetEntrySummaryDto>();
+        }
+
+        public async Task CreateTimesheetEntryAsync(CreateTimesheetEntryDto dto, int? subjectWorkerId = null)
+        {
+            var url = "api/timesheet/entries";
+
+            if (subjectWorkerId.HasValue && subjectWorkerId.Value > 0)
+                url += "?subjectWorkerId=" + subjectWorkerId.Value;
+
+            var resp = await _http.PostAsJsonAsync(url, dto);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"Create timesheet entry failed ({(int)resp.StatusCode}): {body}");
+            }
+        }
+
+        public async Task<List<TimesheetCodeDto>> GetTimesheetCodesAsync()
+        {
+            var resp = await _http.GetAsync("api/timesheet/codes");
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"Get timesheet codes failed ({(int)resp.StatusCode}): {body}");
+            }
+
+            var result = await resp.Content.ReadFromJsonAsync<List<TimesheetCodeDto>>();
+            return result ?? new List<TimesheetCodeDto>();
+        }
     }
 }
