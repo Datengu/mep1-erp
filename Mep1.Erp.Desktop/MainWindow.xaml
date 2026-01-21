@@ -2138,6 +2138,333 @@
                 </Grid>
             </TabItem>
 
+            <!-- 🔹 TIMESHEET TAB -->
+            <TabItem Header="Timesheet">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <!-- top controls -->
+                        <RowDefinition Height="*"/>
+                        <!-- sub tabs -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- status -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Top controls (shared across all sub-tabs) -->
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="260"/>
+                            <ColumnDefinition Width="280"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Entering for -->
+                        <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,12,0">
+                            <TextBlock Text="Entering for" Margin="0,0,0,2"/>
+                            <ComboBox Width="260"
+                                      ItemsSource="{Binding People}"
+                                      SelectedItem="{Binding TimesheetSelectedWorker}"
+                                      DisplayMemberPath="Name"
+                                      IsEditable="False"/>
+                        </StackPanel>
+
+                        <!-- Project -->
+                        <StackPanel Grid.Column="1" Orientation="Vertical" Margin="0,0,12,0">
+                            <TextBlock Text="Project" Margin="0,0,0,2"/>
+                            <ComboBox Width="280"
+                                      ItemsSource="{Binding TimesheetProjects}"
+                                      SelectedItem="{Binding SelectedTimesheetProject}"
+                                      DisplayMemberPath="Label"
+                                      IsEditable="False"/>
+                        </StackPanel>
+
+                        <!-- Refresh -->
+                        <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Bottom">
+                            <TextBlock Text=" " Margin="0,0,0,2"/>
+                            <Button Content="Refresh"
+                                    Padding="12,5"
+                                    Click="RefreshTimesheet_Click"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Sub-tabs -->
+                    <TabControl x:Name="TimesheetSubTabs"
+                                Grid.Row="1"
+                                Background="#FF1E1E1E"
+                                BorderThickness="0"
+                                Padding="0"
+                                Margin="0">
+                        <!-- VIEW -->
+                        <TabItem Header="View">
+                            <Grid Background="#FF1E1E1E">
+                                <!-- Your existing Recent entries grid -->
+                                <DataGrid ItemsSource="{Binding TimesheetEntries}"
+                                          Style="{StaticResource DarkDataGridStyle}"
+                                          AutoGenerateColumns="False">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Date"
+                                                            Binding="{Binding Date, StringFormat=yyyy-MM-dd}"
+                                                            Width="120"/>
+
+                                        <DataGridTextColumn Header="Project"
+                                                            Binding="{Binding JobKey}"
+                                                            Width="160"/>
+
+                                        <DataGridTextColumn Header="Code"
+                                                            Binding="{Binding Code}"
+                                                            Width="110"/>
+
+                                        <DataGridTextColumn Header="Hours"
+                                                            Binding="{Binding Hours, StringFormat={}{0:N2}}"
+                                                            Width="90"/>
+
+                                        <DataGridTextColumn Header="Task"
+                                                            Binding="{Binding TaskDescription}"
+                                                            Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- ADD -->
+                        <TabItem Header="Add">
+                            <Grid Background="#FF1E1E1E">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <!-- entry form -->
+                                    <RowDefinition Height="Auto"/>
+                                    <!-- work details -->
+                                    <RowDefinition Height="*"/>
+                                    <!-- spacer -->
+                                </Grid.RowDefinitions>
+
+                                <!-- Entry form (with labels) -->
+                                <Grid Grid.Row="0" Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Date -->
+                                    <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,10,0">
+                                        <TextBlock Text="Date" Margin="0,0,0,2"/>
+                                        <DatePicker x:Name="TimesheetDatePicker"
+                                                    SelectedDate="{Binding TimesheetDate}"/>
+                                    </StackPanel>
+
+                                    <!-- Hours -->
+                                    <StackPanel Grid.Column="1" Orientation="Vertical" Margin="0,0,10,0">
+                                        <TextBlock Text="Hours" Margin="0,0,0,2"/>
+                                        <ComboBox ItemsSource="{Binding TimesheetHourOptions}"
+                                                  Text="{Binding TimesheetHoursText, UpdateSourceTrigger=PropertyChanged}"
+                                                  IsEditable="True"
+                                                  IsTextSearchEnabled="True"
+                                                  StaysOpenOnEdit="True"
+                                                  IsEnabled="{Binding IsTimesheetHoursEnabled}"
+                                                  ToolTip="Hours (0 to 24 in 0.5 steps)"
+                                                  MaxDropDownHeight="300"/>
+                                    </StackPanel>
+
+                                    <!-- Code -->
+                                    <StackPanel Grid.Column="2" Orientation="Vertical" Margin="0,0,10,0">
+                                        <TextBlock Text="Code" Margin="0,0,0,2"/>
+                                        <ComboBox ItemsSource="{Binding TimesheetCodes}"
+                                                  SelectedValue="{Binding TimesheetCodeText, UpdateSourceTrigger=PropertyChanged}"
+                                                  SelectedValuePath="Code"
+                                                  IsEditable="True"
+                                                  IsEnabled="{Binding IsTimesheetCodeEnabled}"
+                                                  IsTextSearchEnabled="True"
+                                                  TextSearch.TextPath="Code"
+                                                  StaysOpenOnEdit="True"
+                                                  ToolTip="Code">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock>
+                                                        <Run Text="{Binding Code}"/>
+                                                        <Run Text=" - "/>
+                                                        <Run Text="{Binding Description}"/>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- CCF Ref (VO only) -->
+                                    <StackPanel Grid.Column="3"
+                                                Orientation="Vertical"
+                                                Margin="0,0,10,0"
+                                                Visibility="{Binding IsTimesheetCcfRefVisible, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="CCF Ref" Margin="0,0,0,2"/>
+                                        <TextBox Text="{Binding TimesheetCcfRefText}"
+                                                 ToolTip="CCF Ref (required for VO)"/>
+                                    </StackPanel>
+
+                                    <!-- Task description -->
+                                    <StackPanel Grid.Column="4" Orientation="Vertical" Margin="0,0,10,0">
+                                        <TextBlock Text="Task" Margin="0,0,0,2"/>
+                                        <TextBox Text="{Binding TimesheetTaskDescriptionText}"
+                                                 IsEnabled="{Binding IsTimesheetTaskEnabled}"
+                                                 ToolTip="Task description (optional)"/>
+                                    </StackPanel>
+
+                                    <!-- Add Entry -->
+                                    <StackPanel Grid.Column="5" Orientation="Vertical" VerticalAlignment="Bottom">
+                                        <TextBlock Text=" " Margin="0,0,0,2"/>
+
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Button Content="{Binding TimesheetPrimaryActionText}"
+                                                    Padding="12,5"
+                                                    MinWidth="120"
+                                                    Click="TimesheetPrimaryAction_Click"/>
+
+                                            <Button Content="Cancel"
+                                                    Padding="12,5"
+                                                    Margin="10,0,0,0"
+                                                    MinWidth="90"
+                                                    Visibility="{Binding IsTimesheetEditMode, Converter={StaticResource BoolToVis}}"
+                                                    Click="TimesheetCancelEdit_Click"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Work details (Project jobs only) -->
+                                <Border Grid.Row="1"
+                                        Margin="0,0,0,10"
+                                        Padding="10"
+                                        CornerRadius="6"
+                                        Background="#222"
+                                        Visibility="{Binding IsTimesheetWorkDetailsVisible, Converter={StaticResource BoolToVis}}">
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="200"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Work Type -->
+                                        <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,12,0">
+                                            <TextBlock Text="Work Type" Margin="0,0,0,4"/>
+                                            <ComboBox Width="180"
+                                                      ItemsSource="{Binding TimesheetWorkTypeOptions}"
+                                                      DisplayMemberPath="Label"
+                                                      SelectedValuePath="Code"
+                                                      SelectedValue="{Binding TimesheetWorkTypeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEnabled="{Binding IsTimesheetWorkTypeEnabled}"/>
+                                        </StackPanel>
+
+                                        <!-- Levels + Areas -->
+                                        <Grid Grid.Column="1">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Levels -->
+                                            <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,0,0,10">
+                                                <TextBlock Text="Levels" Margin="0,0,0,4"/>
+                                                <ListBox x:Name="TimesheetLevelsListBox"
+                                                         ItemsSource="{Binding TimesheetLevelOptions}"
+                                                         SelectionMode="Multiple"
+                                                         Height="90"
+                                                         SelectionChanged="TimesheetLevels_SelectionChanged"/>
+                                                <TextBlock Text="Select one or more"
+                                                           Opacity="0.65"
+                                                           Margin="0,4,0,0"/>
+                                            </StackPanel>
+
+                                            <!-- Areas -->
+                                            <StackPanel Grid.Row="1" Orientation="Vertical">
+                                                <TextBlock Text="Areas (comma-separated)" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding TimesheetAreasRawText, UpdateSourceTrigger=PropertyChanged}"
+                                                         ToolTip="Comma-separated areas, e.g. Core, Plant Room, Roof"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- EDIT (Edit + Soft delete) -->
+                        <TabItem Header="Edit">
+                            <Grid Background="#FF1E1E1E">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <!-- selectable grid -->
+                                    <RowDefinition Height="Auto"/>
+                                    <!-- selected summary + actions -->
+                                </Grid.RowDefinitions>
+
+                                <!-- Selectable grid -->
+                                <DataGrid Grid.Row="0"
+                                          ItemsSource="{Binding TimesheetEntries}"
+                                          SelectedItem="{Binding SelectedTimesheetEntry, Mode=TwoWay}"
+                                          Style="{StaticResource DarkDataGridStyle}"
+                                          AutoGenerateColumns="False">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Date"
+                                                            Binding="{Binding Date, StringFormat=yyyy-MM-dd}"
+                                                            Width="120"/>
+                                        <DataGridTextColumn Header="Project"
+                                                            Binding="{Binding JobKey}"
+                                                            Width="160"/>
+                                        <DataGridTextColumn Header="Code"
+                                                            Binding="{Binding Code}"
+                                                            Width="110"/>
+                                        <DataGridTextColumn Header="Hours"
+                                                            Binding="{Binding Hours, StringFormat={}{0:N2}}"
+                                                            Width="90"/>
+                                        <DataGridTextColumn Header="Task"
+                                                            Binding="{Binding TaskDescription}"
+                                                            Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- Actions row -->
+                                <Border Grid.Row="1" Margin="0,10,0,0" Padding="10" CornerRadius="6" Background="#222">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding SelectedTimesheetEntrySummaryText}"
+                                                   Opacity="0.85"
+                                                   VerticalAlignment="Center"/>
+
+                                        <!-- For v1: you can wire Edit later; keep the button disabled until API exists -->
+                                        <Button Grid.Column="1"
+                                                Content="Edit..."
+                                                Padding="12,5"
+                                                Margin="10,0,0,0"
+                                                IsEnabled="{Binding HasSelectedTimesheetEntry}"
+                                                Click="EditSelectedTimesheetEntry_Click"/>
+
+                                        <Button Grid.Column="2"
+                                                Content="Delete"
+                                                Padding="12,5"
+                                                Margin="10,0,0,0"
+                                                IsEnabled="{Binding HasSelectedTimesheetEntry}"
+                                                Click="SoftDeleteSelectedTimesheetEntry_Click"/>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+
+                    <!-- Status (shared) -->
+                    <TextBlock Grid.Row="2"
+                               Text="{Binding TimesheetStatusText}"
+                               Opacity="0.75"
+                               Margin="0,8,0,0"/>
+                </Grid>
+            </TabItem>
+
             <!-- 🔹 AUDIT TAB -->
             <TabItem Header="Audit">
                 <Grid Background="#FF1E1E1E" Margin="8">
@@ -2197,242 +2524,6 @@
                             <DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                </Grid>
-            </TabItem>
-
-            <!-- 🔹 TIMESHEET TAB -->
-            <TabItem Header="Timesheet">
-                <Grid Margin="10">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <!-- top controls -->
-                        <RowDefinition Height="Auto"/>
-                        <!-- entry form -->
-                        <RowDefinition Height="Auto"/>
-                        <!-- work details (NEW) -->
-                        <RowDefinition Height="*"/>
-                        <!-- recent entries -->
-                        <RowDefinition Height="Auto"/>
-                        <!-- status -->
-                    </Grid.RowDefinitions>
-
-                    <!-- Top controls (with labels) -->
-                    <Grid Grid.Row="0" Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="260"/>
-                            <ColumnDefinition Width="280"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Entering for -->
-                        <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,12,0">
-                            <TextBlock Text="Entering for" Margin="0,0,0,2"/>
-                            <ComboBox Width="260"
-                                      ItemsSource="{Binding People}"
-                                      SelectedItem="{Binding TimesheetSelectedWorker}"
-                                      DisplayMemberPath="Name"
-                                      IsEditable="False"/>
-                        </StackPanel>
-
-                        <!-- Project -->
-                        <StackPanel Grid.Column="1" Orientation="Vertical" Margin="0,0,12,0">
-                            <TextBlock Text="Project" Margin="0,0,0,2"/>
-                            <ComboBox Width="280"
-                                      ItemsSource="{Binding TimesheetProjects}"
-                                      SelectedItem="{Binding SelectedTimesheetProject}"
-                                      DisplayMemberPath="Label"
-                                      IsEditable="False"/>
-                        </StackPanel>
-
-                        <!-- Refresh -->
-                        <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Bottom">
-                            <TextBlock Text=" " Margin="0,0,0,2"/>
-                            <Button Content="Refresh"
-                                    Padding="12,5"
-                                    Click="RefreshTimesheet_Click"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Entry form (with labels) -->
-                    <Grid Grid.Row="1" Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="160"/>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="220"/>
-                            <!--<ColumnDefinition Width="220"/>-->
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="140"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Date -->
-                        <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,10,0">
-                            <TextBlock Text="Date" Margin="0,0,0,2"/>
-                            <DatePicker x:Name="TimesheetDatePicker"
-                                        SelectedDate="{Binding TimesheetDate}"/>
-                        </StackPanel>
-
-                        <!-- Hours -->
-                        <StackPanel Grid.Column="1" Orientation="Vertical" Margin="0,0,10,0">
-                            <TextBlock Text="Hours" Margin="0,0,0,2"/>
-                            <ComboBox ItemsSource="{Binding TimesheetHourOptions}"
-                                      Text="{Binding TimesheetHoursText, UpdateSourceTrigger=PropertyChanged}"
-                                      IsEditable="True"
-                                      IsTextSearchEnabled="True"
-                                      StaysOpenOnEdit="True"
-                                      IsEnabled="{Binding IsTimesheetHoursEnabled}"
-                                      ToolTip="Hours (0 to 24 in 0.5 steps)"
-                                      MaxDropDownHeight="300"/>
-                        </StackPanel>
-
-                        <!-- Code -->
-                        <StackPanel Grid.Column="2" Orientation="Vertical" Margin="0,0,10,0">
-                            <TextBlock Text="Code" Margin="0,0,0,2"/>
-                            <ComboBox Grid.Column="2"
-                                      ItemsSource="{Binding TimesheetCodes}"
-                                      SelectedValue="{Binding TimesheetCodeText, UpdateSourceTrigger=PropertyChanged}"
-                                      SelectedValuePath="Code"
-                                      IsEditable="True"
-                                      IsEnabled="{Binding IsTimesheetCodeEnabled}"
-                                      IsTextSearchEnabled="True"
-                                      TextSearch.TextPath="Code"
-                                      StaysOpenOnEdit="True"
-                                      Margin="0,0,10,0"
-                                      ToolTip="Code">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock>
-                                            <Run Text="{Binding Code}"/>
-                                            <Run Text=" - "/>
-                                            <Run Text="{Binding Description}"/>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                        </StackPanel>
-
-                        <!-- CCF Ref (VO only) -->
-                        <StackPanel Grid.Column="3"
-                                    Orientation="Vertical"
-                                    Margin="0,0,10,0"
-                                    Visibility="{Binding IsTimesheetCcfRefVisible, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="CCF Ref" Margin="0,0,0,2"/>
-                            <TextBox Text="{Binding TimesheetCcfRefText}"
-                                     ToolTip="CCF Ref (required for VO)"/>
-                        </StackPanel>
-
-                        <!-- Work type -->
-                        <!--<StackPanel Grid.Column="4" Orientation="Vertical" Margin="0,0,10,0">
-                            <TextBlock Text="Work Type" Margin="0,0,0,2"/>
-                            <TextBox Text="{Binding TimesheetWorkTypeText}"
-                                     ToolTip="Work Type (optional)"/>
-                        </StackPanel>-->
-
-                        <!-- Task description -->
-                        <StackPanel Grid.Column="4" Orientation="Vertical" Margin="0,0,10,0">
-                            <TextBlock Text="Task" Margin="0,0,0,2"/>
-                            <TextBox Text="{Binding TimesheetTaskDescriptionText}"
-                                     IsEnabled="{Binding IsTimesheetTaskEnabled}"
-                                     ToolTip="Task description (optional)"/>
-                        </StackPanel>
-
-                        <!-- Add Entry -->
-                        <StackPanel Grid.Column="5" Orientation="Vertical" VerticalAlignment="Bottom">
-                            <TextBlock Text=" " Margin="0,0,0,2"/>
-                            <Button Content="Add Entry"
-                                    Padding="12,5"
-                                    Click="CreateTimesheetEntry_Click"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Work details (Project jobs only) -->
-                    <Border Grid.Row="2"
-                            Margin="0,0,0,10"
-                            Padding="10"
-                            CornerRadius="6"
-                            Background="#222"
-                            Visibility="{Binding IsTimesheetWorkDetailsVisible, Converter={StaticResource BoolToVis}}">
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Work Type -->
-                            <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,12,0">
-                                <TextBlock Text="Work Type" Margin="0,0,0,4"/>
-                                <ComboBox Width="180"
-                                          ItemsSource="{Binding TimesheetWorkTypeOptions}"
-                                          DisplayMemberPath="Label"
-                                          SelectedValuePath="Code"
-                                          SelectedValue="{Binding TimesheetWorkTypeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                          IsEnabled="{Binding IsTimesheetWorkTypeEnabled}"/>
-                            </StackPanel>
-
-                            <!-- Levels + Areas -->
-                            <Grid Grid.Column="1">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <!-- Levels -->
-                                <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,0,0,10">
-                                    <TextBlock Text="Levels" Margin="0,0,0,4"/>
-                                    <ListBox ItemsSource="{Binding TimesheetLevelOptions}"
-                                             SelectionMode="Multiple"
-                                             Height="90"
-                                             SelectionChanged="TimesheetLevels_SelectionChanged"/>
-                                    <TextBlock Text="Select one or more"
-                                               Opacity="0.65"
-                                               Margin="0,4,0,0"/>
-                                </StackPanel>
-
-                                <!-- Areas -->
-                                <StackPanel Grid.Row="1" Orientation="Vertical">
-                                    <TextBlock Text="Areas (comma-separated)" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding TimesheetAreasRawText, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="Comma-separated areas, e.g. Core, Plant Room, Roof"/>
-                                </StackPanel>
-                            </Grid>
-                        </Grid>
-                    </Border>
-
-                    <!-- Recent entries -->
-                    <DataGrid Grid.Row="3"
-                              ItemsSource="{Binding TimesheetEntries}"
-                              Style="{StaticResource DarkDataGridStyle}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Date"
-                                                Binding="{Binding Date, StringFormat=yyyy-MM-dd}"
-                                                Width="120"/>
-
-                            <DataGridTextColumn Header="Project"
-                                                Binding="{Binding JobKey}"
-                                                Width="160"/>
-
-                            <DataGridTextColumn Header="Code"
-                                                Binding="{Binding Code}"
-                                                Width="110"/>
-
-                            <DataGridTextColumn Header="Hours"
-                                                Binding="{Binding Hours, StringFormat={}{0:N2}}"
-                                                Width="90"/>
-
-                            <DataGridTextColumn Header="Task"
-                                                Binding="{Binding TaskDescription}"
-                                                Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <!-- Status -->
-                    <TextBlock Grid.Row="4"
-                               Text="{Binding TimesheetStatusText}"
-                               Opacity="0.75"
-                               Margin="0,8,0,0"/>
                 </Grid>
             </TabItem>
 
