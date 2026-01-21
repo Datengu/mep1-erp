@@ -3,6 +3,7 @@ using System;
 using Mep1.Erp.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Mep1.Erp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260121140516_AddProjectCcfRefs")]
+    partial class AddProjectCcfRefs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.22");
@@ -252,15 +255,6 @@ namespace Mep1.Erp.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<decimal?>("ActualValue")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("AgreedDateUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("AgreedValue")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(3)
@@ -269,34 +263,13 @@ namespace Mep1.Erp.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal?>("EstimatedValue")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
-                    b.Property<DateTime?>("LastValueUpdatedUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("ProjectId")
                         .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("QuotedDateUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("QuotedValue")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 

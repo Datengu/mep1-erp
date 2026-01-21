@@ -183,6 +183,22 @@ public sealed class TimesheetController : ControllerBase
             };
         }
 
+        int? projectCcfRefId = null;
+
+        if (string.Equals(dto.Code, "VO", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var normalized = NormalizeCcfRef(dto.CcfRef!);
+                var ccf = await ResolveOrCreateProjectCcfRefAsync(project.Id, normalized);
+                projectCcfRefId = ccf.Id;
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         // IMPORTANT: nextEntryId must be calculated for the SUBJECT, not dto.WorkerId
         var nextEntryId = await _db.TimesheetEntries
             .Where(e => e.WorkerId == subjectId)
@@ -200,9 +216,7 @@ public sealed class TimesheetController : ControllerBase
             Code = dto.Code,
             // Code: type of work done/hours submitted. can include things like sick or holiday but mostly includes type of work done like Programmed Drawing Input or Updating to Internal Comments or even Meetings.
             // When Code = VO (Variations/Variation Order), there should be additional input for CcfRef. CcfRef shouldn't show unless Code = VO.
-            CcfRef = string.Equals(dto.Code, "VO", StringComparison.OrdinalIgnoreCase)
-                ? (dto.CcfRef ?? "")
-                : "",
+            ProjectCcfRefId = projectCcfRefId,
             CreatedAtUtc = DateTime.UtcNow,
             IsDeleted = false,
             WorkType = workTypeToStore,
@@ -268,7 +282,7 @@ public sealed class TimesheetController : ControllerBase
                 ProjectCategory = e.Project.Category,
                 e.Project.IsRealProject,
                 e.TaskDescription,
-                e.CcfRef,
+                CcfRef = e.ProjectCcfRef != null ? e.ProjectCcfRef.Code : "",
                 e.WorkType,
                 e.LevelsJson,
                 e.AreasJson
@@ -322,7 +336,7 @@ public sealed class TimesheetController : ControllerBase
                 e.Hours,
                 e.Code,
                 e.TaskDescription,
-                e.CcfRef,
+                CcfRef = e.ProjectCcfRef != null ? e.ProjectCcfRef.Code : null,
                 e.WorkType,
                 e.LevelsJson,
                 e.AreasJson
@@ -404,9 +418,28 @@ public sealed class TimesheetController : ControllerBase
 
         var code = (dto.Code ?? "").Trim().ToUpperInvariant();
 
+        int? projectCcfRefId = null;
+
+        if (string.Equals(code, "VO", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(dto.CcfRef))
+                return BadRequest("CcfRef is required when Code is VO.");
+
+            try
+            {
+                var normalized = NormalizeCcfRef(dto.CcfRef);
+                var ccf = await ResolveOrCreateProjectCcfRefAsync(project.Id, normalized);
+                projectCcfRefId = ccf.Id;
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         decimal hours = dto.Hours;
         string taskDescription = (dto.TaskDescription ?? "").Trim();
-        string ccfRef = (dto.CcfRef ?? "").Trim();
+        //string ccfRef = (dto.CcfRef ?? "").Trim();
 
         if (code is "HOL" or "SI" or "BH")
         {
@@ -418,7 +451,7 @@ public sealed class TimesheetController : ControllerBase
         entry.Code = code;
         entry.ProjectId = project.Id;
         entry.TaskDescription = taskDescription;
-        entry.CcfRef = ccfRef;
+        entry.ProjectCcfRefId = projectCcfRefId;
 
         entry.UpdatedAtUtc = DateTime.UtcNow;
         entry.UpdatedByWorkerId = actorId; // IMPORTANT: updated by actor, not subject
@@ -589,4 +622,53 @@ public sealed class TimesheetController : ControllerBase
 
         return Ok(ownerWorker);
     }
+
+    private static string NormalizeCcfRef(string input)
+    {
+        var raw = (input ?? "").Trim();
+
+        if (raw.Length == 0)
+            throw new InvalidOperationException("CCF Ref is required.");
+
+        for (int i = 0; i < raw.Length; i++)
+            if (raw[i] < '0' || raw[i] > '9')
+                throw new InvalidOperationException("CCF Ref must be numeric.");
+
+        if (!int.TryParse(raw, out var n))
+            throw new InvalidOperationException("Invalid CCF Ref.");
+
+        if (n == 0)
+            throw new InvalidOperationException("CCF Ref 000 is not allowed.");
+
+        if (n < 1 || n > 999)
+            throw new InvalidOperationException("CCF Ref must be between 001 and 999.");
+
+        return n.ToString("D3");
+    }
+
+    private async Task<ProjectCcfRef> ResolveOrCreateProjectCcfRefAsync(int projectId, string normalizedCode)
+    {
+        var existing = await _db.ProjectCcfRefs
+            .FirstOrDefaultAsync(x => x.ProjectId == projectId && x.Code == normalizedCode);
+
+        if (existing != null)
+        {
+            if (!existing.IsActive)
+                throw new InvalidOperationException("CCF Ref is inactive.");
+            return existing;
+        }
+
+        var created = new ProjectCcfRef
+        {
+            ProjectId = projectId,
+            Code = normalizedCode,
+            IsActive = true,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        _db.ProjectCcfRefs.Add(created);
+        await _db.SaveChangesAsync();
+        return created;
+    }
+
 }

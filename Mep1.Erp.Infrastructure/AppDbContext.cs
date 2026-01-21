@@ -28,6 +28,7 @@ namespace Mep1.Erp.Infrastructure
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
         public DbSet<Company> Companies => Set<Company>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+        public DbSet<ProjectCcfRef> ProjectCcfRefs => Set<ProjectCcfRef>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -167,6 +168,51 @@ namespace Mep1.Erp.Infrastructure
                 e.Property(x => x.CreatedUtc).IsRequired();
                 e.Property(x => x.ExpiresUtc).IsRequired();
             });
+
+            modelBuilder.Entity<ProjectCcfRef>(e =>
+            {
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.Code)
+                    .IsRequired()
+                    .HasMaxLength(3);
+
+                e.HasIndex(x => new { x.ProjectId, x.Code })
+                    .IsUnique();
+
+                e.HasOne(x => x.Project)
+                    .WithMany() // (optional) you can add Project.ProjectCcfRefs later if you want
+                    .HasForeignKey(x => x.ProjectId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.Property(x => x.IsActive)
+                    .HasDefaultValue(true);
+
+                e.Property(x => x.EstimatedValue)
+                    .HasColumnType("decimal(18,2)");
+
+                e.Property(x => x.QuotedValue)
+                    .HasColumnType("decimal(18,2)");
+
+                e.Property(x => x.AgreedValue)
+                    .HasColumnType("decimal(18,2)");
+
+                e.Property(x => x.ActualValue)
+                    .HasColumnType("decimal(18,2)");
+
+                e.Property(x => x.Status)
+                    .IsRequired()
+                    .HasMaxLength(32);
+
+                e.Property(x => x.Notes)
+                    .HasMaxLength(1000);
+            });
+
+            modelBuilder.Entity<TimesheetEntry>()
+                .HasOne(e => e.ProjectCcfRef)
+                .WithMany()
+                .HasForeignKey(e => e.ProjectCcfRefId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
 
         private static string NormalizeUsername(string? username)
