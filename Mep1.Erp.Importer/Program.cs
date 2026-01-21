@@ -405,6 +405,60 @@ namespace Mep1.Erp.Importer
             Console.ReadLine();
         }
 
+        private static string NormalizeCcfRef(string input)
+        {
+            var raw = (input ?? "").Trim();
+
+            if (raw.Length == 0)
+                throw new InvalidOperationException("CCF Ref is required.");
+
+            for (int i = 0; i < raw.Length; i++)
+            {
+                var ch = raw[i];
+                if (ch < '0' || ch > '9')
+                    throw new InvalidOperationException("CCF Ref must be numeric.");
+            }
+
+            if (!int.TryParse(raw, out var n))
+                throw new InvalidOperationException("Invalid CCF Ref.");
+
+            if (n == 0)
+                throw new InvalidOperationException("CCF Ref 000 is not allowed.");
+
+            if (n < 1 || n > 999)
+                throw new InvalidOperationException("CCF Ref must be between 001 and 999.");
+
+            return n.ToString("D3");
+        }
+
+        private static int EnsureProjectCcfRefId(AppDbContext db, int projectId, string ccfText)
+        {
+            var normalized = NormalizeCcfRef(ccfText);
+
+            var existing = db.ProjectCcfRefs
+                .SingleOrDefault(x => x.ProjectId == projectId && x.Code == normalized);
+
+            if (existing != null)
+            {
+                if (!existing.IsActive)
+                    throw new InvalidOperationException("CCF Ref is inactive.");
+                return existing.Id;
+            }
+
+            var created = new ProjectCcfRef
+            {
+                ProjectId = projectId,
+                Code = normalized,
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            db.ProjectCcfRefs.Add(created);
+            db.SaveChanges(); // need Id immediately
+
+            return created.Id;
+        }
+
         private static List<TimesheetEntry> ImportTimesheetFile(AppDbContext db, string path)
         {
             var result = new List<TimesheetEntry>();
@@ -517,6 +571,22 @@ namespace Mep1.Erp.Importer
                 var taskText = taskCell.GetString();
                 var ccfText = ccfCell.GetString();
 
+                int? projectCcfRefId = null;
+
+                if (string.Equals(code, "VO", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        projectCcfRefId = EnsureProjectCcfRefId(db, project.Id, ccfText);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(
+                            $"  WARNING: Invalid CCF Ref '{ccfText}' for VO on job '{jobName}' (row {row}). {ex.Message} Skipping row.");
+                        continue;
+                    }
+                }
+
                 // --- Upsert by (WorkerId, EntryId), including Code and Project ---
                 if (existingEntries.TryGetValue(entryId, out var existing))
                 {
@@ -542,9 +612,10 @@ namespace Mep1.Erp.Importer
                         existing.TaskDescription = taskText;
                         changed = true;
                     }
-                    if (!string.Equals(existing.CcfRef, ccfText, StringComparison.Ordinal))
+                    // CCF is only stored for VO; otherwise must be null
+                    if (existing.ProjectCcfRefId != projectCcfRefId)
                     {
-                        existing.CcfRef = ccfText;
+                        existing.ProjectCcfRefId = projectCcfRefId;
                         changed = true;
                     }
                     if (existing.ProjectId != project.Id)
@@ -568,7 +639,7 @@ namespace Mep1.Erp.Importer
                         Hours = hours,
                         Code = code,
                         TaskDescription = taskText,
-                        CcfRef = ccfText,
+                        ProjectCcfRefId = projectCcfRefId,
                         WorkerId = worker.Id,
                         ProjectId = project.Id
                     };
@@ -706,7 +777,7 @@ namespace Mep1.Erp.Importer
         static readonly HashSet<string> NonCompanyCodes = new(StringComparer.OrdinalIgnoreCase)
         {
             "HOL",
-            "SICK",
+            "SI",
             "TP",
             "MEP1"
         };

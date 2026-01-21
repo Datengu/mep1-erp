@@ -52,6 +52,49 @@ namespace Mep1.Erp.Core
         public List<SupplierCost> SupplierCosts { get; set; } = new();
     }
 
+    public class ProjectCcfRef
+    {
+        public int Id { get; set; }
+
+        public int ProjectId { get; set; }
+        public Project Project { get; set; } = null!;
+
+        // Always stored normalized: "001" .. "999"
+        public string Code { get; set; } = "";
+
+        public bool IsActive { get; set; } = true;
+
+        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+        // ---- Commercial values ----
+
+        // Early internal estimate
+        public decimal? EstimatedValue { get; set; }
+
+        // What you submit / quote to the client
+        public decimal? QuotedValue { get; set; }
+        public DateTime? QuotedDateUtc { get; set; }
+
+        // What the client agrees to
+        public decimal? AgreedValue { get; set; }
+        public DateTime? AgreedDateUtc { get; set; }
+
+        // What is actually invoiced / recognised
+        public decimal? ActualValue { get; set; }
+
+        // ---- Status & metadata ----
+
+        // Current commercial status of this CCF
+        // e.g. "Draft", "Quoted", "Agreed", "Rejected", "Invoiced"
+        public string Status { get; set; } = "Draft";
+
+        // Optional notes / justification
+        public string? Notes { get; set; }
+
+        // Tracking
+        public DateTime? LastValueUpdatedUtc { get; set; }
+    }
+
     public class TimesheetEntry
     {
         public int Id { get; set; }
@@ -63,7 +106,9 @@ namespace Mep1.Erp.Core
         public string Code { get; set; } = "";
 
         public string TaskDescription { get; set; } = "";
-        public string CcfRef { get; set; } = "";
+
+        public int? ProjectCcfRefId { get; set; }
+        public ProjectCcfRef? ProjectCcfRef { get; set; }
 
         public int WorkerId { get; set; }
         public Worker Worker { get; set; } = null!;
