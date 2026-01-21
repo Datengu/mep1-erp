@@ -1278,6 +1278,100 @@ namespace Mep1.Erp.Desktop
 
         public string TimesheetPrimaryActionText => IsTimesheetEditMode ? "Save Changes" : "Add Entry";
 
+        private ObservableCollection<ProjectCcfRefDetailsDto> _projectCcfRefs = new();
+        public ObservableCollection<ProjectCcfRefDetailsDto> ProjectCcfRefs
+        {
+            get => _projectCcfRefs;
+            set { _projectCcfRefs = value; OnPropertyChanged(nameof(ProjectCcfRefs)); }
+        }
+
+        private string _newProjectCcfRefCode = "";
+        public string NewProjectCcfRefCode
+        {
+            get => _newProjectCcfRefCode;
+            set { _newProjectCcfRefCode = value; OnPropertyChanged(nameof(NewProjectCcfRefCode)); }
+        }
+
+        private bool _showInactiveProjectCcfRefs;
+        public bool ShowInactiveProjectCcfRefs
+        {
+            get => _showInactiveProjectCcfRefs;
+            set
+            {
+                _showInactiveProjectCcfRefs = value;
+                OnPropertyChanged(nameof(ShowInactiveProjectCcfRefs));
+                _ = LoadProjectCcfRefsAsync(); // fire and forget refresh
+            }
+        }
+
+        private ProjectSummaryDto? _selectedProjectForCcf;
+        public ProjectSummaryDto? SelectedProjectForCcf
+        {
+            get => _selectedProjectForCcf;
+            set
+            {
+                if (SetField(ref _selectedProjectForCcf, value, nameof(SelectedProjectForCcf)))
+                {
+                    _ = LoadProjectCcfRefsAsync(); // refresh when project changes
+                }
+            }
+        }
+
+        private string _addCcf_Code = "";
+        public string AddCcf_Code { get => _addCcf_Code; set => SetField(ref _addCcf_Code, value, nameof(AddCcf_Code)); }
+
+        private string _addCcf_EstimatedValueText = "";
+        public string AddCcf_EstimatedValueText { get => _addCcf_EstimatedValueText; set => SetField(ref _addCcf_EstimatedValueText, value, nameof(AddCcf_EstimatedValueText)); }
+
+        private string _addCcf_QuotedValueText = "";
+        public string AddCcf_QuotedValueText { get => _addCcf_QuotedValueText; set => SetField(ref _addCcf_QuotedValueText, value, nameof(AddCcf_QuotedValueText)); }
+
+        private string _addCcf_QuotedDateText = "";
+        public string AddCcf_QuotedDateText { get => _addCcf_QuotedDateText; set => SetField(ref _addCcf_QuotedDateText, value, nameof(AddCcf_QuotedDateText)); }
+
+        private string _addCcf_AgreedValueText = "";
+        public string AddCcf_AgreedValueText { get => _addCcf_AgreedValueText; set => SetField(ref _addCcf_AgreedValueText, value, nameof(AddCcf_AgreedValueText)); }
+
+        private string _addCcf_AgreedDateText = "";
+        public string AddCcf_AgreedDateText { get => _addCcf_AgreedDateText; set => SetField(ref _addCcf_AgreedDateText, value, nameof(AddCcf_AgreedDateText)); }
+
+        private string _addCcf_ActualValueText = "";
+        public string AddCcf_ActualValueText { get => _addCcf_ActualValueText; set => SetField(ref _addCcf_ActualValueText, value, nameof(AddCcf_ActualValueText)); }
+
+        private string _addCcf_Status = "Draft";
+        public string AddCcf_Status { get => _addCcf_Status; set => SetField(ref _addCcf_Status, value, nameof(AddCcf_Status)); }
+
+        private string? _addCcf_Notes = "";
+        public string? AddCcf_Notes { get => _addCcf_Notes; set => SetField(ref _addCcf_Notes, value, nameof(AddCcf_Notes)); }
+
+        private string _addCcf_StatusText = "";
+        public string AddCcf_StatusText { get => _addCcf_StatusText; set => SetField(ref _addCcf_StatusText, value, nameof(AddCcf_StatusText)); }
+
+        private DateTime? _addCcf_QuotedDate;
+        public DateTime? AddCcf_QuotedDate
+        {
+            get => _addCcf_QuotedDate;
+            set 
+            { 
+                _addCcf_QuotedDate = value; 
+                OnPropertyChanged(nameof(AddCcf_QuotedDate)); 
+            }
+        }
+
+        private DateTime? _addCcf_AgreedDate;
+        public DateTime? AddCcf_AgreedDate
+        {
+            get => _addCcf_AgreedDate;
+            set 
+            { 
+                _addCcf_AgreedDate = value; 
+                OnPropertyChanged(nameof(AddCcf_AgreedDate)); 
+            }
+        }
+
+        public IReadOnlyList<string> CcfStatuses { get; } =
+            new List<string> { "Draft", "Quoted", "Agreed", "Rejected", "Invoiced" };
+
         // ---------------------------------------------
         // Invoice filtering
         // ---------------------------------------------
@@ -1359,6 +1453,11 @@ namespace Mep1.Erp.Desktop
 
             // ProjectSummaries comes from API now
             ProjectSummaries = await _api.GetProjectSummariesAsync();
+
+            if (SelectedProjectForCcf == null && ProjectSummaries.Count > 0)
+            {
+                SelectedProjectForCcf = ProjectSummaries.FirstOrDefault(p => p.IsActive) ?? ProjectSummaries[0];
+            }
 
             InvoiceProjectPicklist = await _api.GetInvoiceProjectPicklistAsync();
 
@@ -1455,6 +1554,11 @@ namespace Mep1.Erp.Desktop
             {
                 SelectedPerson = People[0];
                 await LoadSelectedPersonDetails(SelectedPerson.WorkerId);
+            }
+
+            if (ProjectSummaries.Count > 0 && SelectedProjectForCcf == null)
+            {
+                SelectedProjectForCcf = ProjectSummaries[0];
             }
         }
 
@@ -1975,6 +2079,7 @@ namespace Mep1.Erp.Desktop
 
             SelectedProject = proj;
             LoadSelectedProjectDetails(proj);
+            _ = LoadProjectCcfRefsAsync();
         }
 
         // =======================
@@ -4278,6 +4383,164 @@ namespace Mep1.Erp.Desktop
             // 0 = View, 1 = Add, 2 = Edit (based on your current XAML order)
             if (TimesheetSubTabs != null && TimesheetSubTabs.Items.Count > index)
                 TimesheetSubTabs.SelectedIndex = index;
+        }
+
+        private async Task LoadProjectCcfRefsAsync()
+        {
+            if (SelectedProjectForCcf == null)
+            {
+                ProjectCcfRefs = new ObservableCollection<ProjectCcfRefDetailsDto>();
+                return;
+            }
+
+            try
+            {
+                var rows = await _api.GetProjectCcfRefsByJobKeyAsync(
+                    SelectedProjectForCcf.JobNameOrNumber,
+                    includeInactive: ShowInactiveProjectCcfRefs);
+
+                ProjectCcfRefs = new ObservableCollection<ProjectCcfRefDetailsDto>(rows);
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show($"Failed to load CCF refs.\n\n{ex.Message}");
+                ProjectCcfRefs = new ObservableCollection<ProjectCcfRefDetailsDto>();
+            }
+        }
+
+        private async void RefreshProjectCcfRefs_Click(object sender, RoutedEventArgs e)
+        {
+            await LoadProjectCcfRefsAsync();
+        }
+
+        private async void AddProjectCcfRef_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedProjectForCcf == null) return;
+
+            var input = (NewProjectCcfRefCode ?? "").Trim();
+            if (input.Length == 0) return;
+
+            try
+            {
+                await _api.CreateProjectCcfRefByJobKeyAsync(SelectedProjectForCcf.JobNameOrNumber, input);
+                NewProjectCcfRefCode = "";
+                await LoadProjectCcfRefsAsync();
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show($"Failed to add/reactivate.\n\n{ex.Message}");
+            }
+        }
+
+        private async void ActivateProjectCcfRef_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedProjectForCcf == null) return;
+            if ((sender as FrameworkElement)?.DataContext is not ProjectCcfRefDto row) return;
+
+            try
+            {
+                await _api.SetProjectCcfRefActiveByJobKeyAsync(SelectedProjectForCcf.JobNameOrNumber, row.Id, true);
+                await LoadProjectCcfRefsAsync();
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show($"Failed to activate.\n\n{ex.Message}");
+            }
+        }
+
+        private async void DeactivateProjectCcfRef_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedProjectForCcf == null) return;
+            if ((sender as FrameworkElement)?.DataContext is not ProjectCcfRefDto row) return;
+
+            try
+            {
+                await _api.SetProjectCcfRefActiveByJobKeyAsync(SelectedProjectForCcf.JobNameOrNumber, row.Id, false);
+                await LoadProjectCcfRefsAsync();
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show($"Failed to deactivate.\n\n{ex.Message}");
+            }
+        }
+
+        private static decimal? ParseNullableMoney(string? text)
+        {
+            var t = (text ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(t)) return null;
+            if (decimal.TryParse(t, out var v)) return v;
+            return null;
+        }
+
+        private static DateTime? ParseNullableDate(string? text)
+        {
+            var t = (text ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(t)) return null;
+            if (DateTime.TryParse(t, out var d)) return d;
+            return null;
+        }
+
+        private async void AddCcf_Save_Click(object sender, RoutedEventArgs e)
+        {
+            AddCcf_StatusText = "";
+
+            if (SelectedProjectForCcf == null)
+            {
+                AddCcf_StatusText = "Select a project first.";
+                return;
+            }
+
+            var jobKey = SelectedProjectForCcf.JobNameOrNumber;
+            var codeInput = (AddCcf_Code ?? "").Trim();
+
+            if (string.IsNullOrWhiteSpace(codeInput))
+            {
+                AddCcf_StatusText = "CCF Code is required.";
+                return;
+            }
+
+            try
+            {
+                // 1) Create (or reactivate if already exists) - API does NormalizeCcfRef server-side
+                var created = await _api.CreateProjectCcfRefByJobKeyAsync(jobKey, codeInput);
+
+                // 2) Update commercial fields
+                var updateDto = new UpdateProjectCcfRefDto(
+                    EstimatedValue: ParseNullableMoney(AddCcf_EstimatedValueText),
+                    QuotedValue: ParseNullableMoney(AddCcf_QuotedValueText),
+                    QuotedDateUtc: ParseNullableDate(AddCcf_QuotedDateText),
+                    AgreedValue: ParseNullableMoney(AddCcf_AgreedValueText),
+                    AgreedDateUtc: ParseNullableDate(AddCcf_AgreedDateText),
+                    ActualValue: ParseNullableMoney(AddCcf_ActualValueText),
+                    Status: string.IsNullOrWhiteSpace(AddCcf_Status) ? "" : AddCcf_Status.Trim(),
+                    Notes: string.IsNullOrWhiteSpace(AddCcf_Notes) ? null : AddCcf_Notes.Trim()
+                );
+
+                await _api.UpdateProjectCcfRefByJobKeyAsync(jobKey, created.Id, updateDto);
+
+                // 3) Refresh grid
+                await LoadProjectCcfRefsAsync();
+
+                AddCcf_StatusText = $"Saved {created.Code}.";
+            }
+            catch (Exception ex)
+            {
+                AddCcf_StatusText = ex.Message;
+            }
+        }
+
+        private void AddCcf_Clear_Click(object sender, RoutedEventArgs e)
+        {
+            AddCcf_Code = "";
+            AddCcf_EstimatedValueText = "";
+            AddCcf_QuotedValueText = "";
+            AddCcf_QuotedDateText = "";
+            AddCcf_AgreedValueText = "";
+            AddCcf_AgreedDateText = "";
+            AddCcf_ActualValueText = "";
+            AddCcf_Status = "Draft";
+            AddCcf_Notes = "";
+            AddCcf_StatusText = "";
         }
 
     }

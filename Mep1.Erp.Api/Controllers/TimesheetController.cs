@@ -653,6 +653,8 @@ public sealed class TimesheetController : ControllerBase
 
         if (existing != null)
         {
+            if (existing.IsDeleted)
+                throw new InvalidOperationException("CCF Ref is deleted.");
             if (!existing.IsActive)
                 throw new InvalidOperationException("CCF Ref is inactive.");
             return existing;
@@ -668,7 +670,47 @@ public sealed class TimesheetController : ControllerBase
 
         _db.ProjectCcfRefs.Add(created);
         await _db.SaveChangesAsync();
+
+        // Audit ONLY on create (prevents noise)
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Projects.CcfRef.Create",
+            entityType: "ProjectCcfRef",
+            entityId: created.Id.ToString(),
+            summary: $"ProjectId={projectId}, CcfRef={created.Code}, CreatedFrom=TimesheetEntry"
+        );
+
         return created;
+    }
+
+    // GET /api/timesheet/ccf-refs?jobKey=PN0042 - 33B North Row
+    [HttpGet("ccf-refs")]
+    public async Task<IActionResult> GetCcfRefsForJob([FromQuery] string jobKey)
+    {
+        jobKey = (jobKey ?? "").Trim();
+        if (jobKey.Length == 0) return Ok(Array.Empty<string>());
+
+        var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
+        if (project == null) return Ok(Array.Empty<string>());
+
+        var refs = await _db.ProjectCcfRefs
+            .Where(x => x.ProjectId == project.Id && x.IsActive && !x.IsDeleted)
+            .OrderBy(x => x.Code)
+            .Select(x => x.Code)
+            .ToListAsync();
+
+        return Ok(refs);
+    }
+
+    private (int WorkerId, string Role, string Source) GetActorForAudit()
+    {
+        var id = ClaimsActor.GetWorkerId(User);
+        var role = ClaimsActor.GetRole(User);
+        return (id, role.ToString(), "Portal");
     }
 
 }

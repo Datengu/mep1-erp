@@ -783,6 +783,184 @@
                             </Grid>
                         </TabItem>
 
+                        <!-- CCF REFS -->
+                        <TabItem Header="CCF Refs">
+                            <Grid Margin="12">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Project picker -->
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                                    <TextBlock Text="Project"
+                                               VerticalAlignment="Center"
+                                               Foreground="#FFBFBFBF"
+                                               Margin="0,0,8,0"/>
+
+                                    <ComboBox Width="220"
+                                              Height="28"
+                                              ItemsSource="{Binding ProjectSummaries}"
+                                              SelectedItem="{Binding SelectedProjectForCcf, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              DisplayMemberPath="JobNameOrNumber"/>
+                                </StackPanel>
+
+                                <!-- Filters -->
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                                    <!--<CheckBox Content="Show inactive"
+                                              VerticalAlignment="Center"
+                                              IsChecked="{Binding ShowInactiveProjectCcfRefs}" />-->
+
+                                    <Button Content="Refresh"
+                                            Padding="10,4"
+                                            Margin="12,0,0,0"
+                                            Click="RefreshProjectCcfRefs_Click"/>
+                                </StackPanel>
+
+                                <!-- Grid -->
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding ProjectCcfRefs}"
+                                          Style="{StaticResource DarkDataGridStyle}"
+                                          AutoGenerateColumns="False"
+                                          SelectionMode="Single">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="80" IsReadOnly="True"/>
+                                        <!--<DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="80" IsReadOnly="True"/>-->
+                                        <DataGridTextColumn Header="Est." Binding="{Binding EstimatedValue, StringFormat=£{0:N2}}" Width="90" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Quoted" Binding="{Binding QuotedValue, StringFormat=£{0:N2}}" Width="90" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Agreed" Binding="{Binding AgreedValue, StringFormat=£{0:N2}}" Width="90" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Actual" Binding="{Binding ActualValue, StringFormat=£{0:N2}}" Width="90" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*" IsReadOnly="True"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- ADD CCF REF -->
+                        <TabItem Header="Add CCF Ref">
+                            <Grid Margin="12">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Project picker -->
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                                    <TextBlock Text="Project"
+                                               VerticalAlignment="Center"
+                                               Foreground="#FFBFBFBF"
+                                               Margin="0,0,8,0"/>
+
+                                    <ComboBox Width="220"
+                                              Height="28"
+                                              ItemsSource="{Binding ProjectSummaries}"
+                                              SelectedItem="{Binding SelectedProjectForCcf, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              DisplayMemberPath="JobNameOrNumber"/>
+                                </StackPanel>
+
+                                <!-- Form -->
+                                <Border Grid.Row="1" Background="#FF262626" CornerRadius="6" Padding="12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="240"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+
+                                        <!-- Code -->
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="CCF Code (1..999)" Foreground="#FFBFBFBF" Margin="0,0,0,4"/>
+                                        <TextBox Grid.Row="1" Grid.Column="0" Height="28"
+                                                 Text="{Binding AddCcf_Code, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="Enter 1..999 (stored as 001..999). 000 is rejected."/>
+
+                                        <!-- Estimated -->
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Estimated (£)" Foreground="#FFBFBFBF" Margin="12,0,0,4"/>
+                                        <TextBox Grid.Row="1" Grid.Column="1" Height="28" Margin="12,0,0,0"
+                                                 Text="{Binding AddCcf_EstimatedValueText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                        <!-- Quoted -->
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Quoted (£)" Foreground="#FFBFBFBF" Margin="0,10,0,4"/>
+                                        <TextBox Grid.Row="3" Grid.Column="0" Height="28"
+                                                 Text="{Binding AddCcf_QuotedValueText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="Quoted Date (optional)" Foreground="#FFBFBFBF" Margin="12,10,0,4"/>
+                                        <DatePicker Grid.Row="3" Grid.Column="1"
+                                                    Width="140"
+                                                    Margin="12,0,0,0"
+                                                    HorizontalAlignment="Left"
+                                                    SelectedDate="{Binding AddCcf_QuotedDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        
+                                        <!-- Agreed -->
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Agreed (£)" Foreground="#FFBFBFBF" Margin="0,10,0,4"/>
+                                        <TextBox Grid.Row="5" Grid.Column="0" Height="28"
+                                                 Text="{Binding AddCcf_AgreedValueText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                        <TextBlock Grid.Row="4" Grid.Column="1" Text="Agreed Date (optional)" Foreground="#FFBFBFBF" Margin="12,10,0,4"/>
+                                        <DatePicker Grid.Row="5" Grid.Column="1"
+                                                    Width="140"
+                                                    Margin="12,0,0,0"
+                                                    HorizontalAlignment="Left"
+                                                    SelectedDate="{Binding AddCcf_AgreedDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        
+                                        <!-- Actual -->
+                                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Actual (£)" Foreground="#FFBFBFBF" Margin="0,10,0,4"/>
+                                        <TextBox Grid.Row="7" Grid.Column="0" Height="28"
+                                                 Text="{Binding AddCcf_ActualValueText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                        <!-- Status -->
+                                        <TextBlock Grid.Row="6" Grid.Column="1" Text="Status" Foreground="#FFBFBFBF" Margin="12,10,0,4"/>
+                                        <ComboBox Grid.Row="7" Grid.Column="1"
+                                                  Width="140"
+                                                  Margin="12,0,0,0"
+                                                  HorizontalAlignment="Left"
+                                                  ItemsSource="{Binding CcfStatuses}"
+                                                  SelectedItem="{Binding AddCcf_Status, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        
+                                        <!-- Notes -->
+                                        <TextBlock Grid.Row="8" Grid.Column="0" Text="Notes" Foreground="#FFBFBFBF" Margin="0,10,0,4"/>
+                                        <TextBox Grid.Row="8" Grid.Column="1" Margin="12,10,0,0"
+                                                 Height="60"
+                                                 TextWrapping="Wrap"
+                                                 AcceptsReturn="True"
+                                                 Text="{Binding AddCcf_Notes, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                        <!-- Buttons -->
+                                        <StackPanel Grid.Row="9" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,12,0,0">
+                                            <Button Content="Save"
+                                                    Padding="12,5"
+                                                    Click="AddCcf_Save_Click"/>
+                                            <Button Content="Clear"
+                                                    Padding="12,5"
+                                                    Margin="10,0,0,0"
+                                                    Click="AddCcf_Clear_Click"/>
+                                        </StackPanel>
+
+                                        <TextBlock Grid.Row="10" Grid.ColumnSpan="2"
+                                                   Text="{Binding AddCcf_StatusText}"
+                                                   Margin="0,10,0,0"
+                                                   Opacity="0.85"
+                                                   TextWrapping="Wrap"/>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+
                     </TabControl>
                 </Border>
             </TabItem>

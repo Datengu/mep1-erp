@@ -281,4 +281,19 @@ public sealed class EditModel : PageModel
             StringComparer.OrdinalIgnoreCase
         );
     }
+
+    public async Task<IActionResult> OnGetCcfRefs([FromQuery] string jobKey)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+            return new JsonResult(Array.Empty<string>());
+
+        var workerId = int.Parse(User.FindFirst("wid")?.Value ?? "0");
+        await LoadOptionsAsync(workerId);
+
+        var exists = _projectsCache.Any(p => string.Equals(p.JobKey, jobKey, StringComparison.OrdinalIgnoreCase));
+        if (!exists) return new JsonResult(Array.Empty<string>());
+
+        var refs = await _api.GetCcfRefsForJobAsync(jobKey) ?? new List<string>();
+        return new JsonResult(refs);
+    }
 }

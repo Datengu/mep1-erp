@@ -260,4 +260,18 @@ public sealed class ErpTimesheetApiClient
         return await res.Content.ReadFromJsonAsync<List<TimesheetCodeDto>>(_jsonOptions)
                ?? new();
     }
+
+    public async Task<List<string>?> GetCcfRefsForJobAsync(string jobKey)
+    {
+        using var req = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/timesheet/ccf-refs?jobKey={Uri.EscapeDataString(jobKey)}");
+
+        AddApiKeyHeader(req);
+
+        using var res = await _http.SendAsync(req);
+        res.EnsureSuccessStatusCode();
+
+        return await res.Content.ReadFromJsonAsync<List<string>>(_jsonOptions);
+    }
 }

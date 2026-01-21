@@ -206,6 +206,14 @@ namespace Mep1.Erp.Infrastructure
 
                 e.Property(x => x.Notes)
                     .HasMaxLength(1000);
+
+                e.Property(x => x.IsDeleted)
+                    .HasDefaultValue(false);
+
+                e.Property(x => x.DeletedAtUtc);
+
+                e.Property(x => x.DeletedByWorkerId);
+
             });
 
             modelBuilder.Entity<TimesheetEntry>()
