@@ -1232,6 +1232,52 @@ namespace Mep1.Erp.Desktop
 
         public bool IsTimesheetWorkDetailsVisible => IsSelectedTimesheetJobProjectCategory();
 
+        private TimesheetEntrySummaryDto? _selectedTimesheetEntry;
+        public TimesheetEntrySummaryDto? SelectedTimesheetEntry
+        {
+            get => _selectedTimesheetEntry;
+            set
+            {
+                if (SetField(ref _selectedTimesheetEntry, value, nameof(SelectedTimesheetEntry)))
+                {
+                    OnPropertyChanged(nameof(HasSelectedTimesheetEntry));
+                    OnPropertyChanged(nameof(SelectedTimesheetEntrySummaryText));
+                }
+            }
+        }
+
+        public bool HasSelectedTimesheetEntry => SelectedTimesheetEntry != null;
+
+        public string SelectedTimesheetEntrySummaryText
+        {
+            get
+            {
+                var e = SelectedTimesheetEntry;
+                if (e == null) return "No entry selected.";
+                return $"{e.Date:yyyy-MM-dd} | {e.JobKey} | {e.Code} | {e.Hours:0.##}h";
+            }
+        }
+
+        private bool _isTimesheetEditMode;
+        public bool IsTimesheetEditMode
+        {
+            get => _isTimesheetEditMode;
+            set
+            {
+                if (SetField(ref _isTimesheetEditMode, value, nameof(IsTimesheetEditMode)))
+                    OnPropertyChanged(nameof(TimesheetPrimaryActionText));
+            }
+        }
+
+        private int _editingTimesheetEntryId;
+        public int EditingTimesheetEntryId
+        {
+            get => _editingTimesheetEntryId;
+            set => SetField(ref _editingTimesheetEntryId, value, nameof(EditingTimesheetEntryId));
+        }
+
+        public string TimesheetPrimaryActionText => IsTimesheetEditMode ? "Save Changes" : "Add Entry";
+
         // ---------------------------------------------
         // Invoice filtering
         // ---------------------------------------------
@@ -4035,6 +4081,203 @@ namespace Mep1.Erp.Desktop
                 .Where(a => a.Length > 0)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+        }
+
+        private async void EditSelectedTimesheetEntry_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var selected = SelectedTimesheetEntry;
+                if (selected == null) return;
+
+                var subjectWorkerId = TimesheetSelectedWorker?.WorkerId;
+
+                // Pull authoritative edit DTO from API
+                var dto = await _api.GetTimesheetEntryForEditAsync(selected.Id, subjectWorkerId);
+
+                // Enter edit mode
+                IsTimesheetEditMode = true;
+                EditingTimesheetEntryId = dto.Id;
+
+                // Populate the existing Add-form fields (reuse your current bindings)
+                TimesheetDate = dto.Date.Date;
+
+                // Project pick
+                SelectedTimesheetProject = TimesheetProjects
+                    .FirstOrDefault(p => string.Equals(p.JobKey, dto.JobKey, StringComparison.OrdinalIgnoreCase))
+                    ?? SelectedTimesheetProject;
+
+                TimesheetCodeText = (dto.Code ?? "").Trim();
+                TimesheetHoursText = dto.Hours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+                TimesheetTaskDescriptionText = dto.TaskDescription ?? "";
+                TimesheetCcfRefText = dto.CcfRef ?? "";
+                TimesheetWorkTypeText = dto.WorkType ?? "";
+
+                // Work details
+                TimesheetSelectedLevels = dto.Levels ?? new List<string>();
+                TimesheetAreasRawText = dto.Areas != null ? string.Join(", ", dto.Areas) : "";
+
+                // Switch user to the Add tab (View=0, Add=1, Edit=2)
+                SelectTimesheetSubTab(1); // go to Add (edit mode)
+
+                TimesheetStatusText = $"Editing entry #{dto.Id}. Make changes and click Save Changes.";
+            }
+            catch (Exception ex)
+            {
+                TimesheetStatusText = ex.Message;
+            }
+        }
+
+        private async void SoftDeleteSelectedTimesheetEntry_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var selected = SelectedTimesheetEntry;
+                if (selected == null) return;
+
+                var subjectWorkerId = TimesheetSelectedWorker?.WorkerId;
+
+                await _api.DeleteTimesheetEntryAsync(selected.Id, subjectWorkerId);
+
+                TimesheetStatusText = "Entry deleted.";
+                SelectedTimesheetEntry = null;
+
+                await RefreshTimesheetEntriesAsync();
+            }
+            catch (Exception ex)
+            {
+                TimesheetStatusText = ex.Message;
+            }
+        }
+
+        private void TimesheetCancelEdit_Click(object sender, RoutedEventArgs e)
+        {
+            IsTimesheetEditMode = false;
+            EditingTimesheetEntryId = 0;
+            TimesheetStatusText = "Edit cancelled.";
+
+            ResetTimesheetEntryInputs();
+            SelectTimesheetSubTab(2); // back to Edit
+        }
+
+        private async void TimesheetPrimaryAction_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (TimesheetSelectedWorker == null)
+                {
+                    TimesheetStatusText = "Select a worker first.";
+                    return;
+                }
+
+                if (SelectedTimesheetProject == null)
+                {
+                    TimesheetStatusText = "Select a project/job first.";
+                    return;
+                }
+
+                // Build Levels/Areas from your current UI fields
+                var levels = TimesheetSelectedLevels ?? new List<string>();
+
+                var areas = (TimesheetAreasRawText ?? "")
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(a => a.Trim())
+                    .Where(a => !string.IsNullOrWhiteSpace(a))
+                    .ToList();
+
+                // Parse hours string (your existing validation logic can stay; this is just a safe parse)
+                if (!decimal.TryParse(
+                        (TimesheetHoursText ?? "").Trim(),
+                        System.Globalization.NumberStyles.Number,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var hours))
+                {
+                    TimesheetStatusText = "Hours is invalid.";
+                    return;
+                }
+
+                var dto = new UpdateTimesheetEntryDto(
+                    WorkerId: TimesheetSelectedWorker.WorkerId,
+                    JobKey: SelectedTimesheetProject.JobKey,
+                    Date: TimesheetDate.Date,
+                    Hours: hours,
+                    Code: TimesheetCodeText ?? "",
+                    TaskDescription: TimesheetTaskDescriptionText,
+                    CcfRef: TimesheetCcfRefText,
+                    WorkType: TimesheetWorkTypeText,
+                    Levels: levels,
+                    Areas: areas
+                );
+
+                var subjectWorkerId = TimesheetSelectedWorker.WorkerId;
+
+                if (IsTimesheetEditMode)
+                {
+                    await _api.UpdateTimesheetEntryAsync(EditingTimesheetEntryId, dto, subjectWorkerId);
+
+                    TimesheetStatusText = "Entry updated.";
+                    IsTimesheetEditMode = false;
+                    EditingTimesheetEntryId = 0;
+                    ResetTimesheetEntryInputs(); // IMPORTANT: prevents accidental Add after edit
+                    SelectTimesheetSubTab(2); // back to Edit
+                }
+                else
+                {
+                    // You already have CreateTimesheetEntryDto in the project; reuse your existing create flow here.
+                    // If your existing create handler already does more validation, you can keep it and call it instead.
+                    var createDto = new CreateTimesheetEntryDto(
+                        WorkerId: dto.WorkerId,
+                        JobKey: dto.JobKey,
+                        Date: dto.Date,
+                        Hours: dto.Hours,
+                        Code: dto.Code,
+                        TaskDescription: dto.TaskDescription,
+                        CcfRef: dto.CcfRef,
+                        WorkType: dto.WorkType,
+                        Levels: dto.Levels,
+                        Areas: dto.Areas
+                    );
+
+                    await _api.CreateTimesheetEntryAsync(createDto, subjectWorkerId);
+                    TimesheetStatusText = "Entry added.";
+                }
+
+                await RefreshTimesheetEntriesAsync();
+            }
+            catch (Exception ex)
+            {
+                TimesheetStatusText = ex.Message;
+            }
+        }
+
+        private void ResetTimesheetEntryInputs()
+        {
+            // Keep top controls as-is:
+            // - TimesheetSelectedWorker
+            // - SelectedTimesheetProject
+
+            TimesheetDate = DateTime.Today;
+            TimesheetHoursText = "";
+            TimesheetCodeText = "";
+            TimesheetCcfRefText = "";
+            TimesheetTaskDescriptionText = "";
+
+            TimesheetWorkTypeText = "";
+            TimesheetAreasRawText = "";
+            TimesheetSelectedLevels = new List<string>();
+
+            // Clear UI selection too (because SelectedItems isn't bound)
+            TimesheetLevelsListBox?.UnselectAll();
+
+            ApplyTimesheetAllRules();
+        }
+
+        private void SelectTimesheetSubTab(int index)
+        {
+            // 0 = View, 1 = Add, 2 = Edit (based on your current XAML order)
+            if (TimesheetSubTabs != null && TimesheetSubTabs.Items.Count > index)
+                TimesheetSubTabs.SelectedIndex = index;
         }
 
     }

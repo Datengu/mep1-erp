@@ -506,5 +506,47 @@ namespace Mep1.Erp.Desktop
             var result = await resp.Content.ReadFromJsonAsync<List<TimesheetCodeDto>>();
             return result ?? new List<TimesheetCodeDto>();
         }
+
+        public async Task<TimesheetEntryEditDto> GetTimesheetEntryForEditAsync(int id, int? subjectWorkerId = null)
+        {
+            var url = $"api/timesheet/entries/{id}";
+            if (subjectWorkerId.HasValue && subjectWorkerId.Value > 0)
+                url += "?subjectWorkerId=" + subjectWorkerId.Value;
+
+            var dto = await _http.GetFromJsonAsync<TimesheetEntryEditDto>(url);
+            if (dto == null) throw new InvalidOperationException("Timesheet entry edit response was empty.");
+            return dto;
+        }
+
+        public async Task UpdateTimesheetEntryAsync(int id, UpdateTimesheetEntryDto dto, int? subjectWorkerId = null)
+        {
+            var url = $"api/timesheet/entries/{id}";
+            if (subjectWorkerId.HasValue && subjectWorkerId.Value > 0)
+                url += "?subjectWorkerId=" + subjectWorkerId.Value;
+
+            var resp = await _http.PutAsJsonAsync(url, dto);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"Update timesheet entry failed ({(int)resp.StatusCode}): {body}");
+            }
+        }
+
+        public async Task DeleteTimesheetEntryAsync(int id, int? subjectWorkerId = null)
+        {
+            var url = $"api/timesheet/entries/{id}";
+            if (subjectWorkerId.HasValue && subjectWorkerId.Value > 0)
+                url += "?subjectWorkerId=" + subjectWorkerId.Value;
+
+            var resp = await _http.DeleteAsync(url);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"Delete timesheet entry failed ({(int)resp.StatusCode}): {body}");
+            }
+        }
+
     }
 }
