@@ -13,6 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Globalization;
 using static Mep1.Erp.Application.Reporting;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using Binding = System.Windows.Data.Binding;
@@ -24,6 +25,8 @@ namespace Mep1.Erp.Desktop
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
+
+        private static readonly CultureInfo UkCulture = CultureInfo.GetCultureInfo("en-GB");
 
         // ---------------------------------------------
         // Bound properties
@@ -1318,43 +1321,101 @@ namespace Mep1.Erp.Desktop
         }
 
         private string _addCcf_Code = "";
-        public string AddCcf_Code { get => _addCcf_Code; set => SetField(ref _addCcf_Code, value, nameof(AddCcf_Code)); }
+        public string AddCcf_Code
+        {
+            get => _addCcf_Code;
+            set
+            {
+                if (SetField(ref _addCcf_Code, value, nameof(AddCcf_Code)))
+                    OnPropertyChanged(nameof(CanSaveAddCcf));
+            }
+        }
 
         private string _addCcf_EstimatedValueText = "";
-        public string AddCcf_EstimatedValueText { get => _addCcf_EstimatedValueText; set => SetField(ref _addCcf_EstimatedValueText, value, nameof(AddCcf_EstimatedValueText)); }
+        public string AddCcf_EstimatedValueText
+        {
+            get => _addCcf_EstimatedValueText;
+            set
+            {
+                if (SetField(ref _addCcf_EstimatedValueText, value, nameof(AddCcf_EstimatedValueText)))
+                    OnPropertyChanged(nameof(CanSaveAddCcf));
+            }
+        }
 
         private string _addCcf_QuotedValueText = "";
-        public string AddCcf_QuotedValueText { get => _addCcf_QuotedValueText; set => SetField(ref _addCcf_QuotedValueText, value, nameof(AddCcf_QuotedValueText)); }
-
-        private string _addCcf_QuotedDateText = "";
-        public string AddCcf_QuotedDateText { get => _addCcf_QuotedDateText; set => SetField(ref _addCcf_QuotedDateText, value, nameof(AddCcf_QuotedDateText)); }
+        public string AddCcf_QuotedValueText
+        {
+            get => _addCcf_QuotedValueText;
+            set
+            {
+                if (SetField(ref _addCcf_QuotedValueText, value, nameof(AddCcf_QuotedValueText)))
+                    OnPropertyChanged(nameof(CanSaveAddCcf));
+            }
+        }
 
         private string _addCcf_AgreedValueText = "";
-        public string AddCcf_AgreedValueText { get => _addCcf_AgreedValueText; set => SetField(ref _addCcf_AgreedValueText, value, nameof(AddCcf_AgreedValueText)); }
-
-        private string _addCcf_AgreedDateText = "";
-        public string AddCcf_AgreedDateText { get => _addCcf_AgreedDateText; set => SetField(ref _addCcf_AgreedDateText, value, nameof(AddCcf_AgreedDateText)); }
+        public string AddCcf_AgreedValueText
+        {
+            get => _addCcf_AgreedValueText;
+            set
+            {
+                if (SetField(ref _addCcf_AgreedValueText, value, nameof(AddCcf_AgreedValueText)))
+                    OnPropertyChanged(nameof(CanSaveAddCcf));
+            }
+        }
 
         private string _addCcf_ActualValueText = "";
-        public string AddCcf_ActualValueText { get => _addCcf_ActualValueText; set => SetField(ref _addCcf_ActualValueText, value, nameof(AddCcf_ActualValueText)); }
+        public string AddCcf_ActualValueText
+        {
+            get => _addCcf_ActualValueText;
+            set
+            {
+                if (SetField(ref _addCcf_ActualValueText, value, nameof(AddCcf_ActualValueText)))
+                    OnPropertyChanged(nameof(CanSaveAddCcf));
+            }
+        }
 
         private string _addCcf_Status = "Draft";
-        public string AddCcf_Status { get => _addCcf_Status; set => SetField(ref _addCcf_Status, value, nameof(AddCcf_Status)); }
+        public string AddCcf_Status
+        {
+            get => _addCcf_Status;
+            set
+            {
+                if (SetField(ref _addCcf_Status, value, nameof(AddCcf_Status)))
+                    OnPropertyChanged(nameof(CanSaveAddCcf));
+            }
+        }
 
         private string? _addCcf_Notes = "";
-        public string? AddCcf_Notes { get => _addCcf_Notes; set => SetField(ref _addCcf_Notes, value, nameof(AddCcf_Notes)); }
+        public string? AddCcf_Notes
+        {
+            get => _addCcf_Notes;
+            set
+            {
+                if (SetField(ref _addCcf_Notes, value, nameof(AddCcf_Notes)))
+                    OnPropertyChanged(nameof(CanSaveAddCcf));
+            }
+        }
 
         private string _addCcf_StatusText = "";
-        public string AddCcf_StatusText { get => _addCcf_StatusText; set => SetField(ref _addCcf_StatusText, value, nameof(AddCcf_StatusText)); }
+        public string AddCcf_StatusText
+        {
+            get => _addCcf_StatusText;
+            set => SetField(ref _addCcf_StatusText, value, nameof(AddCcf_StatusText));
+        }
 
         private DateTime? _addCcf_QuotedDate;
         public DateTime? AddCcf_QuotedDate
         {
             get => _addCcf_QuotedDate;
-            set 
-            { 
-                _addCcf_QuotedDate = value; 
-                OnPropertyChanged(nameof(AddCcf_QuotedDate)); 
+            set
+            {
+                if (_addCcf_QuotedDate != value)
+                {
+                    _addCcf_QuotedDate = value;
+                    OnPropertyChanged(nameof(AddCcf_QuotedDate));
+                    OnPropertyChanged(nameof(CanSaveAddCcf));
+                }
             }
         }
 
@@ -1362,15 +1423,168 @@ namespace Mep1.Erp.Desktop
         public DateTime? AddCcf_AgreedDate
         {
             get => _addCcf_AgreedDate;
-            set 
-            { 
-                _addCcf_AgreedDate = value; 
-                OnPropertyChanged(nameof(AddCcf_AgreedDate)); 
+            set
+            {
+                if (_addCcf_AgreedDate != value)
+                {
+                    _addCcf_AgreedDate = value;
+                    OnPropertyChanged(nameof(AddCcf_AgreedDate));
+                    OnPropertyChanged(nameof(CanSaveAddCcf));
+                }
             }
         }
 
         public IReadOnlyList<string> CcfStatuses { get; } =
             new List<string> { "Draft", "Quoted", "Agreed", "Rejected", "Invoiced" };
+
+        private ProjectCcfRefDetailsDto? _selectedProjectCcfRef;
+        public ProjectCcfRefDetailsDto? SelectedProjectCcfRef
+        {
+            get => _selectedProjectCcfRef;
+            set 
+            { 
+                _selectedProjectCcfRef = value; 
+                OnPropertyChanged(nameof(SelectedProjectCcfRef));
+            }
+        }
+
+        private int? _editCcf_Id;
+        public int? EditCcf_Id
+        {
+            get => _editCcf_Id;
+            set { _editCcf_Id = value; OnPropertyChanged(nameof(EditCcf_Id)); }
+        }
+
+        private string _editCcf_Code = "";
+        public string EditCcf_Code
+        {
+            get => _editCcf_Code;
+            set { _editCcf_Code = value; OnPropertyChanged(nameof(EditCcf_Code)); }
+        }
+
+        private string _editCcf_EstimatedValueText = "";
+        public string EditCcf_EstimatedValueText
+        {
+            get => _editCcf_EstimatedValueText;
+            set
+            {
+                if (SetField(ref _editCcf_EstimatedValueText, value, nameof(EditCcf_EstimatedValueText)))
+                    OnPropertyChanged(nameof(CanSaveEditCcf));
+            }
+        }
+
+        private string _editCcf_QuotedValueText = "";
+        public string EditCcf_QuotedValueText
+        {
+            get => _editCcf_QuotedValueText;
+            set
+            {
+                if (SetField(ref _editCcf_QuotedValueText, value, nameof(EditCcf_QuotedValueText)))
+                    OnPropertyChanged(nameof(CanSaveEditCcf));
+            }
+        }
+
+        private DateTime? _editCcf_QuotedDate;
+        public DateTime? EditCcf_QuotedDate
+        {
+            get => _editCcf_QuotedDate;
+            set
+            {
+                if (_editCcf_QuotedDate != value)
+                {
+                    _editCcf_QuotedDate = value;
+                    OnPropertyChanged(nameof(EditCcf_QuotedDate));
+                    OnPropertyChanged(nameof(CanSaveEditCcf));
+                }
+            }
+        }
+
+        private string _editCcf_AgreedValueText = "";
+        public string EditCcf_AgreedValueText
+        {
+            get => _editCcf_AgreedValueText;
+            set
+            {
+                if (SetField(ref _editCcf_AgreedValueText, value, nameof(EditCcf_AgreedValueText)))
+                    OnPropertyChanged(nameof(CanSaveEditCcf));
+            }
+        }
+
+        private DateTime? _editCcf_AgreedDate;
+        public DateTime? EditCcf_AgreedDate
+        {
+            get => _editCcf_AgreedDate;
+            set
+            {
+                if (_editCcf_AgreedDate != value)
+                {
+                    _editCcf_AgreedDate = value;
+                    OnPropertyChanged(nameof(EditCcf_AgreedDate));
+                    OnPropertyChanged(nameof(CanSaveEditCcf));
+                }
+            }
+        }
+
+        private string _editCcf_ActualValueText = "";
+        public string EditCcf_ActualValueText
+        {
+            get => _editCcf_ActualValueText;
+            set
+            {
+                if (SetField(ref _editCcf_ActualValueText, value, nameof(EditCcf_ActualValueText)))
+                    OnPropertyChanged(nameof(CanSaveEditCcf));
+            }
+        }
+
+        private string _editCcf_Status = "Draft";
+        public string EditCcf_Status
+        {
+            get => _editCcf_Status;
+            set
+            {
+                if (SetField(ref _editCcf_Status, value, nameof(EditCcf_Status)))
+                    OnPropertyChanged(nameof(CanSaveEditCcf));
+            }
+        }
+
+        private string? _editCcf_Notes;
+        public string? EditCcf_Notes
+        {
+            get => _editCcf_Notes;
+            set
+            {
+                if (SetField(ref _editCcf_Notes, value, nameof(EditCcf_Notes)))
+                    OnPropertyChanged(nameof(CanSaveEditCcf));
+            }
+        }
+
+        private string _editCcf_StatusText = "";
+        public string EditCcf_StatusText
+        {
+            get => _editCcf_StatusText;
+            set => SetField(ref _editCcf_StatusText, value, nameof(EditCcf_StatusText));
+        }
+
+        public bool CanSaveAddCcf =>
+            !string.IsNullOrWhiteSpace(AddCcf_Code) ||
+            !string.IsNullOrWhiteSpace(AddCcf_EstimatedValueText) ||
+            !string.IsNullOrWhiteSpace(AddCcf_QuotedValueText) ||
+            AddCcf_QuotedDate != null ||
+            !string.IsNullOrWhiteSpace(AddCcf_AgreedValueText) ||
+            AddCcf_AgreedDate != null ||
+            !string.IsNullOrWhiteSpace(AddCcf_ActualValueText) ||
+            !string.IsNullOrWhiteSpace(AddCcf_Notes) ||
+            AddCcf_Status != null;
+
+        public bool CanSaveEditCcf =>
+            !string.IsNullOrWhiteSpace(EditCcf_EstimatedValueText) ||
+            !string.IsNullOrWhiteSpace(EditCcf_QuotedValueText) ||
+            EditCcf_QuotedDate != null ||
+            !string.IsNullOrWhiteSpace(EditCcf_AgreedValueText) ||
+            EditCcf_AgreedDate != null ||
+            !string.IsNullOrWhiteSpace(EditCcf_ActualValueText) ||
+            !string.IsNullOrWhiteSpace(EditCcf_Notes) ||
+            EditCcf_Status != null;
 
         // ---------------------------------------------
         // Invoice filtering
@@ -4467,17 +4681,30 @@ namespace Mep1.Erp.Desktop
         private static decimal? ParseNullableMoney(string? text)
         {
             var t = (text ?? "").Trim();
-            if (string.IsNullOrWhiteSpace(t)) return null;
-            if (decimal.TryParse(t, out var v)) return v;
-            return null;
-        }
+            if (string.IsNullOrWhiteSpace(t))
+                return null;
 
-        private static DateTime? ParseNullableDate(string? text)
-        {
-            var t = (text ?? "").Trim();
-            if (string.IsNullOrWhiteSpace(t)) return null;
-            if (DateTime.TryParse(t, out var d)) return d;
-            return null;
+            // Handle accounting negatives like "(123.45)"
+            bool parenNegative = t.StartsWith("(") && t.EndsWith(")");
+            if (parenNegative)
+                t = t[1..^1].Trim();
+
+            // Remove common clutter (keep digits, separators, sign, decimal point)
+            t = t.Replace("£", "").Replace(",", "").Trim();
+
+            // Allow both "." and "," decimal users might paste (keep it simple: if it contains one comma and no dot, treat comma as dot)
+            if (t.Contains(',') && !t.Contains('.'))
+                t = t.Replace(',', '.');
+
+            var styles = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint;
+
+            if (!decimal.TryParse(t, styles, UkCulture, out var v))
+                return null;
+
+            if (parenNegative)
+                v = -v;
+
+            return v;
         }
 
         private async void AddCcf_Save_Click(object sender, RoutedEventArgs e)
@@ -4508,9 +4735,9 @@ namespace Mep1.Erp.Desktop
                 var updateDto = new UpdateProjectCcfRefDto(
                     EstimatedValue: ParseNullableMoney(AddCcf_EstimatedValueText),
                     QuotedValue: ParseNullableMoney(AddCcf_QuotedValueText),
-                    QuotedDateUtc: ParseNullableDate(AddCcf_QuotedDateText),
+                    QuotedDateUtc: AddCcf_QuotedDate,
                     AgreedValue: ParseNullableMoney(AddCcf_AgreedValueText),
-                    AgreedDateUtc: ParseNullableDate(AddCcf_AgreedDateText),
+                    AgreedDateUtc: AddCcf_AgreedDate,
                     ActualValue: ParseNullableMoney(AddCcf_ActualValueText),
                     Status: string.IsNullOrWhiteSpace(AddCcf_Status) ? "" : AddCcf_Status.Trim(),
                     Notes: string.IsNullOrWhiteSpace(AddCcf_Notes) ? null : AddCcf_Notes.Trim()
@@ -4521,6 +4748,7 @@ namespace Mep1.Erp.Desktop
                 // 3) Refresh grid
                 await LoadProjectCcfRefsAsync();
 
+                AddCcf_Clear_Click(sender, e);
                 AddCcf_StatusText = $"Saved {created.Code}.";
             }
             catch (Exception ex)
@@ -4534,13 +4762,159 @@ namespace Mep1.Erp.Desktop
             AddCcf_Code = "";
             AddCcf_EstimatedValueText = "";
             AddCcf_QuotedValueText = "";
-            AddCcf_QuotedDateText = "";
             AddCcf_AgreedValueText = "";
-            AddCcf_AgreedDateText = "";
             AddCcf_ActualValueText = "";
             AddCcf_Status = "Draft";
             AddCcf_Notes = "";
             AddCcf_StatusText = "";
+
+            AddCcf_QuotedDate = null;
+            AddCcf_AgreedDate = null;
+
+            OnPropertyChanged(nameof(CanSaveAddCcf));
+        }
+
+        private void EditProjectCcfRef_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedProjectForCcf == null || SelectedProjectCcfRef == null)
+            {
+                WpfMessageBox.Show("Select a project and a CCF ref first.");
+                return;
+            }
+
+            var row = SelectedProjectCcfRef;
+
+            EditCcf_Id = row.Id;
+            EditCcf_Code = row.Code;
+
+            EditCcf_EstimatedValueText = row.EstimatedValue?.ToString() ?? "";
+            EditCcf_QuotedValueText = row.QuotedValue?.ToString() ?? "";
+            EditCcf_QuotedDate = row.QuotedDateUtc;
+
+            EditCcf_AgreedValueText = row.AgreedValue?.ToString() ?? "";
+            EditCcf_AgreedDate = row.AgreedDateUtc;
+
+            EditCcf_ActualValueText = row.ActualValue?.ToString() ?? "";
+
+            EditCcf_Status = string.IsNullOrWhiteSpace(row.Status) ? "Draft" : row.Status;
+            EditCcf_Notes = row.Notes ?? "";
+
+            EditCcf_StatusText = "";
+
+            OnPropertyChanged(nameof(CanSaveEditCcf));
+
+            // Switch to "Edit CCF Ref" tab:
+            // Adjust index based on your actual tab order.
+            ProjectsRootTabControl.SelectedIndex = 1;
+            CcfTabControl.SelectedIndex = 2;
+        }
+
+        private async void EditCcf_Save_Click(object sender, RoutedEventArgs e)
+        {
+            EditCcf_StatusText = "";
+            OnPropertyChanged(nameof(EditCcf_StatusText));
+
+            if (SelectedProjectForCcf == null || EditCcf_Id == null)
+            {
+                EditCcf_StatusText = "Select a project and a CCF ref first.";
+                OnPropertyChanged(nameof(EditCcf_StatusText));
+                return;
+            }
+
+            try
+            {
+                var jobKey = SelectedProjectForCcf.JobNameOrNumber;
+
+                var dto = new UpdateProjectCcfRefDto(
+                    EstimatedValue: ParseNullableMoney(EditCcf_EstimatedValueText),
+                    QuotedValue: ParseNullableMoney(EditCcf_QuotedValueText),
+                    QuotedDateUtc: EditCcf_QuotedDate,
+                    AgreedValue: ParseNullableMoney(EditCcf_AgreedValueText),
+                    AgreedDateUtc: EditCcf_AgreedDate,
+                    ActualValue: ParseNullableMoney(EditCcf_ActualValueText),
+                    Status: string.IsNullOrWhiteSpace(EditCcf_Status) ? "Draft" : EditCcf_Status.Trim(),
+                    Notes: string.IsNullOrWhiteSpace(EditCcf_Notes) ? null : EditCcf_Notes.Trim()
+                );
+
+                await _api.UpdateProjectCcfRefByJobKeyAsync(jobKey, EditCcf_Id.Value, dto);
+
+                await LoadProjectCcfRefsAsync();
+
+                EditCcf_StatusText = "Saved.";
+                OnPropertyChanged(nameof(EditCcf_StatusText));
+            }
+            catch (Exception ex)
+            {
+                EditCcf_StatusText = ex.Message;
+                OnPropertyChanged(nameof(EditCcf_StatusText));
+            }
+        }
+
+        private void EditCcf_Cancel_Click(object sender, RoutedEventArgs e)
+        {
+            EditCcf_Id = null;
+            EditCcf_Code = "";
+            EditCcf_EstimatedValueText = "";
+            EditCcf_QuotedValueText = "";
+            EditCcf_QuotedDate = null;
+            EditCcf_AgreedValueText = "";
+            EditCcf_AgreedDate = null;
+            EditCcf_ActualValueText = "";
+            EditCcf_Status = "Draft";
+            EditCcf_Notes = "";
+            EditCcf_StatusText = "";
+
+            OnPropertyChanged(nameof(CanSaveEditCcf));
+
+            ProjectsRootTabControl.SelectedIndex = 1;
+            CcfTabControl.SelectedIndex = 0;
+        }
+
+        private async void DeleteProjectCcfRef_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (SelectedProjectForCcf == null)
+                {
+                    WpfMessageBox.Show("Select a project first.");
+                    return;
+                }
+
+                var selected = SelectedProjectCcfRef;
+                if (selected == null)
+                {
+                    WpfMessageBox.Show("Select a CCF ref to delete first.");
+                    return;
+                }
+
+                var jobKey = SelectedProjectForCcf.JobNameOrNumber;
+
+                var confirmText =
+                    $"Delete CCF ref '{selected.Code}' from project '{jobKey}'?\n\n" +
+                    "This will hide it from the list.";
+
+                var result = WpfMessageBox.Show(
+                    confirmText,
+                    "Confirm delete",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result != MessageBoxResult.Yes)
+                    return;
+
+                await _api.SetProjectCcfRefDeletedByJobKeyAsync(jobKey, selected.Id, true);
+
+                EditCcf_StatusText = "CCF ref deleted.";
+                SelectedProjectCcfRef = null;
+
+                OnPropertyChanged(nameof(CanSaveEditCcf));
+
+                await LoadProjectCcfRefsAsync();
+            }
+            catch (Exception ex)
+            {
+                EditCcf_StatusText = ex.Message;
+            }
         }
 
     }
