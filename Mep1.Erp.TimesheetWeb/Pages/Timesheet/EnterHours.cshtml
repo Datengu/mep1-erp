@@ -124,10 +124,19 @@
             <span class="text-danger" asp-validation-for="Input.TaskDescription"></span>
         </div>
 
-        <div class="col-md-6">
-            <label class="form-label">CCF Ref (only when Code = VO)</label>
-            <input class="form-control" asp-for="Input.CcfRef" />
-            <span class="text-danger" asp-validation-for="Input.CcfRef"></span>
+        <div id="ccfRefRow" class="row mb-3" style="display:none;">
+            <div class="col-md-6">
+                <label asp-for="Input.CcfRef" class="form-label">CCF Ref</label>
+                <input asp-for="Input.CcfRef"
+                       id="ccfRefInput"
+                       class="form-control"
+                       list="ccfRefList"
+                       inputmode="numeric"
+                       autocomplete="off"
+                       placeholder="e.g. 004" />
+                <datalist id="ccfRefList"></datalist>
+                <span asp-validation-for="Input.CcfRef" class="text-danger"></span>
+            </div>
         </div>
 
         <div class="col-12">
@@ -301,6 +310,52 @@
 
             jobSel.addEventListener('change', refresh);
             refresh();
+        })();
+    </script>
+
+    <script>
+        (function () {
+            const job = document.querySelector('[name="Input.JobKey"]');
+            const code = document.querySelector('[name="Input.Code"]');
+
+            const ccfRow = document.getElementById('ccfRefRow');
+            const ccfInput = document.getElementById('ccfRefInput');
+            const list = document.getElementById('ccfRefList');
+
+            const ccfTriggerCodes = new Set(['VO']);
+
+            async function refreshCcfList() {
+                const jobKey = (job && job.value) ? job.value : '';
+                list.innerHTML = '';
+                if (!jobKey) return;
+
+                const url = '?handler=CcfRefs&jobKey=' + encodeURIComponent(jobKey);
+                const res = await fetch(url, { credentials: 'same-origin' });
+                if (!res.ok) return;
+
+                const items = await res.json();
+                if (!Array.isArray(items)) return;
+
+                for (const v of items) {
+                    const opt = document.createElement('option');
+                    opt.value = v;
+                    list.appendChild(opt);
+                }
+            }
+
+            function applyCcfVisibility() {
+                const c = (code && code.value) ? code.value : '';
+                const show = ccfTriggerCodes.has(c);
+                ccfRow.style.display = show ? '' : 'none';
+                if (!show) ccfInput.value = '';
+            }
+
+            if (job) job.addEventListener('change', refreshCcfList);
+            if (code) code.addEventListener('change', applyCcfVisibility);
+
+            // initial load (edit/back nav etc.)
+            refreshCcfList();
+            applyCcfVisibility();
         })();
     </script>
 

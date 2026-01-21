@@ -280,4 +280,20 @@ public sealed class EnterHoursModel : PageModel
             StringComparer.OrdinalIgnoreCase
         );
     }
+
+    public async Task<IActionResult> OnGetCcfRefs([FromQuery] string jobKey)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+            return new JsonResult(Array.Empty<string>());
+
+        await LoadOptionsAsync();
+
+        // Optional safety: only allow known active jobs
+        var exists = _projectsCache.Any(p => string.Equals(p.JobKey, jobKey, StringComparison.OrdinalIgnoreCase));
+        if (!exists) return new JsonResult(Array.Empty<string>());
+
+        var refs = await _api.GetCcfRefsForJobAsync(jobKey) ?? new List<string>();
+        return new JsonResult(refs);
+    }
+
 }

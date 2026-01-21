@@ -66,6 +66,11 @@ namespace Mep1.Erp.Core
 
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
+        // --- Soft delete ---
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAtUtc { get; set; }
+        public int? DeletedByWorkerId { get; set; }
+
         // ---- Commercial values ----
 
         // Early internal estimate

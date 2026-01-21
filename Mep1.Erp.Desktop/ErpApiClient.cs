@@ -548,5 +548,35 @@ namespace Mep1.Erp.Desktop
             }
         }
 
+        public async Task<List<ProjectCcfRefDetailsDto>> GetProjectCcfRefsByJobKeyAsync(string jobKey, bool includeInactive = false)
+        {
+            var url = $"api/projects/{Uri.EscapeDataString(jobKey)}/ccf-refs?includeInactive={(includeInactive ? "true" : "false")}";
+            return await _http.GetFromJsonAsync<List<ProjectCcfRefDetailsDto>>(url) ?? new List<ProjectCcfRefDetailsDto>();
+        }
+
+        public async Task<ProjectCcfRefDetailsDto> CreateProjectCcfRefByJobKeyAsync(string jobKey, string code)
+        {
+            var url = $"api/projects/{Uri.EscapeDataString(jobKey)}/ccf-refs";
+            var resp = await _http.PostAsJsonAsync(url, new CreateProjectCcfRefDto(code));
+            resp.EnsureSuccessStatusCode();
+            return (await resp.Content.ReadFromJsonAsync<ProjectCcfRefDetailsDto>())!;
+        }
+
+        public async Task<ProjectCcfRefDetailsDto> SetProjectCcfRefActiveByJobKeyAsync(string jobKey, int id, bool isActive)
+        {
+            var url = $"api/projects/{Uri.EscapeDataString(jobKey)}/ccf-refs/{id}";
+            var resp = await _http.PatchAsJsonAsync(url, isActive);
+            resp.EnsureSuccessStatusCode();
+            return (await resp.Content.ReadFromJsonAsync<ProjectCcfRefDetailsDto>())!;
+        }
+
+        public async Task<ProjectCcfRefDetailsDto> UpdateProjectCcfRefByJobKeyAsync(string jobKey, int id, UpdateProjectCcfRefDto dto)
+        {
+            var url = $"api/projects/{Uri.EscapeDataString(jobKey)}/ccf-refs/{id}";
+            var resp = await _http.PutAsJsonAsync(url, dto);
+            resp.EnsureSuccessStatusCode();
+            return (await resp.Content.ReadFromJsonAsync<ProjectCcfRefDetailsDto>())!;
+        }
+
     }
 }

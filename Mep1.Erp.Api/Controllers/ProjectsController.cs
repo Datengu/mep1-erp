@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Globalization;
 
 namespace Mep1.Erp.Api.Controllers;
 
@@ -415,4 +416,378 @@ public class ProjectsController : ControllerBase
 
         return Ok(rows);
     }
+
+    [HttpGet("{projectId:int}/ccf-refs")]
+    public async Task<IActionResult> GetProjectCcfRefs([FromRoute] int projectId, [FromQuery] bool includeInactive = false)
+    {
+        var projectExists = await _db.Projects.AnyAsync(p => p.Id == projectId);
+        if (!projectExists) return NotFound("Project not found.");
+
+        var query = _db.ProjectCcfRefs
+            .Where(x => x.ProjectId == projectId && !x.IsDeleted);
+
+        if (!includeInactive)
+            query = query.Where(x => x.IsActive);
+
+        var rows = await query
+            .OrderBy(x => x.Code)
+            .Select(x => new ProjectCcfRefDto(x.Id, x.Code, x.IsActive))
+            .ToListAsync();
+
+        return Ok(rows);
+    }
+
+    [HttpPost("{projectId:int}/ccf-refs")]
+    public async Task<IActionResult> CreateProjectCcfRef([FromRoute] int projectId, [FromBody] CreateProjectCcfRefDto dto)
+    {
+        var projectExists = await _db.Projects.AnyAsync(p => p.Id == projectId);
+        if (!projectExists) return NotFound("Project not found.");
+
+        string normalized;
+        try
+        {
+            normalized = NormalizeCcfRef(dto.Code);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        var existing = await _db.ProjectCcfRefs
+            .FirstOrDefaultAsync(x => x.ProjectId == projectId && x.Code == normalized);
+
+        if (existing != null)
+        {
+            if (existing.IsDeleted)
+                return BadRequest("CCF Ref is deleted.");
+
+            var wasInactive = !existing.IsActive;
+
+            if (wasInactive)
+            {
+                existing.IsActive = true;
+                await _db.SaveChangesAsync();
+            }
+
+            var a = GetActorForAudit();
+            await _audit.LogAsync(
+                actorWorkerId: a.WorkerId,
+                subjectWorkerId: a.WorkerId,
+                actorRole: a.Role,
+                actorSource: a.Source,
+                action: wasInactive ? "Projects.CcfRef.Reactivate" : "Projects.CcfRef.CreateNoop",
+                entityType: "ProjectCcfRef",
+                entityId: existing.Id.ToString(),
+                summary: $"ProjectId={projectId}, CcfRef={existing.Code}, WasInactive={wasInactive}"
+            );
+
+            return Ok(new ProjectCcfRefDto(existing.Id, existing.Code, existing.IsActive));
+        }
+
+        var created = new ProjectCcfRef
+        {
+            ProjectId = projectId,
+            Code = normalized,
+            IsActive = true,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        _db.ProjectCcfRefs.Add(created);
+        await _db.SaveChangesAsync();
+
+        var a2 = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a2.WorkerId,
+            subjectWorkerId: a2.WorkerId,
+            actorRole: a2.Role,
+            actorSource: a2.Source,
+            action: "Projects.CcfRef.Create",
+            entityType: "ProjectCcfRef",
+            entityId: created.Id.ToString(),
+            summary: $"ProjectId={projectId}, CcfRef={created.Code}, IsActive={created.IsActive}"
+        );
+
+        return Ok(new ProjectCcfRefDto(created.Id, created.Code, created.IsActive));
+    }
+
+    // Minimal local helper (same rules as TimesheetController)
+    private static string NormalizeCcfRef(string input)
+    {
+        var raw = (input ?? "").Trim();
+
+        if (raw.Length == 0)
+            throw new InvalidOperationException("CCF Ref is required.");
+
+        for (int i = 0; i < raw.Length; i++)
+        {
+            var ch = raw[i];
+            if (ch < '0' || ch > '9')
+                throw new InvalidOperationException("CCF Ref must be numeric.");
+        }
+
+        if (!int.TryParse(raw, out var n))
+            throw new InvalidOperationException("Invalid CCF Ref.");
+
+        if (n == 0)
+            throw new InvalidOperationException("CCF Ref 000 is not allowed.");
+
+        if (n < 1 || n > 999)
+            throw new InvalidOperationException("CCF Ref must be between 001 and 999.");
+
+        return n.ToString("D3");
+    }
+
+    private static ProjectCcfRefDetailsDto ToDetailsDto(ProjectCcfRef x) =>
+    new ProjectCcfRefDetailsDto(
+        x.Id,
+        x.Code,
+        x.IsActive,
+        x.EstimatedValue,
+        x.QuotedValue,
+        x.QuotedDateUtc,
+        x.AgreedValue,
+        x.AgreedDateUtc,
+        x.ActualValue,
+        x.Status,
+        x.Notes
+    );
+
+    [HttpPatch("{projectId:int}/ccf-refs/{id:int}")]
+    public async Task<IActionResult> SetProjectCcfRefActive([FromRoute] int projectId, [FromRoute] int id, [FromBody] bool isActive)
+    {
+        var row = await _db.ProjectCcfRefs.FirstOrDefaultAsync(x => x.Id == id && x.ProjectId == projectId);
+        if (row == null) return NotFound();
+
+        if (row.IsDeleted) return BadRequest("CCF Ref is deleted.");
+
+        row.IsActive = isActive;
+        await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Projects.CcfRef.SetActive",
+            entityType: "ProjectCcfRef",
+            entityId: row.Id.ToString(),
+            summary: $"ProjectId={projectId}, CcfRef={row.Code}, IsActive={isActive}"
+        );
+
+        return Ok(new ProjectCcfRefDto(row.Id, row.Code, row.IsActive));
+    }
+
+    [HttpGet("{jobKey}/ccf-refs")]
+    public async Task<IActionResult> GetProjectCcfRefsByJobKey(
+    [FromRoute] string jobKey,
+    [FromQuery] bool includeInactive = false)
+    {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
+        jobKey = (jobKey ?? "").Trim();
+        if (jobKey.Length == 0) return BadRequest("JobKey is required.");
+
+        var project = await _db.Projects.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
+
+        if (project == null) return NotFound("Project not found.");
+
+        var query = _db.ProjectCcfRefs
+            .Where(x => x.ProjectId == project.Id && !x.IsDeleted);
+
+        if (!includeInactive)
+            query = query.Where(x => x.IsActive);
+
+        var rows = await query
+            .OrderBy(x => x.Code)
+            .Select(x => new ProjectCcfRefDetailsDto(
+                x.Id,
+                x.Code,
+                x.IsActive,
+                x.EstimatedValue,
+                x.QuotedValue,
+                x.QuotedDateUtc,
+                x.AgreedValue,
+                x.AgreedDateUtc,
+                x.ActualValue,
+                x.Status,
+                x.Notes
+            ))
+            .ToListAsync();
+
+        return Ok(rows);
+    }
+
+    [HttpPost("{jobKey}/ccf-refs")]
+    public async Task<IActionResult> CreateProjectCcfRefByJobKey(
+        [FromRoute] string jobKey,
+        [FromBody] CreateProjectCcfRefDto dto)
+    {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
+        jobKey = (jobKey ?? "").Trim();
+        if (jobKey.Length == 0) return BadRequest("JobKey is required.");
+
+        var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
+        if (project == null) return NotFound("Project not found.");
+
+        string normalized;
+        try
+        {
+            normalized = NormalizeCcfRef(dto.Code);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        var existing = await _db.ProjectCcfRefs
+            .FirstOrDefaultAsync(x => x.ProjectId == project.Id && x.Code == normalized);
+
+        if (existing != null)
+        {
+            if (existing.IsDeleted)
+                return BadRequest("CCF Ref is deleted.");
+
+            var wasInactive = !existing.IsActive;
+
+            if (wasInactive)
+            {
+                existing.IsActive = true;
+                await _db.SaveChangesAsync();
+            }
+
+            var a = GetActorForAudit();
+            await _audit.LogAsync(
+                actorWorkerId: a.WorkerId,
+                subjectWorkerId: a.WorkerId,
+                actorRole: a.Role,
+                actorSource: a.Source,
+                action: wasInactive ? "Projects.CcfRef.Reactivate" : "Projects.CcfRef.CreateNoop",
+                entityType: "ProjectCcfRef",
+                entityId: existing.Id.ToString(),
+                summary: $"Job={jobKey}, CcfRef={existing.Code}, WasInactive={wasInactive}"
+            );
+
+            return Ok(ToDetailsDto(existing));
+        }
+
+        var created = new ProjectCcfRef
+        {
+            ProjectId = project.Id,
+            Code = normalized,
+            IsActive = true,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        _db.ProjectCcfRefs.Add(created);
+        await _db.SaveChangesAsync();
+
+        var a2 = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a2.WorkerId,
+            subjectWorkerId: a2.WorkerId,
+            actorRole: a2.Role,
+            actorSource: a2.Source,
+            action: "Projects.CcfRef.Create",
+            entityType: "ProjectCcfRef",
+            entityId: created.Id.ToString(),
+            summary: $"Job={jobKey}, CcfRef={created.Code}, IsActive={created.IsActive}"
+        );
+
+        return Ok(ToDetailsDto(created));
+    }
+
+    [HttpPatch("{jobKey}/ccf-refs/{id:int}")]
+    public async Task<IActionResult> SetProjectCcfRefActiveByJobKey(
+        [FromRoute] string jobKey,
+        [FromRoute] int id,
+        [FromBody] bool isActive)
+    {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
+        jobKey = (jobKey ?? "").Trim();
+        if (jobKey.Length == 0) return BadRequest("JobKey is required.");
+
+        var project = await _db.Projects.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
+
+        if (project == null) return NotFound("Project not found.");
+
+        var row = await _db.ProjectCcfRefs
+            .FirstOrDefaultAsync(x => x.Id == id && x.ProjectId == project.Id);
+
+        if (row == null) return NotFound();
+
+        if (row.IsDeleted) return BadRequest("CCF Ref is deleted.");
+
+        row.IsActive = isActive;
+        await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Projects.CcfRef.SetActive",
+            entityType: "ProjectCcfRef",
+            entityId: row.Id.ToString(),
+            summary: $"Job={jobKey}, CcfRef={row.Code}, IsActive={isActive}"
+        );
+
+        return Ok(ToDetailsDto(row));
+    }
+
+    [HttpPut("{jobKey}/ccf-refs/{id:int}")]
+    public async Task<IActionResult> UpdateProjectCcfRefByJobKey(
+    [FromRoute] string jobKey,
+    [FromRoute] int id,
+    [FromBody] UpdateProjectCcfRefDto dto)
+    {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
+        jobKey = (jobKey ?? "").Trim();
+        if (jobKey.Length == 0) return BadRequest("JobKey is required.");
+
+        var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
+        if (project == null) return NotFound("Project not found.");
+
+        var row = await _db.ProjectCcfRefs.FirstOrDefaultAsync(x => x.Id == id && x.ProjectId == project.Id);
+        if (row == null) return NotFound("CCF Ref not found.");
+
+        if (row.IsDeleted) return BadRequest("CCF Ref is deleted.");
+
+        // Apply updates
+        row.EstimatedValue = dto.EstimatedValue;
+        row.QuotedValue = dto.QuotedValue;
+        row.QuotedDateUtc = dto.QuotedDateUtc;
+        row.AgreedValue = dto.AgreedValue;
+        row.AgreedDateUtc = dto.AgreedDateUtc;
+        row.ActualValue = dto.ActualValue;
+        row.Status = dto.Status ?? "";
+        row.Notes = dto.Notes;
+
+        await _db.SaveChangesAsync();
+
+        var a = GetActorForAudit();
+        await _audit.LogAsync(
+            actorWorkerId: a.WorkerId,
+            subjectWorkerId: a.WorkerId,
+            actorRole: a.Role,
+            actorSource: a.Source,
+            action: "Projects.CcfRef.Update",
+            entityType: "ProjectCcfRef",
+            entityId: row.Id.ToString(),
+            summary: $"Job={jobKey}, CcfRef={row.Code}, Est={row.EstimatedValue}, Quoted={row.QuotedValue}, QuotedDate={(row.QuotedDateUtc?.ToString("yyyy-MM-dd") ?? "null")}, Agreed={row.AgreedValue}, AgreedDate={(row.AgreedDateUtc?.ToString("yyyy-MM-dd") ?? "null")}, Actual={row.ActualValue}, Status={row.Status}"
+        );
+
+        return Ok(ToDetailsDto(row));
+    }
+
 }
