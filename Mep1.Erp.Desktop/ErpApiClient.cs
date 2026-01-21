@@ -578,5 +578,17 @@ namespace Mep1.Erp.Desktop
             return (await resp.Content.ReadFromJsonAsync<ProjectCcfRefDetailsDto>())!;
         }
 
+        public async Task SetProjectCcfRefDeletedByJobKeyAsync(string jobKey, int id, bool isDeleted)
+        {
+            var url = $"/api/projects/{Uri.EscapeDataString(jobKey)}/ccf-refs/{id}/deleted";
+            var resp = await _http.PatchAsJsonAsync(url, isDeleted);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"Delete CCF Ref failed ({(int)resp.StatusCode}): {body}");
+            }
+        }
+
     }
 }

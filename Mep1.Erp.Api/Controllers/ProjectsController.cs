@@ -790,4 +790,74 @@ public class ProjectsController : ControllerBase
         return Ok(ToDetailsDto(row));
     }
 
+    [HttpPatch("{jobKey}/ccf-refs/{id:int}/deleted")]
+    public async Task<IActionResult> SetProjectCcfRefDeletedByJobKey(
+    [FromRoute] string jobKey,
+    [FromRoute] int id,
+    [FromBody] bool isDeleted)
+    {
+        RequireAdminKey();
+
+        var project = await _db.Projects.FirstOrDefaultAsync(x => x.JobNameOrNumber == jobKey);
+        if (project == null) return NotFound($"Project not found: {jobKey}");
+
+        var row = await _db.ProjectCcfRefs.FirstOrDefaultAsync(x => x.Id == id && x.ProjectId == project.Id);
+        if (row == null) return NotFound("CCF Ref not found.");
+
+        // If already deleted and asked to delete again, treat as ok/noop
+        var wasDeleted = row.IsDeleted;
+
+        if (isDeleted)
+        {
+            if (!row.IsDeleted)
+            {
+                row.IsDeleted = true;
+                row.IsActive = false;
+                row.DeletedAtUtc = DateTime.UtcNow;
+
+                var a = GetActorForAudit();
+                row.DeletedByWorkerId = a.WorkerId;
+
+                await _db.SaveChangesAsync();
+
+                await _audit.LogAsync(
+                    actorWorkerId: a.WorkerId,
+                    subjectWorkerId: a.WorkerId,
+                    actorRole: a.Role,
+                    actorSource: a.Source,
+                    action: "Projects.CcfRef.Delete",
+                    entityType: "ProjectCcfRef",
+                    entityId: row.Id.ToString(),
+                    summary: $"Job={jobKey}, CcfRef={row.Code}"
+                );
+            }
+
+            return Ok();
+        }
+
+        // Restore (not exposed in UI yet)
+        if (row.IsDeleted)
+        {
+            row.IsDeleted = false;
+            row.DeletedAtUtc = null;
+            row.DeletedByWorkerId = null;
+
+            await _db.SaveChangesAsync();
+
+            var a2 = GetActorForAudit();
+            await _audit.LogAsync(
+                actorWorkerId: a2.WorkerId,
+                subjectWorkerId: a2.WorkerId,
+                actorRole: a2.Role,
+                actorSource: a2.Source,
+                action: "Projects.CcfRef.Restore",
+                entityType: "ProjectCcfRef",
+                entityId: row.Id.ToString(),
+                summary: $"Job={jobKey}, CcfRef={row.Code}"
+            );
+        }
+
+        return Ok();
+    }
+
 }
