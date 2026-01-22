@@ -469,26 +469,44 @@
                                                                 Text="{Binding SelectedProject.ProfitNet, StringFormat=Profit (Net): £{0:N2}}"/>
                                                 </StackPanel>
 
-                                                <!-- Right: activate/deactivate -->
-                                                <Button Grid.Column="1"
-                                                        Padding="12,6"
-                                                        Margin="12,0,0,0"
-                                                        VerticalAlignment="Top"
-                                                        Click="ToggleProjectActive_Click">
-                                                    <Button.Style>
-                                                        <Style TargetType="Button">
-                                                            <Setter Property="Content" Value="Deactivate"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding SelectedProject.IsActive}" Value="False">
-                                                                    <Setter Property="Content" Value="Activate"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding SelectedProject}" Value="{x:Null}">
-                                                                    <Setter Property="IsEnabled" Value="False"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Button.Style>
-                                                </Button>
+                                                <!-- Right: edit + activate/deactivate -->
+                                                <StackPanel Grid.Column="1"
+                                                            Orientation="Horizontal"
+                                                            Margin="12,0,0,0"
+                                                            VerticalAlignment="Top">
+
+                                                    <Button Padding="12,6"
+                                                            Margin="0,0,8,0"
+                                                            Content="Edit"
+                                                            Click="EditProjectFromDrilldown_Click">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding SelectedProject}" Value="{x:Null}">
+                                                                        <Setter Property="IsEnabled" Value="False"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
+                                                    </Button>
+
+                                                    <Button Padding="12,6"
+                                                            Click="ToggleProjectActive_Click">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button">
+                                                                <Setter Property="Content" Value="Deactivate"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding SelectedProject.IsActive}" Value="False">
+                                                                        <Setter Property="Content" Value="Activate"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding SelectedProject}" Value="{x:Null}">
+                                                                        <Setter Property="IsEnabled" Value="False"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
+                                                    </Button>
+                                                </StackPanel>
                                             </Grid>
 
                                             <GroupBox Grid.Row="1" Header="Labour (this month)" Foreground="White">
@@ -753,9 +771,9 @@
                                                     <!-- Active -->
                                                     <StackPanel Grid.Row="3" Margin="0,0,0,14">
                                                         <CheckBox Content="Active"
-                                                                    Foreground="#FFE0E0E0"
-                                                                    IsChecked="{Binding NewProjectIsActive}"
-                                                                    VerticalAlignment="Center"/>
+                                                                  Foreground="#FFE0E0E0"
+                                                                  IsChecked="{Binding NewProjectIsActive}"
+                                                                  VerticalAlignment="Center"/>
                                                     </StackPanel>
 
                                                     <!-- Button -->
@@ -782,11 +800,200 @@
                                 <!-- EDIT PROJECT -->
                                 <TabItem Header="Edit Project">
                                     <Grid Background="#FF1E1E1E" Margin="10">
-                                        <Border Background="#FF262626" CornerRadius="6" Padding="12">
-                                            <TextBlock Text="Edit Project is coming next. Add Project is isolated from Edit Project logic."
-                                                        Opacity="0.8"
-                                                        TextWrapping="Wrap"/>
-                                        </Border>
+                                        <GroupBox Header="Edit Project" Foreground="White">
+                                            <StackPanel Margin="10" MaxWidth="560">
+
+                                                <TextBlock Text="Edits are explicit. The job key is not editable."
+                                                           Opacity="0.7"
+                                                           Margin="0,0,0,12"
+                                                           TextWrapping="Wrap"/>
+
+                                                <!-- If no selection -->
+                                                <Border Background="#FF262626"
+                                                        CornerRadius="6"
+                                                        Padding="10"
+                                                        Margin="0,0,0,12">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding SelectedProject}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+
+                                                    <TextBlock Text="Select a project from the Projects list tab first."
+                                                               Opacity="0.8"
+                                                               TextWrapping="Wrap"/>
+                                                </Border>
+
+                                                <!-- Main form -->
+                                                <Grid>
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Setter Property="IsEnabled" Value="True"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding SelectedProject}" Value="{x:Null}">
+                                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
+
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <!-- builder -->
+                                                        <RowDefinition Height="Auto"/>
+                                                        <!-- preview -->
+                                                        <RowDefinition Height="Auto"/>
+                                                        <!-- company -->
+                                                        <RowDefinition Height="Auto"/>
+                                                        <!-- active -->
+                                                        <RowDefinition Height="Auto"/>
+                                                        <!-- buttons -->
+                                                        <RowDefinition Height="Auto"/>
+                                                        <!-- status -->
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- Job key (read-only) -->
+                                                    <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                                                        <TextBlock Text="Job key (read-only)"
+                                                                   FontWeight="SemiBold"
+                                                                   Margin="0,0,0,6"/>
+
+                                                        <Grid Margin="0,0,0,6">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="90"/>
+                                                                <ColumnDefinition Width="110"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                            </Grid.RowDefinitions>
+
+                                                            <!-- Headers -->
+                                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Prefix" Opacity="0.8" Margin="0,0,0,4"/>
+                                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Number" Opacity="0.8" Margin="0,0,0,4"/>
+                                                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Job name" Opacity="0.8" Margin="0,0,0,4"/>
+
+                                                            <!-- Inputs (read-only) -->
+                                                            <TextBox Grid.Row="1" Grid.Column="0"
+                                                                     Height="28"
+                                                                     Width="70"
+                                                                     IsReadOnly="True"
+                                                                     Text="{Binding EditProjectPrefixText}"
+                                                                     Margin="0,0,8,0"/>
+
+                                                            <TextBox Grid.Row="1" Grid.Column="1"
+                                                                     Height="28"
+                                                                     Width="90"
+                                                                     IsReadOnly="True"
+                                                                     Text="{Binding EditProjectNumberText}"
+                                                                     Margin="0,0,8,0"/>
+
+                                                            <TextBox Grid.Row="1" Grid.Column="2"
+                                                                     Height="28"
+                                                                     IsReadOnly="True"
+                                                                     Text="{Binding EditProjectNameText}"/>
+
+                                                            <!-- Helper text -->
+                                                            <TextBlock Grid.Row="2" Grid.Column="0"
+                                                                       Text="(immutable)"
+                                                                       Opacity="0.6"
+                                                                       FontSize="11"
+                                                                       Margin="0,4,0,0"/>
+
+                                                            <TextBlock Grid.Row="2" Grid.Column="1"
+                                                                       Text="(immutable)"
+                                                                       Opacity="0.6"
+                                                                       FontSize="11"
+                                                                       Margin="0,4,0,0"/>
+
+                                                            <TextBlock Grid.Row="2" Grid.Column="2"
+                                                                       Text="(immutable)"
+                                                                       Opacity="0.6"
+                                                                       FontSize="11"
+                                                                       Margin="0,4,0,0"/>
+                                                        </Grid>
+                                                    </StackPanel>
+
+                                                    <!-- Preview -->
+                                                    <StackPanel Grid.Row="1" Margin="0,0,0,12">
+                                                        <TextBlock Text="Job key (Preview)"
+                                                                   Opacity="0.8"
+                                                                   Margin="0,0,0,4"/>
+                                                        <TextBox Height="30"
+                                                                 IsReadOnly="True"
+                                                                 Text="{Binding EditProjectJobKeyText}"
+                                                                 Opacity="0.95"/>
+                                                    </StackPanel>
+
+                                                    <!-- Company (editable) -->
+                                                    <StackPanel Grid.Row="2" Margin="0,0,0,10">
+                                                        <TextBlock Text="Company"
+                                                                   Opacity="0.8"
+                                                                   Margin="0,0,0,4"/>
+                                                        <ComboBox Height="30"
+                                                                  IsEditable="True"
+                                                                  IsTextSearchEnabled="True"
+                                                                  StaysOpenOnEdit="True"
+                                                                  ItemsSource="{Binding Companies}"
+                                                                  SelectedItem="{Binding EditSelectedCompany, Mode=TwoWay}"
+                                                                  Text="{Binding EditProjectCompanyText, UpdateSourceTrigger=PropertyChanged}"
+                                                                  TextSearch.TextPath="Code"
+                                                                  ToolTip="Pick an existing company">
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <TextBlock Text="{Binding Code}" FontWeight="SemiBold"/>
+                                                                        <TextBlock Text="  —  " Opacity="0.6"/>
+                                                                        <TextBlock Text="{Binding Name}" Opacity="0.9"/>
+                                                                    </StackPanel>
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
+                                                    </StackPanel>
+
+                                                    <!-- Active -->
+                                                    <StackPanel Grid.Row="3" Margin="0,0,0,14">
+                                                        <CheckBox Content="Active"
+                                                                  Foreground="#FFE0E0E0"
+                                                                  IsChecked="{Binding EditProjectIsActive}"
+                                                                  VerticalAlignment="Center"/>
+                                                    </StackPanel>
+
+                                                    <!-- Buttons -->
+                                                    <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,4,0,0">
+                                                        <Button Content="Save Changes"
+                                                                Width="140"
+                                                                Padding="14,6"
+                                                                HorizontalAlignment="Left"
+                                                                Margin="0,0,8,0"
+                                                                Click="SaveEditProject_Click"/>
+
+                                                        <Button Content="Cancel"
+                                                                Width="90"
+                                                                Padding="14,6"
+                                                                HorizontalAlignment="Left"
+                                                                Margin="0,0,8,0"
+                                                                Click="CancelEditProject_Click"/>
+                                                    </StackPanel>
+
+                                                    <!-- Status -->
+                                                    <TextBlock Grid.Row="5"
+                                                               Text="{Binding EditProjectStatusText}"
+                                                               Margin="0,10,0,0"
+                                                               Opacity="0.85"
+                                                               TextWrapping="Wrap"/>
+                                                </Grid>
+
+                                            </StackPanel>
+                                        </GroupBox>
                                     </Grid>
                                 </TabItem>
 

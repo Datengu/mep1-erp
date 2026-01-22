@@ -590,5 +590,22 @@ namespace Mep1.Erp.Desktop
             }
         }
 
+        public async Task<ProjectEditDto> GetProjectForEditAsync(string jobKey)
+        {
+            var url = $"api/projects/{Uri.EscapeDataString(jobKey)}/edit";
+            var result = await _http.GetFromJsonAsync<ProjectEditDto>(url);
+
+            if (result == null)
+                throw new InvalidOperationException("Project edit response was empty.");
+
+            return result;
+        }
+
+        public async Task UpdateProjectAsync(string jobKey, UpdateProjectRequestDto dto)
+        {
+            var url = $"api/projects/{Uri.EscapeDataString(jobKey)}";
+            var resp = await _http.PutAsJsonAsync(url, dto);
+            resp.EnsureSuccessStatusCode(); // expects 204 NoContent
+        }
     }
 }
