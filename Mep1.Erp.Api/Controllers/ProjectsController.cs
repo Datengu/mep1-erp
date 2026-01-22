@@ -860,4 +860,79 @@ public class ProjectsController : ControllerBase
         return Ok();
     }
 
+    [HttpGet("{jobKey}/edit")]
+    public async Task<ActionResult<ProjectEditDto>> GetForEdit(string jobKey)
+    {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
+        jobKey = (jobKey ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(jobKey))
+            return BadRequest("Job key is required.");
+
+        var p = await _db.Projects
+            .AsNoTracking()
+            .Include(x => x.CompanyEntity)
+            .FirstOrDefaultAsync(x => x.IsRealProject && x.JobNameOrNumber == jobKey);
+
+        if (p == null)
+            return NotFound("Project not found.");
+
+        return new ProjectEditDto
+        {
+            JobNameOrNumber = p.JobNameOrNumber,
+            CompanyId = p.CompanyId,
+            CompanyCode = p.CompanyEntity != null ? p.CompanyEntity.Code : null,
+            CompanyName = p.CompanyEntity != null ? p.CompanyEntity.Name : null,
+            IsActive = p.IsActive
+        };
+    }
+
+    [HttpPut("{jobKey}")]
+    public async Task<IActionResult> Update(string jobKey, [FromBody] UpdateProjectRequestDto dto)
+    {
+        var guard = RequireAdminKey();
+        if (guard != null) return guard;
+
+        jobKey = (jobKey ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(jobKey))
+            return BadRequest("Job key is required.");
+
+        var p = await _db.Projects
+            .Include(x => x.CompanyEntity)
+            .FirstOrDefaultAsync(x => x.IsRealProject && x.JobNameOrNumber == jobKey);
+
+        if (p == null)
+            return NotFound("Project not found.");
+
+        // Validate company if provided
+        Company? company = null;
+        if (dto.CompanyId.HasValue)
+        {
+            company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == dto.CompanyId.Value);
+            if (company == null)
+                return BadRequest("Company not found.");
+        }
+
+        // Apply changes (v1: job key is immutable)
+        p.CompanyId = dto.CompanyId;
+        p.IsActive = dto.IsActive;
+
+        await _db.SaveChangesAsync();
+
+        // Audit (minimal)
+        var actor = GetActorForAudit();
+        await _audit.LogAsync(
+            actor.WorkerId,
+            actor.WorkerId,
+            actor.Role,
+            actor.Source,
+            action: "Project.Update",
+            entityType: "Project",
+            entityId: p.Id.ToString(),
+            summary: $"Updated project {p.JobNameOrNumber}: CompanyId={p.CompanyId}, IsActive={p.IsActive}");
+
+        return NoContent();
+    }
+
 }

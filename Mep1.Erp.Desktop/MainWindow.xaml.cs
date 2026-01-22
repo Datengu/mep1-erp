@@ -1586,6 +1586,64 @@ namespace Mep1.Erp.Desktop
             !string.IsNullOrWhiteSpace(EditCcf_Notes) ||
             EditCcf_Status != null;
 
+        private string _editProjectPrefixText = "";
+        public string EditProjectPrefixText
+        {
+            get => _editProjectPrefixText;
+            set => SetField(ref _editProjectPrefixText, value, nameof(EditProjectPrefixText));
+        }
+
+        private string _editProjectNumberText = "";
+        public string EditProjectNumberText
+        {
+            get => _editProjectNumberText;
+            set => SetField(ref _editProjectNumberText, value, nameof(EditProjectNumberText));
+        }
+
+        private string _editProjectNameText = "";
+        public string EditProjectNameText
+        {
+            get => _editProjectNameText;
+            set => SetField(ref _editProjectNameText, value, nameof(EditProjectNameText));
+        }
+
+        private string _editProjectJobKeyText = "";
+        public string EditProjectJobKeyText
+        {
+            get => _editProjectJobKeyText;
+            set => SetField(ref _editProjectJobKeyText, value, nameof(EditProjectJobKeyText));
+        }
+
+        private string _editProjectCompanyText = "";
+        public string EditProjectCompanyText
+        {
+            get => _editProjectCompanyText;
+            set => SetField(ref _editProjectCompanyText, value, nameof(EditProjectCompanyText));
+        }
+
+        private CompanyListItemDto? _editSelectedCompany;
+        public CompanyListItemDto? EditSelectedCompany
+        {
+            get => _editSelectedCompany;
+            set => SetField(ref _editSelectedCompany, value, nameof(EditSelectedCompany));
+        }
+
+        private bool _editProjectIsActive;
+        public bool EditProjectIsActive
+        {
+            get => _editProjectIsActive;
+            set => SetField(ref _editProjectIsActive, value, nameof(EditProjectIsActive));
+        }
+
+        private string _editProjectStatusText = "";
+        public string EditProjectStatusText
+        {
+            get => _editProjectStatusText;
+            set => SetField(ref _editProjectStatusText, value, nameof(EditProjectStatusText));
+        }
+
+        private ProjectEditDto? _loadedEditProject; // snapshot from API for cancel/reset
+
         // ---------------------------------------------
         // Invoice filtering
         // ---------------------------------------------
@@ -1762,6 +1820,7 @@ namespace Mep1.Erp.Desktop
             {
                 SelectedProject = ProjectSummaries[0];
                 LoadSelectedProjectDetails(SelectedProject);
+                await LoadEditProjectAsync(SelectedProject.JobNameOrNumber);
             }
 
             if (People.Count > 0 && SelectedPerson == null)
@@ -1774,6 +1833,29 @@ namespace Mep1.Erp.Desktop
             {
                 SelectedProjectForCcf = ProjectSummaries[0];
             }
+        }
+
+        private async Task RefreshProjectDependentPicklistsAsync()
+        {
+            // Preserve selections (because new lists = new object instances)
+            var newInvoiceJobKey = NewInvoiceSelectedProject?.JobNameOrNumber;
+            var editInvoiceJobKey = EditInvoiceSelectedProject?.JobNameOrNumber;
+            var timesheetJobKey = SelectedTimesheetProject?.JobKey;
+
+            // Refresh invoice project picklist (used by Add Invoice + Edit Invoice)
+            InvoiceProjectPicklist = await _api.GetInvoiceProjectPicklistAsync();
+
+            if (!string.IsNullOrWhiteSpace(newInvoiceJobKey))
+                NewInvoiceSelectedProject = InvoiceProjectPicklist.FirstOrDefault(p => p.JobNameOrNumber == newInvoiceJobKey);
+
+            if (!string.IsNullOrWhiteSpace(editInvoiceJobKey))
+                EditInvoiceSelectedProject = InvoiceProjectPicklist.FirstOrDefault(p => p.JobNameOrNumber == editInvoiceJobKey);
+
+            // Refresh timesheet active project list (so activate/deactivate is reflected)
+            TimesheetProjects = await _api.GetTimesheetActiveProjectsAsync();
+
+            if (!string.IsNullOrWhiteSpace(timesheetJobKey))
+                SelectedTimesheetProject = TimesheetProjects.FirstOrDefault(p => p.JobKey == timesheetJobKey);
         }
 
         // =======================
@@ -2282,8 +2364,7 @@ namespace Mep1.Erp.Desktop
             }
         }
 
-
-        private void ProjectsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void ProjectsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (sender is not DataGrid grid)
                 return;
@@ -2294,6 +2375,9 @@ namespace Mep1.Erp.Desktop
             SelectedProject = proj;
             LoadSelectedProjectDetails(proj);
             _ = LoadProjectCcfRefsAsync();
+
+            // Preload edit tab state (safe even if they never open the tab)
+            await LoadEditProjectAsync(proj.JobNameOrNumber);
         }
 
         // =======================
@@ -3365,6 +3449,9 @@ namespace Mep1.Erp.Desktop
                     SelectedProject = match;
                     LoadSelectedProjectDetails(match);
                 }
+
+                // Refresh dependent dropdowns (Add Invoice project dropdown, Timesheet projects, etc.)
+                await RefreshProjectDependentPicklistsAsync();
             }
             catch (Exception ex)
             {
@@ -4917,5 +5004,156 @@ namespace Mep1.Erp.Desktop
             }
         }
 
+        private void PopulateEditJobKeyParts(string jobNameOrNumber)
+        {
+            // Expected: "PN0027 - Biggin Hill"
+            var raw = (jobNameOrNumber ?? "").Trim();
+            EditProjectJobKeyText = raw;
+
+            var prefix = "";
+            var number = "";
+            var name = "";
+
+            // Split into left/right around " - "
+            var parts = raw.Split(new[] { " - " }, 2, StringSplitOptions.None);
+            var left = parts.Length > 0 ? parts[0].Trim() : raw;
+            name = parts.Length == 2 ? parts[1].Trim() : "";
+
+            // left should be like PN0027
+            // Take leading letters as prefix, remaining digits as number (best-effort)
+            int i = 0;
+            while (i < left.Length && char.IsLetter(left[i])) i++;
+            prefix = left.Substring(0, i);
+
+            int j = i;
+            while (j < left.Length && char.IsDigit(left[j])) j++;
+            number = (j > i) ? left.Substring(i, j - i) : left.Substring(i);
+
+            EditProjectPrefixText = prefix;
+            EditProjectNumberText = number;
+            EditProjectNameText = name;
+        }
+
+        private async Task LoadEditProjectAsync(string jobKey)
+        {
+            try
+            {
+                EditProjectStatusText = "";
+                _loadedEditProject = await _api.GetProjectForEditAsync(jobKey);
+
+                PopulateEditJobKeyParts(_loadedEditProject.JobNameOrNumber);
+
+                // Company binding
+                EditProjectCompanyText = _loadedEditProject.CompanyCode ?? "";
+                EditSelectedCompany = Companies.FirstOrDefault(c => c.Id == _loadedEditProject.CompanyId);
+
+                EditProjectIsActive = _loadedEditProject.IsActive;
+
+                EditProjectStatusText = "";
+            }
+            catch (Exception ex)
+            {
+                EditProjectStatusText = "Failed to load project for edit: " + ex.Message;
+            }
+        }
+
+        private void ResetEditProjectToLoaded()
+        {
+            if (_loadedEditProject == null)
+                return;
+
+            PopulateEditJobKeyParts(_loadedEditProject.JobNameOrNumber);
+
+            EditProjectCompanyText = _loadedEditProject.CompanyCode ?? "";
+            EditSelectedCompany = Companies.FirstOrDefault(c => c.Id == _loadedEditProject.CompanyId);
+            EditProjectIsActive = _loadedEditProject.IsActive;
+
+            EditProjectStatusText = "Changes cancelled.";
+        }
+
+        private async void SaveEditProject_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (SelectedProject == null)
+                {
+                    EditProjectStatusText = "Select a project first.";
+                    return;
+                }
+
+                if (_loadedEditProject == null)
+                {
+                    EditProjectStatusText = "Edit model not loaded yet.";
+                    return;
+                }
+
+                // CompanyId comes from selected company (v1: we only allow picking existing)
+                var companyId = EditSelectedCompany?.Id;
+
+                var dto = new UpdateProjectRequestDto
+                {
+                    CompanyId = companyId,
+                    IsActive = EditProjectIsActive
+                };
+
+                await _api.UpdateProjectAsync(SelectedProject.JobNameOrNumber, dto);
+
+                EditProjectStatusText = "Saved.";
+
+                // Refresh project summary list so Active column etc stays in sync
+                ProjectSummaries = await _api.GetProjectSummariesAsync();
+                RefreshProjects(keepSelection: true);
+
+                // Keep invoice/timesheet picklists in sync (e.g. project activation changes)
+                await RefreshProjectDependentPicklistsAsync();
+
+                // Reload edit snapshot
+                await LoadEditProjectAsync(SelectedProject.JobNameOrNumber);
+            }
+            catch (Exception ex)
+            {
+                EditProjectStatusText = "Save failed: " + ex.Message;
+            }
+        }
+
+        private void CancelEditProject_Click(object sender, RoutedEventArgs e)
+        {
+            ResetEditProjectToLoaded();
+        }
+
+        private void SelectProjectsTab(string header)
+        {
+            // ProjectsTabControl is x:Name="ProjectsTabControl" in XAML
+            if (ProjectsTabControl == null) return;
+
+            foreach (var item in ProjectsTabControl.Items)
+            {
+                if (item is System.Windows.Controls.TabItem tab &&
+                    string.Equals(tab.Header?.ToString(), header, StringComparison.Ordinal))
+                {
+                    ProjectsTabControl.SelectedItem = tab;
+                    return;
+                }
+            }
+        }
+
+        private async void EditProjectFromDrilldown_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (SelectedProject == null)
+                    return;
+
+                // In your DTOs, JobNameOrNumber is what you’re using as the job key identifier.
+                await LoadEditProjectAsync(SelectedProject.JobNameOrNumber);
+
+                // Switch to the Edit Project tab
+                SelectProjectsTab("Edit Project");
+            }
+            catch (Exception ex)
+            {
+                EditProjectStatusText = "Failed to open edit: " + ex.Message;
+            }
+        }
     }
 }
