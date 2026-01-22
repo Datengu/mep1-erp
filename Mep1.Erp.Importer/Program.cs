@@ -305,8 +305,8 @@ namespace Mep1.Erp.Importer
             // Bootstrap: ensure at least one TimesheetUser exists on a fresh database
             if (!db.TimesheetUsers.Any())
             {
-                const string username = "Jason Dean";
-                const string tempPassword = "ChangeMe123!";
+                const string username = "jason.dean";
+                const string tempPassword = "test1234";
 
                 // Find-or-create the owner worker (Jason Dean) by a stable identifier.
                 // Do NOT assume WorkerId == 1, because IDs depend on insert order.
@@ -1403,7 +1403,7 @@ namespace Mep1.Erp.Importer
                 {
                     totalHours += entry.Hours;
 
-                    var ratePerHour = WorkerRateHelpers.GetRateForWorkerOnDate(db, worker.Id, entry.Date);
+                    var ratePerHour = WorkerRateHelpers.GetRateForWorkerOnDate_DbLookup(db, worker.Id, entry.Date);
 
                     if (ratePerHour.HasValue)
                     {
@@ -1467,7 +1467,7 @@ namespace Mep1.Erp.Importer
 
                 foreach (var entry in entries)
                 {
-                    var ratePerHour = WorkerRateHelpers.GetRateForWorkerOnDate(db, entry.WorkerId, entry.Date);
+                    var ratePerHour = WorkerRateHelpers.GetRateForWorkerOnDate_DbLookup(db, entry.WorkerId, entry.Date);
                     if (ratePerHour.HasValue)
                     {
                         totalLabourCost += entry.Hours * ratePerHour.Value;

@@ -10,6 +10,8 @@ namespace Mep1.Erp.Application
         // PN0051 - Something  => "PN0051"
         // SW0123 – Something  => "SW0123"
         // Holiday / Sick / Business => null
+        private static readonly char[] CodeSeparators = { ' ', '-', '–' };
+
         public static string? GetBaseProjectCode(string? jobNameOrNumber)
         {
             if (string.IsNullOrWhiteSpace(jobNameOrNumber))
@@ -18,7 +20,7 @@ namespace Mep1.Erp.Application
             var text = jobNameOrNumber.Trim();
 
             // Take everything up to the first space / dash / en-dash
-            int idx = text.IndexOfAny(new[] { ' ', '-', '–' });
+            int idx = text.IndexOfAny(CodeSeparators);
             var code = (idx > 0 ? text[..idx] : text).Trim();
 
             if (code.StartsWith("PN", StringComparison.OrdinalIgnoreCase) ||
@@ -33,7 +35,7 @@ namespace Mep1.Erp.Application
     {
         // Centralised rate lookup so Desktop + Importer + Reporting agree.
         // Uses the same "ValidFrom inclusive, ValidTo exclusive (when not null)" pattern you already use.
-        public static decimal? GetRateForWorkerOnDate(AppDbContext db, int workerId, DateTime workDate)
+        public static decimal? GetRateForWorkerOnDate_DbLookup(AppDbContext db, int workerId, DateTime workDate)
         {
             var rate = db.WorkerRates
                 .Where(r => r.WorkerId == workerId &&
@@ -105,27 +107,16 @@ namespace Mep1.Erp.Application
 
     public static class RateHelpers
     {
-        // Fast lookup against cached rates list
-        public static decimal? GetRateOnDate(IEnumerable<WorkerRate> rates, int workerId, DateTime workDate)
+        public static decimal GetRateOnDate(
+            IReadOnlyList<WorkerRate> ratesForWorker,
+            DateTime workDate)
         {
-            var rate = rates
-                .Where(r => r.WorkerId == workerId &&
-                            workDate >= r.ValidFrom &&
-                            (r.ValidTo == null || workDate < r.ValidTo))
-                .OrderByDescending(r => r.ValidFrom)
-                .FirstOrDefault();
-
-            return rate?.RatePerHour;
-        }
-    }
-
-    public static class DbHelpers
-    {
-        // This will create the DB if it doesn’t exist. It won’t apply schema changes to an existing DB though
-        public static void EnsureDatabase()
-        {
-            using var db = new AppDbContext();
-            db.Database.EnsureCreated();
+            foreach (var r in ratesForWorker)
+            {
+                if (workDate >= r.ValidFrom && (r.ValidTo == null || workDate < r.ValidTo))
+                    return r.RatePerHour;
+            }
+            return 0m;
         }
     }
 

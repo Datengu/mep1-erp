@@ -8,6 +8,7 @@ using Mep1.Erp.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Linq;
 using System.Globalization;
 
@@ -21,11 +22,13 @@ public class ProjectsController : ControllerBase
     private readonly AppDbContext _db;
 
     private readonly AuditLogger _audit;
+    private readonly IMemoryCache _cache;
 
-    public ProjectsController(AppDbContext db, AuditLogger audit)
+    public ProjectsController(AppDbContext db, AuditLogger audit, IMemoryCache cache)
     {
         _db = db;
         _audit = audit;
+        _cache = cache;
     }
 
     private bool IsAdminKey()
@@ -80,6 +83,10 @@ public class ProjectsController : ControllerBase
         var guard = RequireAdminKey();
         if (guard != null) return guard;
 
+        const string cacheKey = "projects.summary.v1";
+        if (_cache.TryGetValue(cacheKey, out List<ProjectSummaryDto>? cached) && cached != null)
+            return Ok(cached);
+
         var rows = Reporting.GetProjectCostVsInvoiced(_db);
 
         // map JobNameOrNumber -> IsActive from DB
@@ -101,7 +108,15 @@ public class ProjectsController : ControllerBase
             InvoicedGross = p.InvoicedGross,
             ProfitNet = p.ProfitNet,
             ProfitGross = p.ProfitGross
-        }).ToList();
+        })
+        .OrderBy(x => x.JobNameOrNumber)
+        .ToList();
+
+        // Cache for a short time (v1 pragmatic optimisation)
+        _cache.Set(cacheKey, dto, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(20)
+        });
 
         return Ok(dto);
     }
@@ -377,6 +392,8 @@ public class ProjectsController : ControllerBase
 
         project.IsActive = dto.IsActive;
         await _db.SaveChangesAsync();
+
+        _cache.Remove("projects.summary.v1");
 
         var a = GetActorForAudit();
         await _audit.LogAsync(

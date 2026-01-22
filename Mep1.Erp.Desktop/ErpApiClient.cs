@@ -5,6 +5,8 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Threading;
 
 namespace Mep1.Erp.Desktop
 {
@@ -12,13 +14,52 @@ namespace Mep1.Erp.Desktop
     {
         private readonly HttpClient _http;
 
+        private sealed class TimingHandler : DelegatingHandler
+        {
+            private static long _seq;
+
+            public TimingHandler(HttpMessageHandler innerHandler) : base(innerHandler) { }
+
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                var id = Interlocked.Increment(ref _seq);
+                var sw = Stopwatch.StartNew();
+
+                Debug.WriteLine($"[HTTP {id} ▶] {request.Method} {request.RequestUri}");
+
+                try
+                {
+                    var resp = await base.SendAsync(request, cancellationToken);
+                    sw.Stop();
+
+                    Debug.WriteLine($"[HTTP {id} ◀] {(int)resp.StatusCode} {resp.ReasonPhrase} {sw.ElapsedMilliseconds} ms  ({request.Method} {request.RequestUri})");
+                    return resp;
+                }
+                catch (Exception ex)
+                {
+                    sw.Stop();
+                    Debug.WriteLine($"[HTTP {id} ✖] {sw.ElapsedMilliseconds} ms  ({request.Method} {request.RequestUri})  {ex.GetType().Name}: {ex.Message}");
+                    throw;
+                }
+            }
+        }
+
         public ErpApiClient(string baseUrl, string? apiKey = null)
         {
-            _http = new HttpClient
+            var handler = new HttpClientHandler
+            {
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+            };
+
+            _http = new HttpClient(new TimingHandler(handler))
             {
                 BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/"),
                 Timeout = TimeSpan.FromSeconds(30)
             };
+
+            // Ask server for compressed responses (helps big JSON like summaries)
+            _http.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
+            _http.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
 
             if (!string.IsNullOrWhiteSpace(apiKey))
                 _http.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
