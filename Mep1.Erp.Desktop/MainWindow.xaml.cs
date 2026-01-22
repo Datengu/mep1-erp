@@ -1644,6 +1644,13 @@ namespace Mep1.Erp.Desktop
 
         private ProjectEditDto? _loadedEditProject; // snapshot from API for cancel/reset
 
+        private readonly Dictionary<string, (ProjectDrilldownDto dto, DateTime fetchedUtc)> _projectDrilldownCache
+            = new(StringComparer.Ordinal);
+
+        private static readonly TimeSpan ProjectDrilldownCacheTtl = TimeSpan.FromSeconds(30);
+
+        private bool _suppressProjectSelectionChanged;
+
         // ---------------------------------------------
         // Invoice filtering
         // ---------------------------------------------
@@ -1819,7 +1826,7 @@ namespace Mep1.Erp.Desktop
             if (ProjectSummaries.Count > 0 && SelectedProject == null)
             {
                 SelectedProject = ProjectSummaries[0];
-                LoadSelectedProjectDetails(SelectedProject);
+                _ = LoadSelectedProjectDetailsAsync(SelectedProject);
                 await LoadEditProjectAsync(SelectedProject.JobNameOrNumber);
             }
 
@@ -1837,13 +1844,18 @@ namespace Mep1.Erp.Desktop
 
         private async Task RefreshProjectDependentPicklistsAsync()
         {
+            var swAll = System.Diagnostics.Stopwatch.StartNew();
+            System.Diagnostics.Debug.WriteLine("[PERF ▶] RefreshProjectDependentPicklistsAsync");
+
             // Preserve selections (because new lists = new object instances)
             var newInvoiceJobKey = NewInvoiceSelectedProject?.JobNameOrNumber;
             var editInvoiceJobKey = EditInvoiceSelectedProject?.JobNameOrNumber;
             var timesheetJobKey = SelectedTimesheetProject?.JobKey;
 
-            // Refresh invoice project picklist (used by Add Invoice + Edit Invoice)
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             InvoiceProjectPicklist = await _api.GetInvoiceProjectPicklistAsync();
+            sw.Stop();
+            System.Diagnostics.Debug.WriteLine($"[PERF] GetInvoiceProjectPicklistAsync = {sw.ElapsedMilliseconds} ms");
 
             if (!string.IsNullOrWhiteSpace(newInvoiceJobKey))
                 NewInvoiceSelectedProject = InvoiceProjectPicklist.FirstOrDefault(p => p.JobNameOrNumber == newInvoiceJobKey);
@@ -1851,11 +1863,16 @@ namespace Mep1.Erp.Desktop
             if (!string.IsNullOrWhiteSpace(editInvoiceJobKey))
                 EditInvoiceSelectedProject = InvoiceProjectPicklist.FirstOrDefault(p => p.JobNameOrNumber == editInvoiceJobKey);
 
-            // Refresh timesheet active project list (so activate/deactivate is reflected)
+            sw.Restart();
             TimesheetProjects = await _api.GetTimesheetActiveProjectsAsync();
+            sw.Stop();
+            System.Diagnostics.Debug.WriteLine($"[PERF] GetTimesheetActiveProjectsAsync = {sw.ElapsedMilliseconds} ms");
 
             if (!string.IsNullOrWhiteSpace(timesheetJobKey))
                 SelectedTimesheetProject = TimesheetProjects.FirstOrDefault(p => p.JobKey == timesheetJobKey);
+
+            swAll.Stop();
+            System.Diagnostics.Debug.WriteLine($"[PERF ◀] RefreshProjectDependentPicklistsAsync = {swAll.ElapsedMilliseconds} ms");
         }
 
         // =======================
@@ -2166,8 +2183,6 @@ namespace Mep1.Erp.Desktop
                 return;
 
             var jobKey = proj.JobNameOrNumber;
-
-            // Toggle the current state
             var newIsActive = !proj.IsActive;
 
             var confirmText = newIsActive
@@ -2185,11 +2200,30 @@ namespace Mep1.Erp.Desktop
 
             try
             {
-                // Calls your API to set active flag
-                await _api.SetProjectActiveAsync(jobKey, newIsActive);
+                await Perf("SetProjectActiveAsync", async () =>
+                {
+                    await _api.SetProjectActiveAsync(jobKey, newIsActive);
+                });
 
-                // Refresh list + keep selection so UI updates
-                RefreshProjects(keepSelection: true);
+                await Perf("ReloadProjectSummariesAsync", async () =>
+                {
+                    await ReloadProjectSummariesAsync(keepSelection: true);
+                });
+
+                // Don't await: but DO log when it finishes
+                _ = Task.Run(async () =>
+                {
+                    await Perf("RefreshProjectDependentPicklistsAsync", async () =>
+                    {
+                        await RefreshProjectDependentPicklistsAsync();
+                    });
+                });
+
+                await Perf("RefreshProjects (UI-only)", async () =>
+                {
+                    RefreshProjects(keepSelection: true);
+                    await Task.CompletedTask;
+                });
             }
             catch (Exception ex)
             {
@@ -2268,7 +2302,8 @@ namespace Mep1.Erp.Desktop
 
             await LoadEditPersonAsync(person.WorkerId); // NEW
         }
-        private async void LoadSelectedProjectDetails(ProjectSummaryDto projSummary)
+
+        private async Task LoadSelectedProjectDetailsAsync(ProjectSummaryDto projSummary)
         {
             if (projSummary == null) return;
 
@@ -2283,7 +2318,19 @@ namespace Mep1.Erp.Desktop
 
             try
             {
-                var drill = await _api.GetProjectDrilldownAsync(projSummary.JobNameOrNumber, recentTake: 25);
+                ProjectDrilldownDto drill;
+
+                var cacheKey = projSummary.JobNameOrNumber;
+                if (_projectDrilldownCache.TryGetValue(cacheKey, out var cached) &&
+                    (DateTime.UtcNow - cached.fetchedUtc) <= ProjectDrilldownCacheTtl)
+                {
+                    drill = cached.dto;
+                }
+                else
+                {
+                    drill = await _api.GetProjectDrilldownAsync(cacheKey, recentTake: 25);
+                    _projectDrilldownCache[cacheKey] = (drill, DateTime.UtcNow);
+                }
 
                 // If user clicked another project while we were loading, ignore this result
                 if (myVersion != _projectDrilldownLoadVersion)
@@ -2364,8 +2411,10 @@ namespace Mep1.Erp.Desktop
             }
         }
 
-        private async void ProjectsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void ProjectsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_suppressProjectSelectionChanged) return;
+
             if (sender is not DataGrid grid)
                 return;
 
@@ -2373,11 +2422,15 @@ namespace Mep1.Erp.Desktop
                 return;
 
             SelectedProject = proj;
-            LoadSelectedProjectDetails(proj);
+
+            // 1) Drilldown (heavy) - still loads
+            _ = LoadSelectedProjectDetailsAsync(proj);
+
+            // 2) CCF refs (separate call)
             _ = LoadProjectCcfRefsAsync();
 
-            // Preload edit tab state (safe even if they never open the tab)
-            await LoadEditProjectAsync(proj.JobNameOrNumber);
+            // IMPORTANT: do NOT preload Edit Project here.
+            // Only load edit data when user actually clicks the Edit button / opens the tab.
         }
 
         // =======================
@@ -2403,7 +2456,8 @@ namespace Mep1.Erp.Desktop
                 // Refresh UI (drilldown now comes from API anyway)
                 RefreshSelectedProjectSupplierCostsOnly();
 
-                // Refresh project list so profit updates
+                // Reload project summaries so profit updates
+                await ReloadProjectSummariesAsync(keepSelection: true);
                 RefreshProjects(keepSelection: true);
 
                 // Keep ALL your existing reset behaviour exactly as-is (you already reset + clear edit state here)
@@ -2502,6 +2556,7 @@ namespace Mep1.Erp.Desktop
 
                 // Refresh drilldown + project summaries (profit)
                 RefreshSelectedProjectSupplierCostsOnly();
+                await ReloadProjectSummariesAsync(keepSelection: true);
                 RefreshProjects(keepSelection: true);
 
                 // Keep your existing flow
@@ -2573,6 +2628,7 @@ namespace Mep1.Erp.Desktop
 
                 // Refresh drilldown list + project summaries (profit)
                 RefreshSelectedProjectSupplierCostsOnly();
+                await ReloadProjectSummariesAsync(keepSelection: true);
                 RefreshProjects(keepSelection: true);
 
                 // If we were editing this row, exit edit mode (keep your existing behaviour)
@@ -2706,20 +2762,57 @@ namespace Mep1.Erp.Desktop
         // Projects helpers
         // =======================
 
-        private async void RefreshProjects(bool keepSelection)
+        private void RefreshProjects(bool keepSelection)
+        {
+            // UI-only refresh. NO API calls here.
+            var selectedJob = keepSelection ? SelectedProject?.JobNameOrNumber : null;
+
+            EnsureProjectView();
+
+            // When ProjectSummaries is replaced, SelectedProject may point to an old object instance.
+            // Re-bind it to the new instance so DataGrid selection stays sane.
+            if (keepSelection && !string.IsNullOrWhiteSpace(selectedJob))
+            {
+                var match = ProjectSummaries.FirstOrDefault(p => p.JobNameOrNumber == selectedJob);
+                if (match != null && !ReferenceEquals(SelectedProject, match))
+                {
+                    _suppressProjectSelectionChanged = true;
+                    try
+                    {
+                        SelectedProject = match;
+                    }
+                    finally
+                    {
+                        _suppressProjectSelectionChanged = false;
+                    }
+                }
+            }
+        }
+
+        private async Task ReloadProjectSummariesAsync(bool keepSelection)
         {
             var selectedJob = keepSelection ? SelectedProject?.JobNameOrNumber : null;
 
             ProjectSummaries = await _api.GetProjectSummariesAsync();
+
+            // Rebuild/re-apply project view filtering
             EnsureProjectView();
 
-            if (keepSelection && selectedJob != null)
+            // Re-select project using the *new* object instances
+            if (keepSelection && !string.IsNullOrWhiteSpace(selectedJob))
             {
                 var match = ProjectSummaries.FirstOrDefault(p => p.JobNameOrNumber == selectedJob);
                 if (match != null)
                 {
-                    SelectedProject = match;
-                    LoadSelectedProjectDetails(match);
+                    _suppressProjectSelectionChanged = true;
+                    try
+                    {
+                        SelectedProject = match;
+                    }
+                    finally
+                    {
+                        _suppressProjectSelectionChanged = false;
+                    }
                 }
             }
         }
@@ -3447,7 +3540,7 @@ namespace Mep1.Erp.Desktop
                 if (match != null)
                 {
                     SelectedProject = match;
-                    LoadSelectedProjectDetails(match);
+                    _ = LoadSelectedProjectDetailsAsync(match);
                 }
 
                 // Refresh dependent dropdowns (Add Invoice project dropdown, Timesheet projects, etc.)
@@ -5100,14 +5193,10 @@ namespace Mep1.Erp.Desktop
 
                 EditProjectStatusText = "Saved.";
 
-                // Refresh project summary list so Active column etc stays in sync
-                ProjectSummaries = await _api.GetProjectSummariesAsync();
-                RefreshProjects(keepSelection: true);
+                // Kick off refresh in background so the button feels instant
+                _ = RefreshProjectsAndDependentPicklistsAsync(keepSelection: true);
 
-                // Keep invoice/timesheet picklists in sync (e.g. project activation changes)
-                await RefreshProjectDependentPicklistsAsync();
-
-                // Reload edit snapshot
+                // Reload edit snapshot (this one is small and directly relevant to this screen)
                 await LoadEditProjectAsync(SelectedProject.JobNameOrNumber);
             }
             catch (Exception ex)
@@ -5153,6 +5242,86 @@ namespace Mep1.Erp.Desktop
             catch (Exception ex)
             {
                 EditProjectStatusText = "Failed to open edit: " + ex.Message;
+            }
+        }
+
+        private async Task RefreshProjectsAndDependentPicklistsAsync(bool keepSelection)
+        {
+            try
+            {
+                await ReloadProjectSummariesAsync(keepSelection: keepSelection);
+
+                // Keep invoice/timesheet picklists in sync
+                await RefreshProjectDependentPicklistsAsync();
+
+                // UI-only refresh (filter + selection rebinding safety)
+                RefreshProjects(keepSelection: keepSelection);
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    "Refresh after update failed:\n\n" + ex.Message,
+                    "Refresh error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        private async Task RefreshAfterProjectActiveToggleAsync(string jobKey)
+        {
+            try
+            {
+                // Summaries refresh (API)
+                await ReloadProjectSummariesAsync(keepSelection: true);
+
+                // Picklists refresh (API x2) - keep it here so Timesheet dropdown updates
+                await RefreshProjectDependentPicklistsAsync();
+
+                // UI-only refresh
+                RefreshProjects(keepSelection: true);
+
+                // If the project was deactivated and your view filters out inactive projects,
+                // it may no longer exist in the visible list. Ensure SelectedProject isn't stale.
+                if (SelectedProject != null && SelectedProject.JobNameOrNumber == jobKey)
+                {
+                    // OK - still selected
+                }
+                else
+                {
+                    // If selection is now invalid/stale, clear it without triggering heavy loads
+                    _suppressProjectSelectionChanged = true;
+                    try
+                    {
+                        if (SelectedProject != null && SelectedProject.JobNameOrNumber == jobKey)
+                            SelectedProject = null;
+                    }
+                    finally
+                    {
+                        _suppressProjectSelectionChanged = false;
+                    }
+                }
+            }
+            catch
+            {
+                // Swallow: user already performed the server action successfully.
+                // If refresh fails, the next manual refresh / reopen will correct it.
+                // (Optional: add logging)
+            }
+        }
+
+        private static async Task Perf(string name, Func<Task> action)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            System.Diagnostics.Debug.WriteLine($"[PERF ▶] {name}");
+
+            try
+            {
+                await action();
+            }
+            finally
+            {
+                sw.Stop();
+                System.Diagnostics.Debug.WriteLine($"[PERF ◀] {name} = {sw.ElapsedMilliseconds} ms");
             }
         }
     }

@@ -1,5 +1,6 @@
 ﻿using Mep1.Erp.Core;
 using Mep1.Erp.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -87,73 +88,151 @@ namespace Mep1.Erp.Application
     {
         public static List<ProjectSummary> GetProjectCostVsInvoiced(AppDbContext db)
         {
-            // Cache invoices grouped by ProjectCode (e.g. "PN0051")
-            var invoicesByCode = db.Invoices
-                .Where(i => !string.IsNullOrWhiteSpace(i.ProjectCode))
-                .AsEnumerable()
-                .GroupBy(i => i.ProjectCode!.Trim())
-                .ToDictionary(g => g.Key, g => g.ToList());
-
+            // 1) Load projects once (no tracking)
             var projects = db.Projects
+                .AsNoTracking()
                 .Where(p => p.IsRealProject)
                 .OrderBy(p => p.JobNameOrNumber)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.JobNameOrNumber,
+                    p.IsActive
+                })
                 .ToList();
 
-            var result = new List<ProjectSummary>();
+            if (projects.Count == 0)
+                return new List<ProjectSummary>();
 
-            foreach (var project in projects)
-            {
-                var baseCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
-                var hasProjectCode = !string.IsNullOrEmpty(baseCode);
+            var projectIds = projects.Select(p => p.Id).ToList();
 
-                var entries = db.TimesheetEntries
-                    .Where(e => e.ProjectId == project.Id)
-                    .ToList();
+            // 2) Precompute base codes for projects (in-memory)
+            var baseCodeByProjectId = projects.ToDictionary(
+                p => p.Id,
+                p => ProjectCodeHelpers.GetBaseProjectCode(p.JobNameOrNumber));
 
-                if (!entries.Any() && !hasProjectCode)
-                    continue;
-
-                decimal totalLabourCost = 0m;
-
-                foreach (var entry in entries)
-                {
-                    var ratePerHour = GetRateForWorkerOnDate(db, entry.WorkerId, entry.Date);
-                    if (ratePerHour.HasValue)
+            // 3) Invoices: load only what we need, then aggregate by trimmed ProjectCode
+            // (Trimming inside SQL is awkward/slow; do it once in-memory)
+            var invoiceSumsByCode = db.Invoices
+                .AsNoTracking()
+                .Where(i => i.ProjectCode != null && i.ProjectCode != "")
+                .Select(i => new { i.ProjectCode, i.NetAmount, i.GrossAmount })
+                .ToList()
+                .GroupBy(i => (i.ProjectCode ?? string.Empty).Trim())
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
                     {
-                        totalLabourCost += entry.Hours * ratePerHour.Value;
-                    }
+                        Net = g.Sum(x => x.NetAmount),
+                        Gross = g.Sum(x => x.GrossAmount ?? 0m)
+                    });
+
+            // 4) Supplier costs: SQLite provider can't translate SUM(decimal) reliably.
+            // Pull minimal data and aggregate client-side (works on SQLite + Postgres).
+            var supplierCostByProjectId = db.SupplierCosts
+                .AsNoTracking()
+                .Where(sc => projectIds.Contains(sc.ProjectId))
+                .Select(sc => new { sc.ProjectId, sc.Amount })
+                .ToList()
+                .GroupBy(x => x.ProjectId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+
+            // 5) Timesheet entries: load only required fields for ALL projects once
+            var entries = db.TimesheetEntries
+                .AsNoTracking()
+                .Where(e => projectIds.Contains(e.ProjectId))
+                .Select(e => new { e.ProjectId, e.WorkerId, e.Date, e.Hours })
+                .ToList();
+
+            // If there are no entries at all, we still might include projects with a base code
+            // (because they may have invoices).
+            // We'll decide inclusion later.
+
+            // 6) Rates: load once for the workerIds that appear in these entries
+            var workerIds = entries.Select(e => e.WorkerId).Distinct().ToList();
+
+            var ratesByWorker = workerIds.Count == 0
+                ? new Dictionary<int, List<WorkerRate>>()
+                : db.WorkerRates
+                    .AsNoTracking()
+                    .Where(r => workerIds.Contains(r.WorkerId))
+                    .OrderByDescending(r => r.ValidFrom)
+                    .ToList()
+                    .GroupBy(r => r.WorkerId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+            decimal GetRateOnInMemory(int workerId, DateTime date)
+            {
+                if (!ratesByWorker.TryGetValue(workerId, out var rates) || rates.Count == 0)
+                    return 0m;
+
+                // rates sorted by ValidFrom DESC
+                foreach (var r in rates)
+                {
+                    if (date >= r.ValidFrom && (r.ValidTo == null || date < r.ValidTo.Value))
+                        return r.RatePerHour;
                 }
 
-                var invoicesForProject =
-                    hasProjectCode && invoicesByCode.TryGetValue(baseCode!, out var list)
-                        ? list
-                        : new List<Invoice>();
+                return 0m;
+            }
 
-                decimal totalInvoicedNet = invoicesForProject.Sum(i => i.NetAmount);
-                decimal totalInvoicedGross = invoicesForProject.Sum(i => i.GrossAmount ?? 0m);
+            // 7) Labour cost per project (in-memory aggregation, no DB calls)
+            var labourCostByProjectId = new Dictionary<int, decimal>();
+            var hasEntriesByProjectId = new HashSet<int>();
 
-                var totalSupplierCost = db.SupplierCosts
-                    .Where(sc => sc.ProjectId == project.Id)
-                    .Select(sc => sc.Amount)
-                    .AsEnumerable()
-                    .Sum();
+            foreach (var e in entries)
+            {
+                hasEntriesByProjectId.Add(e.ProjectId);
 
-                var totalCost = totalLabourCost + totalSupplierCost;
+                var rate = GetRateOnInMemory(e.WorkerId, e.Date);
+                var cost = e.Hours * rate;
 
-                decimal profitNet = totalInvoicedNet - totalCost;
-                decimal profitGross = totalInvoicedGross - totalCost;
+                if (labourCostByProjectId.TryGetValue(e.ProjectId, out var cur))
+                    labourCostByProjectId[e.ProjectId] = cur + cost;
+                else
+                    labourCostByProjectId[e.ProjectId] = cost;
+            }
+
+            // 8) Build final summary list
+            var result = new List<ProjectSummary>(projects.Count);
+
+            foreach (var p in projects)
+            {
+                var baseCode = baseCodeByProjectId[p.Id];
+                var hasProjectCode = !string.IsNullOrWhiteSpace(baseCode);
+
+                var hasEntries = hasEntriesByProjectId.Contains(p.Id);
+
+                // Preserve your old behaviour: if there are no entries AND no base code, skip.
+                if (!hasEntries && !hasProjectCode)
+                    continue;
+
+                var labourCost = labourCostByProjectId.TryGetValue(p.Id, out var lc) ? lc : 0m;
+                var supplierCost = supplierCostByProjectId.TryGetValue(p.Id, out var sc) ? sc : 0m;
+
+                decimal invoicedNet = 0m;
+                decimal invoicedGross = 0m;
+
+                if (hasProjectCode && baseCode != null && invoiceSumsByCode.TryGetValue(baseCode, out var inv))
+                {
+                    invoicedNet = inv.Net;
+                    invoicedGross = inv.Gross;
+                }
+
+                var totalCost = labourCost + supplierCost;
 
                 result.Add(new ProjectSummary(
-                    project.JobNameOrNumber,
-                    baseCode,
-                    project.IsActive,
-                    totalLabourCost,
-                    totalSupplierCost,
-                    totalCost,
-                    totalInvoicedNet,
-                    totalInvoicedGross,
-                    profitNet,
-                    profitGross));
+                    JobNameOrNumber: p.JobNameOrNumber,
+                    BaseCode: baseCode,
+                    IsActive: p.IsActive,
+                    LabourCost: labourCost,
+                    SupplierCost: supplierCost,
+                    TotalCost: totalCost,
+                    InvoicedNet: invoicedNet,
+                    InvoicedGross: invoicedGross,
+                    ProfitNet: invoicedNet - totalCost,
+                    ProfitGross: invoicedGross - totalCost
+                ));
             }
 
             return result;
@@ -161,62 +240,84 @@ namespace Mep1.Erp.Application
 
         public static DashboardSummary GetDashboardSummary(AppDbContext db, AppSettings settings)
         {
-            var invoices = db.Invoices.ToList();
-
-            // Consider only invoices that still have something outstanding
-            var openInvoices = invoices
-                .Where(i => i.GetOutstandingNet() > 0m)
-                .ToList();
-
-            decimal outstandingNet = openInvoices.Sum(i => i.GetOutstandingNet());
-            decimal outstandingGross = openInvoices.Sum(i => i.GetOutstandingGross());
-
-            int unpaidCount = openInvoices.Count;
-
-            // --- NEW: cashflow buckets based on DueDate ---
             var today = DateTime.Today;
             var in30Days = today.AddDays(30);
 
-            var overdue = openInvoices
-                .Where(i => i.DueDate.HasValue && i.DueDate.Value.Date < today)
+            // Read-only dashboard: no tracking
+            var invoices = db.Invoices
+                .AsNoTracking()
                 .ToList();
 
-            var dueNext30Days = openInvoices
-                .Where(i => i.DueDate.HasValue &&
-                            i.DueDate.Value.Date >= today &&
-                            i.DueDate.Value.Date <= in30Days)
-                .ToList();
+            decimal outstandingNet = 0m;
+            decimal outstandingGross = 0m;
+            int unpaidCount = 0;
 
-            int overdueCount = overdue.Count;
-            decimal overdueOutstandingNet = overdue.Sum(i => i.GetOutstandingNet());
+            int overdueCount = 0;
+            decimal overdueOutstandingNet = 0m;
 
-            int dueNext30DaysCount = dueNext30Days.Count;
-            decimal dueNext30DaysOutstandingNet = dueNext30Days.Sum(i => i.GetOutstandingNet());
+            int dueNext30DaysCount = 0;
+            decimal dueNext30DaysOutstandingNet = 0m;
 
-            // Next expected due date among open invoices that are not overdue
-            DateTime? nextDueDate = openInvoices
-                .Where(i => i.DueDate.HasValue && i.DueDate.Value.Date >= today)
-                .Select(i => (DateTime?)i.DueDate.Value.Date)
-                .OrderBy(d => d)
-                .FirstOrDefault();
+            DateTime? nextDueDate = null;
+            DateTime? latestInvoiceDate = null;
+
+            foreach (var i in invoices)
+            {
+                // Track latest invoice date (all invoices)
+                if (latestInvoiceDate == null || i.InvoiceDate > latestInvoiceDate.Value)
+                    latestInvoiceDate = i.InvoiceDate;
+
+                var outNet = i.GetOutstandingNet();
+                if (outNet <= 0m)
+                    continue; // ignore fully-paid invoices
+
+                // Open invoice
+                unpaidCount++;
+
+                var outGross = i.GetOutstandingGross();
+
+                outstandingNet += outNet;
+                outstandingGross += outGross;
+
+                if (i.DueDate.HasValue)
+                {
+                    var due = i.DueDate.Value.Date;
+
+                    if (due < today)
+                    {
+                        overdueCount++;
+                        overdueOutstandingNet += outNet;
+                    }
+                    else
+                    {
+                        // Next upcoming due date (non-overdue)
+                        if (nextDueDate == null || due < nextDueDate.Value)
+                            nextDueDate = due;
+
+                        if (due <= in30Days)
+                        {
+                            dueNext30DaysCount++;
+                            dueNext30DaysOutstandingNet += outNet;
+                        }
+                    }
+                }
+            }
 
             // Active projects = real projects that are marked active
             int activeProjects = db.Projects
+                .AsNoTracking()
                 .Count(p => p.IsActive && p.IsRealProject);
 
             DateTime? latestTimesheetDate = db.TimesheetEntries
+                .AsNoTracking()
                 .OrderByDescending(e => e.Date)
                 .Select(e => (DateTime?)e.Date)
                 .FirstOrDefault();
 
-            DateTime? latestInvoiceDate = invoices
-                .OrderByDescending(i => i.InvoiceDate)
-                .Select(i => (DateTime?)i.InvoiceDate)
-                .FirstOrDefault();
-
-            // 🔵 Upcoming applications (next 30 days)
+            // 🔵 Upcoming applications (next N days)
             var upcomingApps = GetUpcomingApplications(db, daysAhead: settings.UpcomingApplicationsDaysAhead);
             int upcomingAppCount = upcomingApps.Count;
+
             DateTime? nextAppDate = upcomingApps
                 .Select(a => (DateTime?)a.ApplicationDate)
                 .OrderBy(d => d)
@@ -238,18 +339,6 @@ namespace Mep1.Erp.Application
                 NextApplicationDate: nextAppDate);
         }
 
-        private static decimal? GetRateForWorkerOnDate(AppDbContext db, int workerId, DateTime workDate)
-        {
-            var rate = db.WorkerRates
-                .Where(r => r.WorkerId == workerId &&
-                            workDate >= r.ValidFrom &&
-                            (r.ValidTo == null || workDate < r.ValidTo))
-                .OrderByDescending(r => r.ValidFrom)
-                .FirstOrDefault();
-
-            return rate?.RatePerHour;
-        }
-
         public record PeopleSummaryRow(
             int WorkerId,
             string Initials,
@@ -265,49 +354,90 @@ namespace Mep1.Erp.Application
             var today = (todayOverride ?? DateTime.Today).Date;
             var monthStart = new DateTime(today.Year, today.Month, 1);
 
-            var workers = db.Workers.ToList();
-            var rates = db.WorkerRates.ToList();
-            var entries = db.TimesheetEntries.ToList();
+            // Workers (minimal fields, no tracking)
+            var workers = db.Workers
+                .AsNoTracking()
+                .Select(w => new { w.Id, w.Initials, w.Name, w.IsActive })
+                .ToList();
 
-            // Last worked date per worker (all time)
-            var lastWorkedByWorkerId = entries
+            if (workers.Count == 0)
+                return new List<PeopleSummaryRow>();
+
+            var workerIds = workers.Select(w => w.Id).ToList();
+
+            // Last worked date per worker (all time) - do in SQL (fast, safe)
+            var lastWorkedByWorkerId = db.TimesheetEntries
+                .AsNoTracking()
+                .Where(e => workerIds.Contains(e.WorkerId))
                 .GroupBy(e => e.WorkerId)
-                .ToDictionary(g => g.Key, g => (DateTime?)g.Max(x => x.Date));
+                .Select(g => new { WorkerId = g.Key, LastWorked = (DateTime?)g.Max(x => x.Date) })
+                .ToList()
+                .ToDictionary(x => x.WorkerId, x => x.LastWorked);
 
-            // Hours this month per worker
-            var monthEntries = entries.Where(e => e.Date.Date >= monthStart && e.Date.Date <= today).ToList();
+            // Month entries: only pull the fields we need, for only the month range
+            // Avoid e.Date.Date in the predicate; it kills index usage and can translate poorly.
+            var monthEntries = db.TimesheetEntries
+                .AsNoTracking()
+                .Where(e => workerIds.Contains(e.WorkerId) &&
+                            e.Date >= monthStart &&
+                            e.Date <= today)
+                .Select(e => new { e.WorkerId, e.Date, e.Hours })
+                .ToList();
 
             var hoursThisMonthByWorkerId = monthEntries
                 .GroupBy(e => e.WorkerId)
                 .ToDictionary(g => g.Key, g => g.Sum(x => x.Hours));
 
-            // Cost this month: sum(entry hours * rate on that date)
-            decimal GetRateForWorkerOnDate(int workerId, DateTime workDate)
-            {
-                var rate = rates
-                    .Where(r => r.WorkerId == workerId &&
-                                workDate >= r.ValidFrom &&
-                                (r.ValidTo == null || workDate < r.ValidTo))
-                    .OrderByDescending(r => r.ValidFrom)
-                    .FirstOrDefault();
+            // Rates: load once for only relevant workers, pre-group by worker
+            var ratesByWorker = db.WorkerRates
+                .AsNoTracking()
+                .Where(r => workerIds.Contains(r.WorkerId))
+                .OrderByDescending(r => r.ValidFrom)
+                .ToList()
+                .GroupBy(r => r.WorkerId)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
-                return rate?.RatePerHour ?? 0m;
+            decimal GetRateOnInMemory(int workerId, DateTime workDate)
+            {
+                if (!ratesByWorker.TryGetValue(workerId, out var rates) || rates.Count == 0)
+                    return 0m;
+
+                // rates are sorted by ValidFrom DESC
+                foreach (var r in rates)
+                {
+                    if (workDate >= r.ValidFrom && (r.ValidTo == null || workDate < r.ValidTo.Value))
+                        return r.RatePerHour;
+                }
+
+                return 0m;
             }
 
-            var costThisMonthByWorkerId = monthEntries
-                .GroupBy(e => e.WorkerId)
-                .ToDictionary(
-                    g => g.Key,
-                    g => g.Sum(e => e.Hours * GetRateForWorkerOnDate(e.WorkerId, e.Date)));
+            // Cost this month: sum(entry hours * rate on that date) (in-memory, no N+1)
+            var costThisMonthByWorkerId = new Dictionary<int, decimal>();
+            foreach (var e in monthEntries)
+            {
+                var rate = GetRateOnInMemory(e.WorkerId, e.Date);
+                var cost = e.Hours * rate;
+
+                if (costThisMonthByWorkerId.TryGetValue(e.WorkerId, out var cur))
+                    costThisMonthByWorkerId[e.WorkerId] = cur + cost;
+                else
+                    costThisMonthByWorkerId[e.WorkerId] = cost;
+            }
 
             decimal? GetCurrentRate(int workerId)
             {
-                var current = rates
-                    .Where(r => r.WorkerId == workerId && (r.ValidTo == null || r.ValidTo >= today))
-                    .OrderByDescending(r => r.ValidFrom)
-                    .FirstOrDefault();
+                if (!ratesByWorker.TryGetValue(workerId, out var rates) || rates.Count == 0)
+                    return null;
 
-                return current?.RatePerHour;
+                // “current” means valid on 'today'
+                foreach (var r in rates)
+                {
+                    if (today >= r.ValidFrom && (r.ValidTo == null || today < r.ValidTo.Value))
+                        return r.RatePerHour;
+                }
+
+                return null;
             }
 
             return workers
@@ -459,45 +589,73 @@ namespace Mep1.Erp.Application
             DateTime? fromInclusive = null,
             DateTime? toInclusive = null)
         {
-            var from = fromInclusive?.Date;
-            var to = toInclusive?.Date;
+            // Make date filtering index-friendly (avoid e.Date.Date in SQL)
+            DateTime? from = fromInclusive?.Date;
+            DateTime? toExclusive = toInclusive?.Date.AddDays(1);
 
-            var entriesQuery = db.TimesheetEntries.Where(e => e.ProjectId == projectId);
+            var entriesQuery = db.TimesheetEntries
+                .AsNoTracking()
+                .Where(e => e.ProjectId == projectId);
 
             if (from.HasValue)
-                entriesQuery = entriesQuery.Where(e => e.Date.Date >= from.Value);
+                entriesQuery = entriesQuery.Where(e => e.Date >= from.Value);
 
-            if (to.HasValue)
-                entriesQuery = entriesQuery.Where(e => e.Date.Date <= to.Value);
+            if (toExclusive.HasValue)
+                entriesQuery = entriesQuery.Where(e => e.Date < toExclusive.Value);
 
-            var entries = entriesQuery.ToList();
-            if (!entries.Any())
+            // Pull only what we need into memory (fast, avoids tracking)
+            var entries = entriesQuery
+                .Select(e => new { e.WorkerId, e.Date, e.Hours })
+                .ToList();
+
+            if (entries.Count == 0)
                 return new List<ProjectLabourByPersonRow>();
 
-            var workersById = db.Workers.ToDictionary(w => w.Id);
+            // Worker ids used by this project/date range
+            var workerIds = entries.Select(e => e.WorkerId).Distinct().ToList();
 
-            decimal GetRateOn(int workerId, DateTime date)
+            // Load workers once
+            var workersById = db.Workers
+                .AsNoTracking()
+                .Where(w => workerIds.Contains(w.Id))
+                .ToDictionary(w => w.Id);
+
+            // Load rates once (kills N+1 DB queries)
+            var ratesByWorker = db.WorkerRates
+                .AsNoTracking()
+                .Where(r => workerIds.Contains(r.WorkerId))
+                .OrderByDescending(r => r.ValidFrom)
+                .ToList()
+                .GroupBy(r => r.WorkerId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            decimal GetRateOnInMemory(int workerId, DateTime date)
             {
-                var rate = db.WorkerRates
-                    .Where(r => r.WorkerId == workerId &&
-                                date >= r.ValidFrom &&
-                                (r.ValidTo == null || date < r.ValidTo))
-                    .OrderByDescending(r => r.ValidFrom)
-                    .FirstOrDefault();
+                if (!ratesByWorker.TryGetValue(workerId, out var rates) || rates.Count == 0)
+                    return 0m;
 
-                return rate?.RatePerHour ?? 0m;
+                // rates are sorted by ValidFrom DESC
+                foreach (var r in rates)
+                {
+                    if (date >= r.ValidFrom && (r.ValidTo == null || date < r.ValidTo.Value))
+                        return r.RatePerHour;
+                }
+
+                return 0m;
             }
 
             return entries
                 .GroupBy(e => e.WorkerId)
                 .Select(g =>
                 {
-                    var worker = workersById.TryGetValue(g.Key, out var w) ? w : null;
+                    Worker? worker;
+                    workersById.TryGetValue(g.Key, out worker);
+
                     var initials = worker?.Initials ?? "";
                     var name = worker?.Name ?? $"WorkerId {g.Key}";
 
                     var hours = g.Sum(x => x.Hours);
-                    var cost = g.Sum(x => x.Hours * GetRateOn(x.WorkerId, x.Date));
+                    var cost = g.Sum(x => x.Hours * GetRateOnInMemory(x.WorkerId, x.Date));
 
                     return new ProjectLabourByPersonRow(
                         WorkerInitials: initials,
@@ -511,37 +669,62 @@ namespace Mep1.Erp.Application
 
         public static List<ProjectRecentEntryRow> GetProjectRecentEntries(AppDbContext db, int projectId, int take = 25)
         {
-            var workersById = db.Workers.ToDictionary(w => w.Id);
-
-            decimal GetRateOn(int workerId, DateTime date)
-            {
-                var rate = db.WorkerRates
-                    .Where(r => r.WorkerId == workerId &&
-                                date >= r.ValidFrom &&
-                                (r.ValidTo == null || date < r.ValidTo))
-                    .OrderByDescending(r => r.ValidFrom)
-                    .FirstOrDefault();
-
-                return rate?.RatePerHour ?? 0m;
-            }
-
+            // Pull only required fields (no tracking)
             var entries = db.TimesheetEntries
+                .AsNoTracking()
                 .Where(e => e.ProjectId == projectId)
                 .OrderByDescending(e => e.Date)
                 .ThenByDescending(e => e.Id)
                 .Take(take)
+                .Select(e => new { e.Date, e.WorkerId, e.Hours, e.TaskDescription })
                 .ToList();
+
+            if (entries.Count == 0)
+                return new List<ProjectRecentEntryRow>();
+
+            var workerIds = entries.Select(e => e.WorkerId).Distinct().ToList();
+
+            // Load workers once
+            var workersById = db.Workers
+                .AsNoTracking()
+                .Where(w => workerIds.Contains(w.Id))
+                .ToDictionary(w => w.Id);
+
+            // Load rates once (kills N+1 DB queries)
+            var ratesByWorker = db.WorkerRates
+                .AsNoTracking()
+                .Where(r => workerIds.Contains(r.WorkerId))
+                .OrderByDescending(r => r.ValidFrom)
+                .ToList()
+                .GroupBy(r => r.WorkerId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            decimal GetRateOnInMemory(int workerId, DateTime date)
+            {
+                if (!ratesByWorker.TryGetValue(workerId, out var rates) || rates.Count == 0)
+                    return 0m;
+
+                foreach (var r in rates)
+                {
+                    if (date >= r.ValidFrom && (r.ValidTo == null || date < r.ValidTo.Value))
+                        return r.RatePerHour;
+                }
+
+                return 0m;
+            }
 
             return entries.Select(e =>
             {
-                var worker = workersById.TryGetValue(e.WorkerId, out var w) ? w : null;
+                Worker? worker;
+                workersById.TryGetValue(e.WorkerId, out worker);
+
                 var initials = worker?.Initials ?? "";
 
                 return new ProjectRecentEntryRow(
                     Date: e.Date.Date,
                     WorkerInitials: initials,
                     Hours: e.Hours,
-                    Cost: e.Hours * GetRateOn(e.WorkerId, e.Date),
+                    Cost: e.Hours * GetRateOnInMemory(e.WorkerId, e.Date),
                     TaskDescription: e.TaskDescription ?? string.Empty);
             }).ToList();
         }
@@ -627,69 +810,112 @@ namespace Mep1.Erp.Application
             var horizon = today.AddDays(daysAhead);
             var labourPeriodStart = new DateTime(today.Year, today.Month, 1);
 
-            var result = new List<UpcomingApplicationEntry>();
+            // Load projects once (no tracking, minimal fields)
+            var projects = db.Projects
+                .AsNoTracking()
+                .Where(p => p.IsRealProject)
+                .Select(p => new { p.Id, p.JobNameOrNumber })
+                .ToList();
 
-            // Cache projects so we can build labels and check labour
-            var projects = db.Projects.ToList();
-            var timesheets = db.TimesheetEntries.ToList();
+            // ProjectId -> BaseCode
+            var baseCodeByProjectId = new Dictionary<int, string>(projects.Count);
+
+            // BaseCode -> Label (first encountered JobNameOrNumber for that base code)
+            var labelByBaseCode = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var p in projects)
+            {
+                var baseCode = ProjectCodeHelpers.GetBaseProjectCode(p.JobNameOrNumber)?.Trim();
+                if (string.IsNullOrWhiteSpace(baseCode))
+                    continue;
+
+                baseCodeByProjectId[p.Id] = baseCode;
+
+                if (!labelByBaseCode.ContainsKey(baseCode))
+                    labelByBaseCode[baseCode] = p.JobNameOrNumber;
+            }
+
+            // Precompute which base codes have had labour since labourPeriodStart
+            var recentLabourCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var recentLabourProjectIds = db.TimesheetEntries
+                .AsNoTracking()
+                .Where(e => e.Date >= labourPeriodStart)
+                .Select(e => e.ProjectId)
+                .Distinct()
+                .ToList();
+
+            foreach (var pid in recentLabourProjectIds)
+            {
+                if (baseCodeByProjectId.TryGetValue(pid, out var code) && !string.IsNullOrWhiteSpace(code))
+                    recentLabourCodes.Add(code);
+            }
 
             bool HasRecentLabourForProjectCode(string code)
-            {
-                var projectIds = projects
-                    .Where(p => p.JobNameOrNumber.StartsWith(code, StringComparison.OrdinalIgnoreCase))
-                    .Select(p => p.Id)
-                    .ToHashSet();
-
-                if (!projectIds.Any())
-                    return false;
-
-                return timesheets.Any(e =>
-                    projectIds.Contains(e.ProjectId) &&
-                    e.Date >= labourPeriodStart);
-            }
+                => !string.IsNullOrWhiteSpace(code) && recentLabourCodes.Contains(code.Trim());
 
             string GetProjectLabel(string code)
             {
-                var proj = projects
-                    .FirstOrDefault(p => p.JobNameOrNumber.StartsWith(code, StringComparison.OrdinalIgnoreCase));
+                code = (code ?? string.Empty).Trim();
+                if (labelByBaseCode.TryGetValue(code, out var label))
+                    return label;
 
-                return proj?.JobNameOrNumber ?? code;
+                return code;
             }
 
-            var schedules = db.ApplicationSchedules.ToList();
+            // Load schedules once (no tracking)
+            var schedules = db.ApplicationSchedules
+                .AsNoTracking()
+                .Select(s => new
+                {
+                    s.ProjectCode,
+                    s.ScheduleType,
+                    s.ApplicationSubmissionDate,
+                    s.RuleType,
+                    s.RuleValue,
+                    s.Notes
+                })
+                .ToList();
+
+            var result = new List<UpcomingApplicationEntry>();
 
             // 🔵 1) Fixed rows: literal ApplicationSubmissionDate
             foreach (var sched in schedules.Where(s =>
-                            s.ScheduleType.Equals("Fixed", StringComparison.OrdinalIgnoreCase) &&
-                            s.ApplicationSubmissionDate.HasValue))
+                         !string.IsNullOrWhiteSpace(s.ScheduleType) &&
+                         s.ScheduleType.Equals("Fixed", StringComparison.OrdinalIgnoreCase) &&
+                         s.ApplicationSubmissionDate.HasValue))
             {
+                var code = (sched.ProjectCode ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(code))
+                    continue;
+
                 var date = sched.ApplicationSubmissionDate!.Value.Date;
-                var daysUntil = (date - today).Days;
                 if (date < today || date > horizon)
                     continue;
 
-                if (!HasRecentLabourForProjectCode(sched.ProjectCode))
+                if (!HasRecentLabourForProjectCode(code))
                     continue;
 
-                var label = GetProjectLabel(sched.ProjectCode);
-
                 result.Add(new UpcomingApplicationEntry(
-                    ProjectCode: sched.ProjectCode,
-                    ProjectLabel: label,
+                    ProjectCode: code,
+                    ProjectLabel: GetProjectLabel(code),
                     ApplicationDate: date,
-                    DaysUntil: daysUntil,
-                    ScheduleType: sched.ScheduleType,
+                    DaysUntil: (date - today).Days,
+                    ScheduleType: sched.ScheduleType!,
                     RuleType: null,
                     Notes: sched.Notes));
             }
 
             // 🔵 2) Rule rows: expand into dates within [today, horizon]
             foreach (var sched in schedules.Where(s =>
-                            s.ScheduleType.Equals("Rule", StringComparison.OrdinalIgnoreCase)))
+                         !string.IsNullOrWhiteSpace(s.ScheduleType) &&
+                         s.ScheduleType.Equals("Rule", StringComparison.OrdinalIgnoreCase)))
             {
-                var code = sched.ProjectCode;
-                var ruleType = sched.RuleType?.Trim();
+                var code = (sched.ProjectCode ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(code))
+                    continue;
 
+                var ruleType = sched.RuleType?.Trim();
                 if (string.IsNullOrEmpty(ruleType))
                     continue;
 
@@ -712,7 +938,6 @@ namespace Mep1.Erp.Application
                     {
                         var lastDay = new DateTime(cursor.Year, cursor.Month,
                             DateTime.DaysInMonth(cursor.Year, cursor.Month));
-                        var daysUntil = (lastDay.Date - today).Days;
 
                         if (lastDay >= today && lastDay <= horizon)
                         {
@@ -720,8 +945,8 @@ namespace Mep1.Erp.Application
                                 ProjectCode: code,
                                 ProjectLabel: label,
                                 ApplicationDate: lastDay.Date,
-                                DaysUntil: daysUntil,
-                                ScheduleType: sched.ScheduleType,
+                                DaysUntil: (lastDay.Date - today).Days,
+                                ScheduleType: sched.ScheduleType!,
                                 RuleType: sched.RuleType,
                                 Notes: sched.Notes));
                         }
@@ -729,8 +954,7 @@ namespace Mep1.Erp.Application
                         cursor = cursor.AddMonths(1);
                     }
                 }
-                else if (ruleType.Equals("SpecificDay", StringComparison.OrdinalIgnoreCase)
-                            && sched.RuleValue.HasValue)
+                else if (ruleType.Equals("SpecificDay", StringComparison.OrdinalIgnoreCase) && sched.RuleValue.HasValue)
                 {
                     int day = sched.RuleValue.Value;
                     if (day < 1) day = 1;
@@ -738,10 +962,10 @@ namespace Mep1.Erp.Application
                     var cursor = new DateTime(today.Year, today.Month, 1);
                     while (cursor <= horizon)
                     {
-                        int daysInMonth = DateTime.DaysInMonth(cursor.Year, cursor.Month);
-                        int safeDay = Math.Min(day, daysInMonth);
+                        int dim = DateTime.DaysInMonth(cursor.Year, cursor.Month);
+                        int safeDay = Math.Min(day, dim);
+
                         var d = new DateTime(cursor.Year, cursor.Month, safeDay);
-                        var daysUntil = (d.Date - today).Days;
 
                         if (d >= today && d <= horizon)
                         {
@@ -749,8 +973,8 @@ namespace Mep1.Erp.Application
                                 ProjectCode: code,
                                 ProjectLabel: label,
                                 ApplicationDate: d.Date,
-                                DaysUntil: daysUntil,
-                                ScheduleType: sched.ScheduleType,
+                                DaysUntil: (d.Date - today).Days,
+                                ScheduleType: sched.ScheduleType!,
                                 RuleType: sched.RuleType,
                                 Notes: sched.Notes));
                         }
@@ -761,14 +985,12 @@ namespace Mep1.Erp.Application
             }
 
             // Remove duplicates & sort
-            var distinct = result
+            return result
                 .GroupBy(r => new { r.ProjectCode, r.ApplicationDate })
                 .Select(g => g.First())
                 .OrderBy(r => r.ApplicationDate)
                 .ThenBy(r => r.ProjectCode)
                 .ToList();
-
-            return distinct;
         }
 
         public static List<ProjectInvoiceRow> GetProjectInvoiceRows(AppDbContext db, string? projectCode)

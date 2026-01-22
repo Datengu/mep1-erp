@@ -108,23 +108,35 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// EF Core
+// EF Core (SQLite for dev, Postgres-ready)
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
+    var provider = builder.Configuration["Database:Provider"] ?? "Sqlite";
+
     var cs = builder.Configuration.GetConnectionString("ErpDb");
     if (string.IsNullOrWhiteSpace(cs))
         throw new InvalidOperationException("ConnectionStrings:ErpDb is missing.");
 
-    var b = new SqliteConnectionStringBuilder(cs);
-
-    // If it's a relative path, resolve it relative to the API ContentRoot (project folder)
-    if (!string.IsNullOrWhiteSpace(b.DataSource) && !Path.IsPathRooted(b.DataSource))
+    if (provider.Equals("Postgres", StringComparison.OrdinalIgnoreCase))
     {
-        b.DataSource = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, b.DataSource));
+        // NOTE: Will work once Npgsql.EntityFrameworkCore.PostgreSQL is installed
+        Console.WriteLine("[DB] Using PostgreSQL");
+        options.UseNpgsql(cs);
     }
+    else
+    {
+        // Default: SQLite (local dev)
+        var b = new SqliteConnectionStringBuilder(cs);
 
-    Console.WriteLine($"[DB] Using SQLite file: {b.DataSource}");
-    options.UseSqlite(b.ToString());
+        if (!string.IsNullOrWhiteSpace(b.DataSource) && !Path.IsPathRooted(b.DataSource))
+        {
+            b.DataSource = Path.GetFullPath(
+                Path.Combine(builder.Environment.ContentRootPath, b.DataSource));
+        }
+
+        Console.WriteLine($"[DB] Using SQLite file: {b.DataSource}");
+        options.UseSqlite(b.ToString());
+    }
 });
 
 // Audit Log
