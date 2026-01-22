@@ -992,7 +992,14 @@ namespace Mep1.Erp.Importer
             {
                 var row = sheet.Row(r);
 
-                var invoiceNo = GetString(row, "InvoiceNo");
+                var invoiceNoRaw = GetString(row, "InvoiceNo");
+                var invoiceNo = NormalizeInvoiceNumber(invoiceNoRaw);
+
+                if (!string.Equals(invoiceNoRaw, invoiceNo, StringComparison.Ordinal))
+                {
+                    Console.WriteLine($"  Normalized invoice number '{invoiceNoRaw}' → '{invoiceNo}'");
+                }
+
                 if (string.IsNullOrWhiteSpace(invoiceNo))
                     continue; // skip blanks
 
@@ -1169,6 +1176,33 @@ namespace Mep1.Erp.Importer
 
             db.SaveChanges();
             Console.WriteLine($"  Invoices: {created} created, {updated} updated (no deletes).");
+        }
+
+        private static string NormalizeInvoiceNumber(string input)
+        {
+            var raw = (input ?? "").Trim();
+
+            if (raw.Length == 0)
+                return raw;
+
+            // Split numeric prefix + optional suffix (e.g. 523a)
+            int i = 0;
+            while (i < raw.Length && char.IsDigit(raw[i]))
+                i++;
+
+            var numericPart = raw.Substring(0, i);
+            var suffix = raw.Substring(i); // may be empty or letters
+
+            // If there's no numeric part, leave it untouched
+            if (numericPart.Length == 0)
+                return raw;
+
+            // Pad to minimum 4 digits, but do not truncate if longer
+            var padded = numericPart.Length < 4
+                ? numericPart.PadLeft(4, '0')
+                : numericPart;
+
+            return padded + suffix;
         }
 
         private static void ImportApplicationSchedule(AppDbContext db, string schedulePath)
