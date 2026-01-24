@@ -62,11 +62,22 @@ namespace Mep1.Erp.Core
     {
         public static string GetConfigPath()
         {
-            var baseDir = AppContext.BaseDirectory;
-            var rootDir = Path.GetFullPath(
-                Path.Combine(baseDir, "..", "..", "..", ".."));
+#if DEBUG
+        // Repo-root settings.json for dev convenience
+        var baseDir = AppContext.BaseDirectory;
+        var rootDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", ".."));
+        return Path.Combine(rootDir, "settings.json");
+#else
+            // Installed/MSIX-safe per-user location
+            var baseDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "MEP1 BIM LTD",
+                "Mep1Erp"
+            );
 
-            return Path.Combine(rootDir, "settings.json");
+            Directory.CreateDirectory(baseDir);
+            return Path.Combine(baseDir, "settings.json");
+#endif
         }
     }
 }
