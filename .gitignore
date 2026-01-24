@@ -5,10 +5,14 @@ settings.json
 appsettings.Development.json
 appsettings.Production.json
 
-# ASP.NET Core appsettings
+############################################
+# App configuration (secrets / prod)
+############################################
 **/appsettings.json
 **/appsettings.Development.json
 **/appsettings.Production.json
+**/appsettings.Local.json
+**/appsettings.Secrets.json
 
 # Desktop app settings
 settings.json
@@ -17,18 +21,47 @@ settings.json
 settings.local.json
 appsettings.local.json
 
-# SQLite databases
+############################################
+# Local databases (SQLite dev only)
+############################################
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
 data/
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
 
-# Visual Studio / build output
+############################################
+# IDE / OS files
+############################################
 bin/
 obj/
 .vs/
+.idea/
+.vscode/
 *.user
 *.suo
+*.log
+
+############################################
+# Environment variables
+############################################
+.env
+
+############################################
+# Published output (never source-controlled)
+############################################
+publish/
+**/publish/
+wwwroot/publish/
+
+############################################
+# Optional: backups / temp
+############################################
+*.bak
+*.tmp
