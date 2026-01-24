@@ -41,7 +41,7 @@ namespace Mep1.Erp.Core
         public string JobNameOrNumber { get; set; } = ""; // e.g. "PN0049 - Biggin Hill"
 
         public int? CompanyId { get; set; }
-        public Company CompanyEntity { get; set; }
+        public Company? CompanyEntity { get; set; }
 
         public string Category { get; set; } = "Uncategorised";
         public bool IsRealProject { get; set; } = true;

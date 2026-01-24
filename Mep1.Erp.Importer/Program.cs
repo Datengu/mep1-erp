@@ -16,6 +16,68 @@ namespace Mep1.Erp.Importer
             return AppSettingsHelper.GetConfigPath();
         }
 
+        static string? GetEnv(string key)
+    => Environment.GetEnvironmentVariable(key);
+
+        static (string provider, string connectionString) GetDbTarget()
+        {
+            // Prefer API-style env vars (works great for VPS + SSH tunnel)
+            var providerEnv =
+                GetEnv("Database__Provider") ??
+                GetEnv("MEP1_ERP_DB_PROVIDER"); // optional extra alias
+
+            var csEnv =
+                GetEnv("ConnectionStrings__ErpDb") ??
+                GetEnv("MEP1_ERP_DB_CONNECTION"); // optional extra alias
+
+            if (!string.IsNullOrWhiteSpace(providerEnv) && !string.IsNullOrWhiteSpace(csEnv))
+            {
+                return (providerEnv.Trim(), csEnv.Trim());
+            }
+
+            // Fallback: your existing local settings.json workflow
+            var cs = GetErpDbConnectionStringFromConfig();
+            var inferredProvider = InferProviderFromConnectionString(cs);
+            return (inferredProvider, cs);
+        }
+
+        static string InferProviderFromConnectionString(string cs)
+        {
+            var s = (cs ?? "").Trim();
+
+            // Quick heuristic:
+            // - SQLite often starts with "Data Source="
+            // - Postgres commonly contains "Host=" or "Username="
+            if (s.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase) ||
+                s.Contains(".db", StringComparison.OrdinalIgnoreCase))
+                return "Sqlite";
+
+            if (s.Contains("Host=", StringComparison.OrdinalIgnoreCase) ||
+                s.Contains("Username=", StringComparison.OrdinalIgnoreCase) ||
+                s.Contains("Port=", StringComparison.OrdinalIgnoreCase))
+                return "Postgres";
+
+            // Default to Sqlite for safety (matches your current dev world)
+            return "Sqlite";
+        }
+
+        static DbContextOptions<AppDbContext> BuildDbOptions(string provider, string connectionString)
+        {
+            var p = (provider ?? "").Trim().ToLowerInvariant();
+
+            var builder = new DbContextOptionsBuilder<AppDbContext>();
+
+            if (p == "postgres" || p == "postgresql" || p == "npgsql")
+            {
+                builder.UseNpgsql(connectionString);
+                return builder.Options;
+            }
+
+            // Default: Sqlite
+            builder.UseSqlite(connectionString);
+            return builder.Options;
+        }
+
         static string GetErpDbConnectionStringFromConfig()
         {
             var configPath = GetConfigPath();
@@ -35,7 +97,8 @@ namespace Mep1.Erp.Importer
                 return settings.ErpDbConnectionString;
 
             Console.WriteLine("ERP DB connection string is not configured.");
-            Console.WriteLine("Paste the SQLite connection string (example: Data Source=../data/mep1_erp_dev.db):");
+            Console.WriteLine("Paste the DB connection string (SQLite example: Data Source=../data/mep1_erp_dev.db)");
+            Console.WriteLine("Postgres example: Host=localhost;Port=5433;Database=mep1_erp;Username=mep1;Password=...;");
             var input = Console.ReadLine()!.Trim('"', ' ');
 
             while (string.IsNullOrWhiteSpace(input))
@@ -290,13 +353,12 @@ namespace Mep1.Erp.Importer
 
             Console.WriteLine($"Found {files.Length} timesheet files.");
 
-            var erpDbCs = GetErpDbConnectionStringFromConfig();
+            var (provider, erpDbCs) = GetDbTarget();
 
-            // Build DbContextOptions manually (so we can control the DB file)
-            var dbOptions = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<AppDbContext>()
-                .UseSqlite(erpDbCs)
-                .Options;
+            Console.WriteLine($"DB Provider: {provider}");
+            Console.WriteLine($"DB Connection: {MaskConnectionStringForLog(provider, erpDbCs)}");
 
+            var dbOptions = BuildDbOptions(provider, erpDbCs);
             using var db = new AppDbContext(dbOptions);
 
             // Use migrations now (not EnsureCreated)
@@ -538,10 +600,10 @@ namespace Mep1.Erp.Importer
                 {
                     var dateText = dateCell.GetValue<string>().Trim();
                     if (!DateTime.TryParse(dateText, out date))
-                    {
                         continue;
-                    }
                 }
+
+                date = AsUtcDate(date); // Normalize
 
                 var company = companyCell.GetString().Trim();
                 var code = codeCell.GetString().Trim();
@@ -711,6 +773,8 @@ namespace Mep1.Erp.Importer
                         return;
                     }
 
+                    dt = AsUtcDate(dt); // Normalize
+
                     points.Add((dt, rate));
                 }
 
@@ -748,14 +812,11 @@ namespace Mep1.Erp.Importer
                 // Create rate periods: [ValidFrom, ValidTo) ranges
                 for (int i = 0; i < points.Count; i++)
                 {
-                    var from = points[i].date;
+                    var from = AsUtcDate(points[i].date);
                     DateTime? to = null;
 
                     if (i < points.Count - 1)
-                    {
-                        // exclusive upper bound = start of next rate
-                        to = points[i + 1].date;
-                    }
+                        to = AsUtcDate(points[i + 1].date);
 
                     var wr = new WorkerRate
                     {
@@ -906,12 +967,15 @@ namespace Mep1.Erp.Importer
                 if (!columns.TryGetValue(headerName, out var col)) return null;
                 var cell = row.Cell(col);
 
-                if (cell.TryGetValue<DateTime>(out var dt))
-                    return dt;
+                DateTime dt;
+
+                // ClosedXML often gives DateTime.Kind = Unspecified
+                if (cell.TryGetValue<DateTime>(out dt))
+                    return DateTime.SpecifyKind(dt.Date, DateTimeKind.Utc);
 
                 var txt = cell.GetString().Trim();
                 if (DateTime.TryParse(txt, out dt))
-                    return dt;
+                    return DateTime.SpecifyKind(dt.Date, DateTimeKind.Utc);
 
                 return null;
             }
@@ -1238,12 +1302,14 @@ namespace Mep1.Erp.Importer
                 if (!columns.TryGetValue(headerName, out var col)) return null;
                 var cell = row.Cell(col);
 
-                if (cell.TryGetValue<DateTime>(out var dt))
-                    return dt;
+                DateTime dt;
+
+                if (cell.TryGetValue<DateTime>(out dt))
+                    return AsUtcDate(dt);
 
                 var txt = cell.GetString().Trim();
                 if (DateTime.TryParse(txt, out dt))
-                    return dt;
+                    return AsUtcDate(dt);
 
                 return null;
             }
@@ -1374,7 +1440,7 @@ namespace Mep1.Erp.Importer
 
         private static void PrintWorkerHoursAndCostForMonth(AppDbContext db, int year, int month)
         {
-            var firstDay = new DateTime(year, month, 1);
+            var firstDay = DateTime.SpecifyKind(new DateTime(year, month, 1), DateTimeKind.Utc);
             var lastDayExclusive = firstDay.AddMonths(1);
 
             Console.WriteLine();
@@ -1556,5 +1622,38 @@ namespace Mep1.Erp.Importer
             byCode[code] = c;
             return c.Id;
         }
+
+        static string MaskConnectionStringForLog(string provider, string cs)
+        {
+            if (string.IsNullOrWhiteSpace(cs)) return "";
+
+            // light masking for logs (don’t print passwords)
+            // handles "Password=..." and "Pwd=..."
+            string Mask(string input, string key)
+            {
+                var idx = input.IndexOf(key, StringComparison.OrdinalIgnoreCase);
+                if (idx < 0) return input;
+
+                var start = idx + key.Length;
+                var end = input.IndexOf(';', start);
+                if (end < 0) end = input.Length;
+
+                return input.Substring(0, start) + "***" + input.Substring(end);
+            }
+
+            var masked = cs;
+            masked = Mask(masked, "Password=");
+            masked = Mask(masked, "Pwd=");
+
+            return masked;
+        }
+
+        static DateTime AsUtc(DateTime dt)
+            => dt.Kind == DateTimeKind.Utc ? dt : DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+
+        // Use this for Excel “date-only” values (rate effective dates, timesheet dates, etc.)
+        static DateTime AsUtcDate(DateTime dt)
+            => DateTime.SpecifyKind(dt.Date, DateTimeKind.Utc);
+
     }
 }

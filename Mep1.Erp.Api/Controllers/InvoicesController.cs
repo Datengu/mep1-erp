@@ -147,7 +147,7 @@ namespace Mep1.Erp.Api.Controllers
             // Fill legacy/string fields for compatibility with your current invoice list/grid.
             var projectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
             var jobName = project.JobNameOrNumber;
-            var clientName = project.CompanyEntity.Name;
+            var clientName = project.CompanyEntity!.Name;
 
             var status = string.IsNullOrWhiteSpace(dto.Status) ? "Outstanding" : dto.Status.Trim();
             var isPaid = string.Equals(status, "Paid", StringComparison.OrdinalIgnoreCase);
@@ -305,7 +305,7 @@ namespace Mep1.Erp.Api.Controllers
                 invoice.ProjectId = project.Id;
                 invoice.ProjectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
                 invoice.JobName = project.JobNameOrNumber;
-                invoice.ClientName = project.CompanyEntity.Name;
+                invoice.ClientName = project.CompanyEntity!.Name;
             }
 
             invoice.InvoiceDate = dto.InvoiceDate.Date;
