@@ -2,8 +2,17 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Mep1.Erp.TimesheetWeb;
 using Mep1.Erp.TimesheetWeb.Services;
 using QuestPDF.Infrastructure;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // nginx is on the same box; we’ll trust forwarded headers from it
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.Configure<ErpApiSettings>(builder.Configuration.GetSection("ErpApi"));
 
@@ -54,7 +63,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.HttpOnly = true;
         options.Cookie.IsEssential = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // set Always in prod if always https
+        //options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // set Always in prod if always https
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     });
 
 builder.Services.AddAuthorization();
@@ -82,6 +92,8 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
+
+app.UseForwardedHeaders();
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

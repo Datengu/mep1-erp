@@ -32,26 +32,69 @@ namespace Mep1.Erp.Infrastructure
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            if (!optionsBuilder.IsConfigured)
+            if (optionsBuilder.IsConfigured)
+                return;
+
+            // Prefer the same env vars as the API (so migrations/importer can target Postgres too)
+            var provider = Environment.GetEnvironmentVariable("Database__Provider");
+            var cs = Environment.GetEnvironmentVariable("ConnectionStrings__ErpDb");
+
+            // Back-compat fallback for local/dev (existing env var you had)
+            var legacySqlite = Environment.GetEnvironmentVariable("MEP1_ERP_DB");
+
+            // If caller explicitly chose Postgres, use it.
+            if (string.Equals(provider, "Postgres", StringComparison.OrdinalIgnoreCase))
             {
-                // 1) Prefer explicit env var to avoid accidental wrong DB.
-                var cs = Environment.GetEnvironmentVariable("MEP1_ERP_DB");
+                if (string.IsNullOrWhiteSpace(cs))
+                    throw new InvalidOperationException("ConnectionStrings__ErpDb is required when Database__Provider=Postgres.");
+
+                optionsBuilder.UseNpgsql(cs);
+                return;
+            }
+
+            // If caller explicitly chose Sqlite, use it.
+            if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+            {
                 if (!string.IsNullOrWhiteSpace(cs))
                 {
                     optionsBuilder.UseSqlite(cs);
                     return;
                 }
 
-                // 2) Default fallback (dev DB in /data)
-                var baseDir = AppContext.BaseDirectory;
-                var rootDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", ".."));
-                var dbPath = Path.Combine(rootDir, "data", "mep1_erp_dev.db");
-                optionsBuilder.UseSqlite($"Data Source={dbPath}");
+                if (!string.IsNullOrWhiteSpace(legacySqlite))
+                {
+                    optionsBuilder.UseSqlite(legacySqlite);
+                    return;
+                }
             }
+
+            // If provider wasn't specified, infer from connection string format.
+            if (!string.IsNullOrWhiteSpace(cs))
+            {
+                // Very simple inference: Npgsql connection strings usually contain "Host="
+                if (cs.Contains("Host=", StringComparison.OrdinalIgnoreCase))
+                {
+                    optionsBuilder.UseNpgsql(cs);
+                    return;
+                }
+
+                // Otherwise assume it's a sqlite connection string (e.g. "Data Source=...")
+                optionsBuilder.UseSqlite(cs);
+                return;
+            }
+
+            // Final fallback: dev SQLite file in /data
+            var baseDir = AppContext.BaseDirectory;
+            var rootDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", ".."));
+            var dbPath = Path.Combine(rootDir, "data", "mep1_erp_dev.db");
+            optionsBuilder.UseSqlite($"Data Source={dbPath}");
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            var isSqlite = Database.ProviderName != null &&
+              Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase);
+
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<Worker>()
@@ -65,6 +108,7 @@ namespace Mep1.Erp.Infrastructure
                 .HasOne(p => p.CompanyEntity)
                 .WithMany(c => c.Projects)
                 .HasForeignKey(p => p.CompanyId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Company>()
@@ -81,6 +125,13 @@ namespace Mep1.Erp.Infrastructure
 
             modelBuilder.Entity<WorkerRate>()
                 .HasIndex(r => new { r.WorkerId, r.ValidFrom });
+
+            // Postgres-safe: these are effective dates, not instants in time
+            modelBuilder.Entity<WorkerRate>(e =>
+            {
+                e.Property(x => x.ValidFrom).HasColumnType("date");
+                e.Property(x => x.ValidTo).HasColumnType("date");
+            });
 
             modelBuilder.Entity<Supplier>()
                 .HasIndex(s => s.Name)

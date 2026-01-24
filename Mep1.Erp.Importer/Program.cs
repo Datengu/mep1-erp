@@ -600,10 +600,10 @@ namespace Mep1.Erp.Importer
                 {
                     var dateText = dateCell.GetValue<string>().Trim();
                     if (!DateTime.TryParse(dateText, out date))
-                    {
                         continue;
-                    }
                 }
+
+                date = AsUtcDate(date); // Normalize
 
                 var company = companyCell.GetString().Trim();
                 var code = codeCell.GetString().Trim();
@@ -773,6 +773,8 @@ namespace Mep1.Erp.Importer
                         return;
                     }
 
+                    dt = AsUtcDate(dt); // Normalize
+
                     points.Add((dt, rate));
                 }
 
@@ -810,14 +812,11 @@ namespace Mep1.Erp.Importer
                 // Create rate periods: [ValidFrom, ValidTo) ranges
                 for (int i = 0; i < points.Count; i++)
                 {
-                    var from = points[i].date;
+                    var from = AsUtcDate(points[i].date);
                     DateTime? to = null;
 
                     if (i < points.Count - 1)
-                    {
-                        // exclusive upper bound = start of next rate
-                        to = points[i + 1].date;
-                    }
+                        to = AsUtcDate(points[i + 1].date);
 
                     var wr = new WorkerRate
                     {
@@ -968,12 +967,15 @@ namespace Mep1.Erp.Importer
                 if (!columns.TryGetValue(headerName, out var col)) return null;
                 var cell = row.Cell(col);
 
-                if (cell.TryGetValue<DateTime>(out var dt))
-                    return dt;
+                DateTime dt;
+
+                // ClosedXML often gives DateTime.Kind = Unspecified
+                if (cell.TryGetValue<DateTime>(out dt))
+                    return DateTime.SpecifyKind(dt.Date, DateTimeKind.Utc);
 
                 var txt = cell.GetString().Trim();
                 if (DateTime.TryParse(txt, out dt))
-                    return dt;
+                    return DateTime.SpecifyKind(dt.Date, DateTimeKind.Utc);
 
                 return null;
             }
@@ -1300,12 +1302,14 @@ namespace Mep1.Erp.Importer
                 if (!columns.TryGetValue(headerName, out var col)) return null;
                 var cell = row.Cell(col);
 
-                if (cell.TryGetValue<DateTime>(out var dt))
-                    return dt;
+                DateTime dt;
+
+                if (cell.TryGetValue<DateTime>(out dt))
+                    return AsUtcDate(dt);
 
                 var txt = cell.GetString().Trim();
                 if (DateTime.TryParse(txt, out dt))
-                    return dt;
+                    return AsUtcDate(dt);
 
                 return null;
             }
@@ -1436,7 +1440,7 @@ namespace Mep1.Erp.Importer
 
         private static void PrintWorkerHoursAndCostForMonth(AppDbContext db, int year, int month)
         {
-            var firstDay = new DateTime(year, month, 1);
+            var firstDay = DateTime.SpecifyKind(new DateTime(year, month, 1), DateTimeKind.Utc);
             var lastDayExclusive = firstDay.AddMonths(1);
 
             Console.WriteLine();
@@ -1643,6 +1647,13 @@ namespace Mep1.Erp.Importer
 
             return masked;
         }
+
+        static DateTime AsUtc(DateTime dt)
+            => dt.Kind == DateTimeKind.Utc ? dt : DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+
+        // Use this for Excel “date-only” values (rate effective dates, timesheet dates, etc.)
+        static DateTime AsUtcDate(DateTime dt)
+            => DateTime.SpecifyKind(dt.Date, DateTimeKind.Utc);
 
     }
 }

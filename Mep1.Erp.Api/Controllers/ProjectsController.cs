@@ -184,7 +184,7 @@ public class ProjectsController : ControllerBase
             action: "Projects.Create",
             entityType: "Project",
             entityId: project.Id.ToString(),
-            summary: $"Job={project.JobNameOrNumber}, CompanyId={project.CompanyId}, CompanyName={project.CompanyEntity.Name}, IsActive={project.IsActive}"
+            summary: $"Job={project.JobNameOrNumber}, CompanyId={project.CompanyId}, CompanyName={project.CompanyEntity?.Name ?? ""}, IsActive={project.IsActive}"
         );
 
         var resp = new CreateProjectResponseDto
