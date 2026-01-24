@@ -401,8 +401,8 @@ namespace Mep1.Erp.Importer
                 db.SaveChanges();
 
                 Console.WriteLine("Seeded initial OWNER TimesheetUser:");
-                Console.WriteLine("  Username: Jason Dean");
-                Console.WriteLine("  Temp password: ChangeMe123!");
+                Console.WriteLine("  Username: jason.dean");
+                Console.WriteLine("  Temp password: test1234");
                 Console.WriteLine("  MustChangePassword = true");
                 Console.WriteLine($"  Linked worker: {ownerWorker.Name} (Id={ownerWorker.Id})");
             }
