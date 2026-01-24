@@ -1687,7 +1687,11 @@ namespace Mep1.Erp.Desktop
             Settings = SettingsService.LoadSettings();
 
             if (string.IsNullOrWhiteSpace(Settings.ApiBaseUrl))
-                throw new InvalidOperationException("API base URL is not configured.");
+            {
+                // PROD default (adjust if your API lives elsewhere)
+                Settings.ApiBaseUrl = "https://portal.mep1bim.co.uk/";
+                SettingsService.SaveSettings(Settings);
+            }
 
             _api = new ErpApiClient(
                 Settings.ApiBaseUrl ?? "https://localhost:7254",

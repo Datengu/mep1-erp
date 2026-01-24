@@ -65,3 +65,16 @@ wwwroot/publish/
 ############################################
 *.bak
 *.tmp
+
+############################################
+# New
+############################################
+**/bin/
+**/obj/
+**/AppPackages/
+**/BundleArtifacts/
+*.appinstaller
+*.msix
+*.msixbundle
+*.cer
+*.pfx
