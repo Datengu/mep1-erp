@@ -309,8 +309,9 @@ public sealed class PeopleController : ControllerBase
     [HttpGet("{workerId:int}/drilldown")]
     public ActionResult<PersonDrilldownDto> GetPersonDrilldown(int workerId)
     {
-        var today = DateTime.Today.Date;
-        var monthStart = new DateTime(today.Year, today.Month, 1);
+        // Postgres timestamptz requires UTC DateTime parameters (Kind=Utc).
+        var today = DateTime.UtcNow.Date;
+        var monthStart = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var rates = _db.WorkerRates
             .AsNoTracking()

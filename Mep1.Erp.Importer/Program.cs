@@ -458,9 +458,9 @@ namespace Mep1.Erp.Importer
             var now = DateTime.Now;
             var reportMonthDate = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
 
-            PrintWorkerHoursAndCostForMonth(db, reportMonthDate.Year, reportMonthDate.Month);
+            //PrintWorkerHoursAndCostForMonth(db, reportMonthDate.Year, reportMonthDate.Month);
 
-            PrintProjectCostVsInvoiced(db);
+            //PrintProjectCostVsInvoiced(db);
 
             Console.WriteLine();
             Console.WriteLine("Done. Press Enter to exit.");

@@ -196,8 +196,9 @@ public class ProjectsController : ControllerBase
 
         var baseCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
 
-        var today = DateTime.Today.Date;
-        var monthStart = new DateTime(today.Year, today.Month, 1);
+        // Postgres timestamptz requires UTC DateTime parameters (Kind=Utc).
+        var today = DateTime.UtcNow.Date;
+        var monthStart = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var labourThisMonth = Reporting.GetProjectLabourByPerson(_db, project.Id, monthStart, today)
             .Select(x => new ProjectLabourByPersonRowDto(x.WorkerInitials, x.WorkerName, x.Hours, x.Cost))
