@@ -3155,10 +3155,6 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
@@ -3168,117 +3164,56 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Timesheet folder -->
-                        <TextBlock Text="Timesheet folder:"
-                                   Grid.Row="0" Grid.Column="0"
-                                   Margin="0,4"
-                                   VerticalAlignment="Center"/>
-                        <TextBox Text="{Binding Settings.TimesheetFolder, UpdateSourceTrigger=PropertyChanged}"
-                                 Grid.Row="0" Grid.Column="1"
-                                 Margin="8,4"
-                                 Background="#FF262626"
-                                 Foreground="#FFE0E0E0"/>
-                        <Button Content="Browse..."
-                                Grid.Row="0" Grid.Column="2"
-                                Margin="8,4"
-                                Padding="8,4"
-                                Click="BrowseTimesheetFolder_Click"/>
+                        <!-- API Base URL -->
+                        <TextBlock Text="API Base URL:"
+                       Grid.Row="0" Grid.Column="0"
+                       Margin="0,4"
+                       VerticalAlignment="Center"/>
 
-                        <!-- Finance sheet -->
-                        <TextBlock Text="Finance Sheet path:"
-                                   Grid.Row="1" Grid.Column="0"
-                                   Margin="0,4"
-                                   VerticalAlignment="Center"/>
-                        <TextBox Text="{Binding Settings.FinanceSheetPath, UpdateSourceTrigger=PropertyChanged}"
-                                 Grid.Row="1" Grid.Column="1"
-                                 Margin="8,4"
-                                 Background="#FF262626"
-                                 Foreground="#FFE0E0E0"/>
-                        <Button Content="Browse..."
-                                Grid.Row="1" Grid.Column="2"
-                                Margin="8,4"
-                                Padding="8,4"
-                                Click="BrowseFinanceSheet_Click"/>
+                        <TextBox x:Name="ApiBaseUrlTextBox" Text="{Binding Settings.ApiBaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                     Grid.Row="0" Grid.Column="1"
+                     Margin="8,4"
+                     Background="#FF262626"
+                     Foreground="#FFE0E0E0"
+                     IsReadOnly="True"/>
 
-                        <!-- Job Source Info -->
-                        <TextBlock Text="Job Source Info path:"
-                                   Grid.Row="2" Grid.Column="0"
-                                   Margin="0,4"
-                                   VerticalAlignment="Center"/>
-                        <TextBox Text="{Binding Settings.JobSourcePath, UpdateSourceTrigger=PropertyChanged}"
-                                 Grid.Row="2" Grid.Column="1"
-                                 Margin="8,4"
-                                 Background="#FF262626"
-                                 Foreground="#FFE0E0E0"/>
-                        <Button Content="Browse..."
-                                Grid.Row="2" Grid.Column="2"
-                                Margin="8,4"
-                                Padding="8,4"
-                                Click="BrowseJobSource_Click"/>
-
-                        <!-- Invoice Register -->
-                        <TextBlock Text="Invoice Register path:"
-                                   Grid.Row="3" Grid.Column="0"
-                                   Margin="0,4"
-                                   VerticalAlignment="Center"/>
-                        <TextBox Text="{Binding Settings.InvoiceRegisterPath, UpdateSourceTrigger=PropertyChanged}"
-                                 Grid.Row="3" Grid.Column="1"
-                                 Margin="8,4"
-                                 Background="#FF262626"
-                                 Foreground="#FFE0E0E0"/>
-                        <Button Content="Browse..."
-                                Grid.Row="3" Grid.Column="2"
-                                Margin="8,4"
-                                Padding="8,4"
-                                Click="BrowseInvoiceRegister_Click"/>
-
-                        <!-- Application Schedule -->
-                        <TextBlock Text="Application Schedule path:"
-                                   Grid.Row="4" Grid.Column="0"
-                                   Margin="0,4"
-                                   VerticalAlignment="Center"/>
-                        <TextBox Text="{Binding Settings.ApplicationSchedulePath, UpdateSourceTrigger=PropertyChanged}"
-                                 Grid.Row="4" Grid.Column="1"
-                                 Margin="8,4"
-                                 Background="#FF262626"
-                                 Foreground="#FFE0E0E0"/>
-                        <Button Content="Browse..."
-                                Grid.Row="4" Grid.Column="2"
-                                Margin="8,4"
-                                Padding="8,4"
-                                Click="BrowseApplicationSchedule_Click"/>
+                        <Button Content="Change..."
+                    Grid.Row="0" Grid.Column="2"
+                    Margin="8,4"
+                    Padding="8,4"
+                    Click="ChangeApiBaseUrl_Click"/>
 
                         <!-- Upcoming applications horizon -->
                         <TextBlock Text="Upcoming apps (days ahead):"
-                                   Grid.Row="5" Grid.Column="0"
-                                   Margin="0,4"
-                                   VerticalAlignment="Center"/>
+                       Grid.Row="1" Grid.Column="0"
+                       Margin="0,4"
+                       VerticalAlignment="Center"/>
 
                         <TextBox Text="{Binding Settings.UpcomingApplicationsDaysAhead, UpdateSourceTrigger=PropertyChanged}"
-                                 Grid.Row="5" Grid.Column="1"
-                                 Margin="8,4"
-                                 Background="#FF262626"
-                                 Foreground="#FFE0E0E0"/>
+                     Grid.Row="1" Grid.Column="1"
+                     Margin="8,4"
+                     Background="#FF262626"
+                     Foreground="#FFE0E0E0"/>
 
                         <TextBlock Text="How far ahead to generate application reminders (e.g. 30, 60, 90)."
-                                   Grid.Row="5" Grid.Column="2"
-                                   Margin="8,4"
-                                   VerticalAlignment="Center"
-                                   Opacity="0.6"
-                                   FontSize="11"/>
+                       Grid.Row="1" Grid.Column="2"
+                       Margin="8,4"
+                       VerticalAlignment="Center"
+                       Opacity="0.6"
+                       FontSize="11"/>
 
                         <!-- Save button -->
                         <Button Content="Save settings"
-                                Grid.Row="6" Grid.Column="0"
-                                Grid.ColumnSpan="3"
-                                Margin="0,16,0,0"
-                                Padding="10,5"
-                                HorizontalAlignment="Left"
-                                Background="#FF444444"
-                                Foreground="#FFE0E0E0"
-                                BorderBrush="#FF666666"
-                                BorderThickness="1"
-                                Click="SaveSettingsButton_Click"/>
+                    Grid.Row="2" Grid.Column="0"
+                    Grid.ColumnSpan="3"
+                    Margin="0,16,0,0"
+                    Padding="10,5"
+                    HorizontalAlignment="Left"
+                    Background="#FF444444"
+                    Foreground="#FFE0E0E0"
+                    BorderBrush="#FF666666"
+                    BorderThickness="1"
+                    Click="SaveSettingsButton_Click"/>
                     </Grid>
                 </ScrollViewer>
             </TabItem>

@@ -1,0 +1,9 @@
+{
+  "ApiBaseUrl": "https://staging-portal.mep1bim.co.uk/",
+  "TimesheetFolder": "",
+  "FinanceSheetPath": "",
+  "JobSourcePath": "",
+  "InvoiceRegisterPath": "",
+  "ApplicationSchedulePath": "",
+  "UpcomingApplicationsDaysAhead": 30
+}

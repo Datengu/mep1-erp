@@ -15,6 +15,9 @@ namespace Mep1.Erp.Desktop
     public class ErpApiClient
     {
         private readonly HttpClient _http;
+        public string BaseUrl { get; }
+        public bool IsStaging => (BaseUrl ?? "").IndexOf("staging", StringComparison.OrdinalIgnoreCase) >= 0;
+
 
         private sealed class TimingHandler : DelegatingHandler
         {
@@ -48,6 +51,8 @@ namespace Mep1.Erp.Desktop
 
         public ErpApiClient(string baseUrl)
         {
+            BaseUrl = (baseUrl ?? "").TrimEnd('/') + "/";
+
             var handler = new HttpClientHandler
             {
                 AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
@@ -55,7 +60,7 @@ namespace Mep1.Erp.Desktop
 
             _http = new HttpClient(new TimingHandler(handler))
             {
-                BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/"),
+                BaseAddress = new Uri(BaseUrl),
                 Timeout = TimeSpan.FromSeconds(30)
             };
 

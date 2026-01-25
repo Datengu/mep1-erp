@@ -23,7 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="settings.template.json">
+    <Content Include="settings.template.prod.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="settings.template.staging.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

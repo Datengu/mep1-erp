@@ -12,6 +12,10 @@ namespace Mep1.Erp.Desktop
         {
             InitializeComponent();
             _api = api;
+
+            if (_api.IsStaging && (Title?.IndexOf("[STAGING]", StringComparison.OrdinalIgnoreCase) ?? -1) < 0)
+                Title = (Title ?? "Login") + " [STAGING]";
+
             UsernameTextBox.Focus();
         }
 

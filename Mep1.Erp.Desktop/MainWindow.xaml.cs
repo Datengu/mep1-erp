@@ -1651,6 +1651,20 @@ namespace Mep1.Erp.Desktop
 
         private bool _suppressProjectSelectionChanged;
 
+        public string SettingsApiBaseUrl
+        {
+            get => _settings?.ApiBaseUrl ?? "";
+            set
+            {
+                if (_settings == null) return;
+                if (_settings.ApiBaseUrl == value) return;
+
+                _settings.ApiBaseUrl = value;
+                SettingsService.SaveSettings(_settings);
+                OnPropertyChanged(nameof(SettingsApiBaseUrl));
+            }
+        }
+
         // ---------------------------------------------
         // Invoice filtering
         // ---------------------------------------------
@@ -1686,6 +1700,8 @@ namespace Mep1.Erp.Desktop
 
             Settings = SettingsService.LoadSettings();
 
+            WarnIfReleaseBuildPointingAtStaging(_settings);
+
             if (string.IsNullOrWhiteSpace(Settings.ApiBaseUrl))
             {
                 // PROD default (adjust if your API lives elsewhere)
@@ -1696,6 +1712,9 @@ namespace Mep1.Erp.Desktop
             _api = new ErpApiClient(
                 Settings.ApiBaseUrl ?? "https://localhost:7254"
             );
+
+            if (_api.IsStaging && (Title?.IndexOf("[STAGING]", StringComparison.OrdinalIgnoreCase) ?? -1) < 0)
+                Title = (Title ?? "MEP1 ERP") + " [STAGING]";
 
             // Desktop login (Admin/Owner only). Session stays in memory.
             var login = new LoginWindow(_api);
@@ -5338,6 +5357,101 @@ namespace Mep1.Erp.Desktop
                 sw.Stop();
                 System.Diagnostics.Debug.WriteLine($"[PERF ◀] {name} = {sw.ElapsedMilliseconds} ms");
             }
+        }
+
+        private void WarnIfReleaseBuildPointingAtStaging(AppSettings settings)
+        {
+#if !DEBUG
+            if (settings?.ApiBaseUrl == null)
+                return;
+
+            if (settings.ApiBaseUrl.Contains("staging", StringComparison.OrdinalIgnoreCase))
+            {
+                WpfMessageBox.Show(
+                    "⚠ WARNING ⚠\n\n" +
+                    "This is a RELEASE build of the MEP1 ERP Desktop app,\n" +
+                    "but it is currently configured to use the STAGING server.\n\n" +
+                    "ApiBaseUrl:\n" +
+                    settings.ApiBaseUrl + "\n\n" +
+                    "This is usually a mistake.\n\n" +
+                    "If you are testing, this is fine.\n" +
+                    "If this is meant to be a LIVE build, please fix the configuration before continuing.",
+                    "MEP1 ERP – Staging Configuration Warning",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+            }
+#endif
+        }
+
+        private void ChangeApiBaseUrl_Click(object sender, RoutedEventArgs e)
+        {
+            if (Settings == null) return;
+
+            var current = Settings.ApiBaseUrl ?? "";
+
+            var result = WpfMessageBox.Show(
+                "Changing ApiBaseUrl can break logins and cause data to go to the wrong environment.\n\n" +
+                "This will toggle between:\n" +
+                "- Production (portal.mep1bim.co.uk)\n" +
+                "- Staging (staging-portal.mep1bim.co.uk)\n\n" +
+                "Current:\n" + current + "\n\n" +
+                "Continue?",
+                "Change ApiBaseUrl",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.OK)
+                return;
+
+            var isStaging = current.Contains("staging", StringComparison.OrdinalIgnoreCase);
+
+            var newUrl = isStaging
+                ? "https://portal.mep1bim.co.uk/"
+                : "https://staging-portal.mep1bim.co.uk/";
+
+            Settings.ApiBaseUrl = newUrl;
+            SettingsService.SaveSettings(Settings);
+
+            // Refresh the Settings tab display without rebuilding the whole DataContext
+            // (requires you give the TextBox a name in XAML, see below)
+            ApiBaseUrlTextBox.Text = newUrl;
+
+            var restartResult = WpfMessageBox.Show(
+                "ApiBaseUrl has been updated.\n\n" +
+                "The application must restart now to apply the change.\n\n" +
+                "Old:\n" + current + "\n\n" +
+                "New:\n" + newUrl,
+                "Restart Required",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+
+            if (restartResult == MessageBoxResult.OK)
+            {
+                RestartApplication();
+            }
+        }
+
+        private void RestartApplication()
+        {
+            try
+            {
+                var exePath = Process.GetCurrentProcess().MainModule?.FileName;
+                if (!string.IsNullOrWhiteSpace(exePath))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = exePath,
+                        UseShellExecute = true
+                    });
+                }
+            }
+            catch
+            {
+                // If restart fails, just fall through and exit
+            }
+
+            System.Windows.Application.Current.Shutdown();
         }
     }
 }
