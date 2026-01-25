@@ -242,7 +242,7 @@ public sealed class EditModel : PageModel
         var dto = new UpdateTimesheetEntryDto(
             WorkerId: workerId,
             JobKey: Input.JobKey,
-            Date: Input.Date.Date,
+            Date: DateTime.SpecifyKind(Input.Date.Date, DateTimeKind.Utc),
             Hours: Input.Hours,
             Code: Input.Code,
             CcfRef: cleanedCcf,

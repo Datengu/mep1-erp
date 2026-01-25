@@ -233,7 +233,7 @@ public sealed class EnterHoursModel : PageModel
         var dto = new CreateTimesheetEntryDto(
             WorkerId: workerId,
             JobKey: Input.JobKey,
-            Date: Input.Date.Date,
+            Date: DateTime.SpecifyKind(Input.Date.Date, DateTimeKind.Utc),
             Hours: Input.Hours,
             Code: Input.Code,
             CcfRef: cleanedCcf,
