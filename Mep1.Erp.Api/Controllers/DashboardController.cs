@@ -5,6 +5,7 @@ using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -16,10 +17,12 @@ namespace Mep1.Erp.Api.Controllers
     public class DashboardController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly ILogger<DashboardController> _logger;
 
-        public DashboardController(AppDbContext db)
+        public DashboardController(AppDbContext db, ILogger<DashboardController> logger)
         {
             _db = db;
+            _logger = logger;
         }
 
         private (int WorkerId, string Role, string Source) GetActorForAudit()
@@ -39,29 +42,40 @@ namespace Mep1.Erp.Api.Controllers
         [HttpGet("summary")]
         public ActionResult<DashboardSummaryDto> GetSummary([FromQuery] int? daysAhead = null)
         {
-            var settings = new AppSettings
+            try
             {
-                UpcomingApplicationsDaysAhead = daysAhead ?? 30
-            };
+                var settings = new AppSettings
+                {
+                    UpcomingApplicationsDaysAhead = daysAhead ?? 30
+                };
 
-            var summary = Reporting.GetDashboardSummary(_db, settings);
+                var summary = Reporting.GetDashboardSummary(_db, settings);
 
-            return Ok(new DashboardSummaryDto
+                return Ok(new DashboardSummaryDto
+                {
+                    OutstandingNet = summary.OutstandingNet,
+                    OutstandingGross = summary.OutstandingGross,
+                    UnpaidInvoiceCount = summary.UnpaidInvoiceCount,
+                    ActiveProjects = summary.ActiveProjects,
+                    LatestTimesheetDate = summary.LatestTimesheetDate,
+                    LatestInvoiceDate = summary.LatestInvoiceDate,
+                    OverdueInvoiceCount = summary.OverdueInvoiceCount,
+                    OverdueOutstandingNet = summary.OverdueOutstandingNet,
+                    DueNext30DaysCount = summary.DueNext30DaysCount,
+                    DueNext30DaysOutstandingNet = summary.DueNext30DaysOutstandingNet,
+                    NextDueDate = summary.NextDueDate,
+                    UpcomingApplicationCount = summary.UpcomingApplicationCount,
+                    NextApplicationDate = summary.NextApplicationDate
+                });
+            }
+            catch (Exception ex) 
             {
-                OutstandingNet = summary.OutstandingNet,
-                OutstandingGross = summary.OutstandingGross,
-                UnpaidInvoiceCount = summary.UnpaidInvoiceCount,
-                ActiveProjects = summary.ActiveProjects,
-                LatestTimesheetDate = summary.LatestTimesheetDate,
-                LatestInvoiceDate = summary.LatestInvoiceDate,
-                OverdueInvoiceCount = summary.OverdueInvoiceCount,
-                OverdueOutstandingNet = summary.OverdueOutstandingNet,
-                DueNext30DaysCount = summary.DueNext30DaysCount,
-                DueNext30DaysOutstandingNet = summary.DueNext30DaysOutstandingNet,
-                NextDueDate = summary.NextDueDate,
-                UpcomingApplicationCount = summary.UpcomingApplicationCount,
-                NextApplicationDate = summary.NextApplicationDate
-            });
+                // Log the real error to server logs
+                _logger.LogError(ex, "Dashboard summary failed. daysAhead={daysAhead}", daysAhead);
+
+                // Return a useful error shape (still 500, but with detail you can see)
+                return Problem(title: "Dashboard summary failed", detail: ex.Message);
+            }
         }
 
         // GET /api/dashboard/due-schedule

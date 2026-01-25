@@ -1706,7 +1706,7 @@ namespace Mep1.Erp.Desktop
                 return;
             }
 
-            LoadData();
+            Loaded += async (_, __) => await LoadDataAsync();
         }
 
         // ---------------------------------------------
@@ -1728,60 +1728,72 @@ namespace Mep1.Erp.Desktop
         // Data load / refresh
         // ---------------------------------------------
 
-        private async void LoadData()
+        private async Task LoadDataAsync()
         {
-            // Dashboard comes from API now
-            Dashboard = await _api.GetDashboardSummaryAsync(Settings.UpcomingApplicationsDaysAhead);
-
-            // ProjectSummaries comes from API now
-            ProjectSummaries = await _api.GetProjectSummariesAsync();
-
-            if (SelectedProjectForCcf == null && ProjectSummaries.Count > 0)
+            try
             {
-                SelectedProjectForCcf = ProjectSummaries.FirstOrDefault(p => p.IsActive) ?? ProjectSummaries[0];
+                // Dashboard comes from API now
+                Dashboard = await _api.GetDashboardSummaryAsync(Settings.UpcomingApplicationsDaysAhead);
+
+                // ProjectSummaries comes from API now
+                ProjectSummaries = await _api.GetProjectSummariesAsync();
+
+                if (SelectedProjectForCcf == null && ProjectSummaries.Count > 0)
+                {
+                    SelectedProjectForCcf = ProjectSummaries.FirstOrDefault(p => p.IsActive) ?? ProjectSummaries[0];
+                }
+
+                InvoiceProjectPicklist = await _api.GetInvoiceProjectPicklistAsync();
+
+                // quick debug:
+                System.Diagnostics.Debug.WriteLine(
+                    string.Join(", ", ProjectSummaries.Take(5).Select(p => $"{p.JobNameOrNumber}:{p.IsActive}"))
+                );
+
+                // Invoices comes from API now
+                Invoices = await _api.GetInvoicesAsync();
+
+                SuggestNextInvoiceNumberIfEmpty();
+
+                // People comes from API now
+                People = await _api.GetPeopleSummaryAsync();
+
+                // Timesheet tab setup (v1)
+                TimesheetProjects = await _api.GetTimesheetActiveProjectsAsync();
+                TimesheetCodes = await _api.GetTimesheetCodesAsync();
+
+                // Default selection: first active person if none set
+                if (TimesheetSelectedWorker == null)
+                    TimesheetSelectedWorker = People.FirstOrDefault(p => p.IsActive) ?? People.FirstOrDefault();
+
+                SelectedTimesheetProject ??= TimesheetProjects.FirstOrDefault();
+
+                await RefreshTimesheetEntriesAsync();
+
+                // Due Schedule comes from API now
+                DueSchedule = await _api.GetDueScheduleAsync();
+
+                // Upcoming Applications comes from API now
+                UpcomingApplications = await _api.GetUpcomingApplicationsAsync(Settings.UpcomingApplicationsDaysAhead);
+
+                await LoadAuditLogsAsync();
+
+                EnsurePeopleView();
+                EnsureInvoiceView();
+                EnsureProjectView();
+                LoadSuppliers();
+                await LoadCompaniesAsync();
+                EnsureInitialSelections();
             }
-
-            InvoiceProjectPicklist = await _api.GetInvoiceProjectPicklistAsync();
-
-            // quick debug:
-            System.Diagnostics.Debug.WriteLine(
-                string.Join(", ", ProjectSummaries.Take(5).Select(p => $"{p.JobNameOrNumber}:{p.IsActive}"))
-            );
-
-            // Invoices comes from API now
-            Invoices = await _api.GetInvoicesAsync();
-
-            SuggestNextInvoiceNumberIfEmpty();
-
-            // People comes from API now
-            People = await _api.GetPeopleSummaryAsync();
-
-            // Timesheet tab setup (v1)
-            TimesheetProjects = await _api.GetTimesheetActiveProjectsAsync();
-            TimesheetCodes = await _api.GetTimesheetCodesAsync();
-
-            // Default selection: first active person if none set
-            if (TimesheetSelectedWorker == null)
-                TimesheetSelectedWorker = People.FirstOrDefault(p => p.IsActive) ?? People.FirstOrDefault();
-
-            SelectedTimesheetProject ??= TimesheetProjects.FirstOrDefault();
-
-            await RefreshTimesheetEntriesAsync();
-
-            // Due Schedule comes from API now
-            DueSchedule = await _api.GetDueScheduleAsync();
-
-            // Upcoming Applications comes from API now
-            UpcomingApplications = await _api.GetUpcomingApplicationsAsync(Settings.UpcomingApplicationsDaysAhead);
-
-            await LoadAuditLogsAsync();
-
-            EnsurePeopleView();
-            EnsureInvoiceView();
-            EnsureProjectView();
-            LoadSuppliers();
-            await LoadCompaniesAsync();
-            EnsureInitialSelections();
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    "Load failed:\n\n" + ex.Message,
+                    "API error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+            }
         }
 
         private void EnsureInvoiceView()
@@ -1992,7 +2004,7 @@ namespace Mep1.Erp.Desktop
                     proc?.WaitForExit();
                 });
 
-                LoadData();
+                await LoadDataAsync();
             }
             catch (Exception ex)
             {

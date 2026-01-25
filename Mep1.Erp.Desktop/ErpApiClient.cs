@@ -67,12 +67,21 @@ namespace Mep1.Erp.Desktop
         public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(int daysAhead)
         {
             var url = $"api/dashboard/summary?daysAhead={daysAhead}";
-            var result = await _http.GetFromJsonAsync<DashboardSummaryDto>(url);
 
-            if (result == null)
+            var resp = await _http.GetAsync(url);
+            var body = await resp.Content.ReadAsStringAsync();
+
+            if (!resp.IsSuccessStatusCode)
+                throw new Exception($"Dashboard summary failed ({(int)resp.StatusCode}): {body}");
+
+            var dto = System.Text.Json.JsonSerializer.Deserialize<DashboardSummaryDto>(
+                body,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (dto == null)
                 throw new InvalidOperationException("Dashboard summary response was empty.");
 
-            return result;
+            return dto;
         }
 
         public async Task<List<DueScheduleEntryDto>> GetDueScheduleAsync()
