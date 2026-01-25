@@ -1,12 +1,9 @@
 {
-  "ApiBaseUrl": "https://localhost:7254",
-  "ApiKey": "dev-admin-key-change-me",
-
+  "ApiBaseUrl": "https://portal.mep1bim.co.uk/",
   "TimesheetFolder": "",
   "FinanceSheetPath": "",
   "JobSourcePath": "",
   "InvoiceRegisterPath": "",
   "ApplicationSchedulePath": "",
-
   "UpcomingApplicationsDaysAhead": 30
 }

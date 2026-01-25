@@ -22,15 +22,6 @@ public sealed class CompaniesController : ControllerBase
         _audit = audit;
     }
 
-    private bool IsAdminKey()
-    => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
-
-    private ActionResult? RequireAdminKey()
-    {
-        if (IsAdminKey()) return null;
-        return Unauthorized("Admin API key required.");
-    }
-
     private (int WorkerId, string Role, string Source) GetActorForAudit()
     {
         var id = ClaimsActor.GetWorkerId(User);
@@ -47,9 +38,6 @@ public sealed class CompaniesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<CompanyListItemDto>>> Get()
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         return await _db.Companies
             .AsNoTracking()
             .OrderBy(c => c.Code)

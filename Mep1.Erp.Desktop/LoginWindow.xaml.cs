@@ -17,6 +17,7 @@ namespace Mep1.Erp.Desktop
 
         private async void Login_Click(object sender, RoutedEventArgs e)
         {
+            
             try
             {
                 StatusText.Text = "";
@@ -30,6 +31,7 @@ namespace Mep1.Erp.Desktop
                     StatusText.Text = "Enter a username and password.";
                     return;
                 }
+
 
                 // Unified JWT login
                 var dto = await _api.AuthLoginAsync(username, password);

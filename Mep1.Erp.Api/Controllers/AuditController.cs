@@ -18,15 +18,6 @@ public sealed class AuditController : ControllerBase
         _db = db;
     }
 
-    private bool IsAdminKey()
-        => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
-
-    private ActionResult? RequireAdminKey()
-    {
-        if (IsAdminKey()) return null;
-        return Unauthorized("Admin API key required.");
-    }
-
     [HttpGet]
     public async Task<ActionResult<List<AuditLogRowDto>>> Get(
         [FromQuery] int take = 200,
@@ -37,9 +28,6 @@ public sealed class AuditController : ControllerBase
         [FromQuery] int? actorWorkerId = null,
         [FromQuery] string? action = null)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         take = Math.Clamp(take, 1, 1000);
         skip = Math.Max(0, skip);
 

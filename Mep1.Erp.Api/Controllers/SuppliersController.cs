@@ -24,15 +24,6 @@ public class SuppliersController : ControllerBase
         _audit = audit;
     }
 
-    private bool IsAdminKey()
-    => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
-
-    private ActionResult? RequireAdminKey()
-    {
-        if (IsAdminKey()) return null;
-        return Unauthorized("Admin API key required.");
-    }
-
     private (int WorkerId, string Role, string Source) GetActorForAudit()
     {
         var id = ClaimsActor.GetWorkerId(User);
@@ -49,9 +40,6 @@ public class SuppliersController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<SupplierDto>>> GetAll([FromQuery] bool includeInactive = false)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var q = _db.Suppliers.AsNoTracking();
 
         if (!includeInactive)
@@ -68,9 +56,6 @@ public class SuppliersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<SupplierDto>> Create([FromBody] UpsertSupplierDto dto)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var name = (dto.Name ?? "").Trim();
         if (name.Length == 0) return BadRequest("Name is required.");
 
@@ -103,9 +88,6 @@ public class SuppliersController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpsertSupplierDto dto)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var entity = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == id);
         if (entity == null) return NotFound();
 
@@ -136,9 +118,6 @@ public class SuppliersController : ControllerBase
     [HttpPost("{id:int}/deactivate")]
     public async Task<IActionResult> Deactivate([FromRoute] int id)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var entity = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == id);
         if (entity == null) return NotFound();
 

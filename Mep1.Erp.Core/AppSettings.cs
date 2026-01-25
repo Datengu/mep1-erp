@@ -7,7 +7,6 @@ namespace Mep1.Erp.Core
 {
     public class AppSettings : INotifyPropertyChanged
     {
-        public string? ApiKey { get; set; }
         public string? ApiBaseUrl { get; set; }
         public string? ErpDbConnectionString { get; set; }
 
@@ -62,12 +61,6 @@ namespace Mep1.Erp.Core
     {
         public static string GetConfigPath()
         {
-#if DEBUG
-        // Repo-root settings.json for dev convenience
-        var baseDir = AppContext.BaseDirectory;
-        var rootDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", ".."));
-        return Path.Combine(rootDir, "settings.json");
-#else
             // Installed/MSIX-safe per-user location
             var baseDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -77,7 +70,6 @@ namespace Mep1.Erp.Core
 
             Directory.CreateDirectory(baseDir);
             return Path.Combine(baseDir, "settings.json");
-#endif
         }
     }
 }

@@ -22,15 +22,6 @@ namespace Mep1.Erp.Api.Controllers
             _db = db;
         }
 
-        private bool IsAdminKey()
-            => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
-
-        private ActionResult? RequireAdminKey()
-        {
-            if (IsAdminKey()) return null;
-            return Unauthorized("Admin API key required.");
-        }
-
         private (int WorkerId, string Role, string Source) GetActorForAudit()
         {
             var id = ClaimsActor.GetWorkerId(User);
@@ -48,9 +39,6 @@ namespace Mep1.Erp.Api.Controllers
         [HttpGet("summary")]
         public ActionResult<DashboardSummaryDto> GetSummary([FromQuery] int? daysAhead = null)
         {
-            var guard = RequireAdminKey();
-            if (guard != null) return guard;
-
             var settings = new AppSettings
             {
                 UpcomingApplicationsDaysAhead = daysAhead ?? 30
@@ -80,9 +68,6 @@ namespace Mep1.Erp.Api.Controllers
         [HttpGet("due-schedule")]
         public ActionResult<List<DueScheduleEntryDto>> GetDueSchedule()
         {
-            var guard = RequireAdminKey();
-            if (guard != null) return guard;
-
             var rows = Reporting.GetDueSchedule(_db);
 
             var dto = rows.Select(r => new DueScheduleEntryDto
@@ -100,9 +85,6 @@ namespace Mep1.Erp.Api.Controllers
         [HttpGet("upcoming-applications")]
         public ActionResult<List<UpcomingApplicationEntryDto>> GetUpcomingApplications([FromQuery] int? daysAhead = null)
         {
-            var guard = RequireAdminKey();
-            if (guard != null) return guard;
-
             var horizon = daysAhead ?? 30;
 
             var rows = Reporting.GetUpcomingApplications(_db, horizon)

@@ -1694,8 +1694,7 @@ namespace Mep1.Erp.Desktop
             }
 
             _api = new ErpApiClient(
-                Settings.ApiBaseUrl ?? "https://localhost:7254",
-                Settings.ApiKey
+                Settings.ApiBaseUrl ?? "https://localhost:7254"
             );
 
             // Desktop login (Admin/Owner only). Session stays in memory.

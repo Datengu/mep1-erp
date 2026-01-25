@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using Mep1.Erp.Api.Security;
+﻿using Mep1.Erp.Api.Security;
 using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
 using Mep1.Erp.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Mep1.Erp.Api.Controllers;
 
@@ -142,6 +143,7 @@ public sealed class AuthController : ControllerBase
         _cache.Remove(CacheKeyFor(normalizedUsername));
     }
 
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request)
     {
@@ -237,6 +239,7 @@ public sealed class AuthController : ControllerBase
         return Ok();
     }
 
+    [AllowAnonymous]
     [HttpPost("refresh")]
     public async Task<ActionResult<RefreshResponse>> Refresh([FromBody] RefreshRequest req)
     {
