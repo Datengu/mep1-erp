@@ -86,6 +86,20 @@ namespace Mep1.Erp.Application
 
     public static class Reporting
     {
+        // Postgres + Npgsql: avoid sending DateTime.Kind=Unspecified into timestamptz columns/params.
+        private static DateTime UtcTodayDate() => DateTime.UtcNow.Date;
+
+        private static DateTime AsUtcDate(DateTime dt)
+        {
+            // dt.Date preserves Kind, but if dt.Kind was Unspecified it stays Unspecified.
+            // Force UTC for all "date-only" boundary values used in DB predicates.
+            var d = dt.Date;
+            return d.Kind == DateTimeKind.Utc ? d : DateTime.SpecifyKind(d, DateTimeKind.Utc);
+        }
+
+        private static DateTime? AsUtcDate(DateTime? dt)
+            => dt.HasValue ? AsUtcDate(dt.Value) : null;
+
         public static List<ProjectSummary> GetProjectCostVsInvoiced(AppDbContext db)
         {
             // 1) Load projects once (no tracking)
@@ -240,7 +254,7 @@ namespace Mep1.Erp.Application
 
         public static DashboardSummary GetDashboardSummary(AppDbContext db, AppSettings settings)
         {
-            var today = DateTime.Today;
+            var today = UtcTodayDate();
             var in30Days = today.AddDays(30);
 
             // Read-only dashboard: no tracking
@@ -351,8 +365,8 @@ namespace Mep1.Erp.Application
 
         public static List<PeopleSummaryRow> GetPeopleSummary(AppDbContext db, DateTime? todayOverride = null)
         {
-            var today = (todayOverride ?? DateTime.Today).Date;
-            var monthStart = new DateTime(today.Year, today.Month, 1);
+            var today = AsUtcDate(todayOverride ?? UtcTodayDate());
+            var monthStart = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
             // Workers (minimal fields, no tracking)
             var workers = db.Workers
@@ -769,7 +783,7 @@ namespace Mep1.Erp.Application
         public static List<DueScheduleEntry> GetDueSchedule(AppDbContext db)
         {
             var invoices = db.Invoices.ToList();
-            var today = DateTime.Today;
+            var today = UtcTodayDate();
 
             // Only invoices we still expect money from AND with a due date in the future or today
             var upcoming = invoices
@@ -806,9 +820,9 @@ namespace Mep1.Erp.Application
 
         public static List<UpcomingApplicationEntry> GetUpcomingApplications(AppDbContext db, int daysAhead = 30)
         {
-            var today = DateTime.Today;
+            var today = UtcTodayDate();
             var horizon = today.AddDays(daysAhead);
-            var labourPeriodStart = new DateTime(today.Year, today.Month, 1);
+            var labourPeriodStart = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
             // Load projects once (no tracking, minimal fields)
             var projects = db.Projects
@@ -933,11 +947,15 @@ namespace Mep1.Erp.Application
 
                 if (ruleType.Equals("EndOfMonth", StringComparison.OrdinalIgnoreCase))
                 {
-                    var cursor = new DateTime(today.Year, today.Month, 1);
+                    var cursor = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                     while (cursor <= horizon)
                     {
-                        var lastDay = new DateTime(cursor.Year, cursor.Month,
-                            DateTime.DaysInMonth(cursor.Year, cursor.Month));
+                        var lastDay = new DateTime(
+                            cursor.Year,
+                            cursor.Month,
+                            DateTime.DaysInMonth(cursor.Year, cursor.Month),
+                            0, 0, 0,
+                            DateTimeKind.Utc);
 
                         if (lastDay >= today && lastDay <= horizon)
                         {
@@ -959,13 +977,13 @@ namespace Mep1.Erp.Application
                     int day = sched.RuleValue.Value;
                     if (day < 1) day = 1;
 
-                    var cursor = new DateTime(today.Year, today.Month, 1);
+                    var cursor = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                     while (cursor <= horizon)
                     {
                         int dim = DateTime.DaysInMonth(cursor.Year, cursor.Month);
                         int safeDay = Math.Min(day, dim);
 
-                        var d = new DateTime(cursor.Year, cursor.Month, safeDay);
+                        var d = new DateTime(cursor.Year, cursor.Month, safeDay, 0, 0, 0, DateTimeKind.Utc);
 
                         if (d >= today && d <= horizon)
                         {
