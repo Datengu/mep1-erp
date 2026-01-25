@@ -1,12 +1,14 @@
-﻿using Mep1.Erp.Core.Contracts;
+﻿using DocumentFormat.OpenXml.Wordprocessing;
+using Mep1.Erp.Core.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Net.Http.Headers;
-using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Threading;
+using System.Threading.Tasks;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace Mep1.Erp.Desktop
 {
@@ -44,7 +46,7 @@ namespace Mep1.Erp.Desktop
             }
         }
 
-        public ErpApiClient(string baseUrl, string? apiKey = null)
+        public ErpApiClient(string baseUrl)
         {
             var handler = new HttpClientHandler
             {
@@ -60,9 +62,6 @@ namespace Mep1.Erp.Desktop
             // Ask server for compressed responses (helps big JSON like summaries)
             _http.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
             _http.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
-
-            if (!string.IsNullOrWhiteSpace(apiKey))
-                _http.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
         }
 
         public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(int daysAhead)
@@ -299,8 +298,8 @@ namespace Mep1.Erp.Desktop
             }
 
             var dto = await resp.Content.ReadFromJsonAsync<DesktopAdminLoginResponseDto>();
-            if (dto == null) throw new Exception("Login returned empty response.");
-
+                if (dto == null) throw new Exception("Login returned empty response.");
+            
             return dto;
         }
 
@@ -481,6 +480,9 @@ namespace Mep1.Erp.Desktop
             var dto = await resp.Content.ReadFromJsonAsync<AuthLoginResponseDto>();
             if (dto == null) throw new Exception("Login returned empty response.");
 
+            // Ensure all subsequent calls are JWT-authenticated
+            SetBearerToken(dto.AccessToken);
+
             return dto;
         }
 
@@ -621,7 +623,7 @@ namespace Mep1.Erp.Desktop
 
         public async Task SetProjectCcfRefDeletedByJobKeyAsync(string jobKey, int id, bool isDeleted)
         {
-            var url = $"/api/projects/{Uri.EscapeDataString(jobKey)}/ccf-refs/{id}/deleted";
+            var url = $"api/projects/{Uri.EscapeDataString(jobKey)}/ccf-refs/{id}/deleted";
             var resp = await _http.PatchAsJsonAsync(url, isDeleted);
 
             if (!resp.IsSuccessStatusCode)

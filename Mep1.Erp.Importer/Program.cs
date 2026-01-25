@@ -17,7 +17,7 @@ namespace Mep1.Erp.Importer
         }
 
         static string? GetEnv(string key)
-    => Environment.GetEnvironmentVariable(key);
+            => Environment.GetEnvironmentVariable(key);
 
         static (string provider, string connectionString) GetDbTarget()
         {

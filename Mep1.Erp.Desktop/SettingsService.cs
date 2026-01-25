@@ -1,14 +1,45 @@
-﻿using System.IO;
+﻿using Mep1.Erp.Core;
+using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
-using Mep1.Erp.Core;
 
 namespace Mep1.Erp.Desktop
 {
     public static class SettingsService
     {
+        private const string TemplateFileName = "settings.template.json";
+
+        private static void EnsureSettingsSeeded()
+        {
+            var destPath = AppSettingsHelper.GetConfigPath();
+            if (File.Exists(destPath))
+                return;
+
+            Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+
+            var templatePath = Path.Combine(AppContext.BaseDirectory, TemplateFileName);
+
+            if (File.Exists(templatePath))
+            {
+                File.Copy(templatePath, destPath);
+                return;
+            }
+
+            // Fallback if template missing
+            var fallback = new AppSettings
+            {
+                ApiBaseUrl = "https://portal.mep1bim.co.uk/"
+            };
+            SaveSettings(fallback);
+        }
+
         public static AppSettings LoadSettings()
         {
+            EnsureSettingsSeeded();
+
             var path = AppSettingsHelper.GetConfigPath();
+
+            //MessageBox.Show("SETTINGS PATH:\n" + path);
 
             if (!File.Exists(path))
                 return new AppSettings();

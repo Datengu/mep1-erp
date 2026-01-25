@@ -22,4 +22,10 @@
     <ProjectReference Include="..\Mep1.Erp.Application\Mep1.Erp.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="settings.template.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

@@ -26,16 +26,6 @@ public sealed class PeopleController : ControllerBase
         _audit = audit;
     }
 
-
-    private bool IsAdminKey()
-        => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
-
-    private ActionResult? RequireAdminKey()
-    {
-        if (IsAdminKey()) return null;
-        return Unauthorized("Admin API key required.");
-    }
-
     private (int WorkerId, string Role, string Source) GetActorForAudit()
     {
         var id = ClaimsActor.GetWorkerId(User);
@@ -70,9 +60,6 @@ public sealed class PeopleController : ControllerBase
     [HttpGet("{workerId:int}/portal-access")]
     public async Task<ActionResult<PortalAccessDto>> GetPortalAccess(int workerId)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var user = await _db.TimesheetUsers
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.WorkerId == workerId);
@@ -106,9 +93,6 @@ public sealed class PeopleController : ControllerBase
         int workerId,
         [FromBody] CreatePortalAccessRequestDto request)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         if (string.IsNullOrWhiteSpace(request.Username))
             return BadRequest("Username is required.");
 
@@ -201,9 +185,6 @@ public sealed class PeopleController : ControllerBase
         int workerId,
         [FromBody] UpdatePortalAccessRequestDto request)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var user = await _db.TimesheetUsers.FirstOrDefaultAsync(u => u.WorkerId == workerId);
         if (user is null)
             return NotFound("Portal account not found.");
@@ -246,9 +227,6 @@ public sealed class PeopleController : ControllerBase
     [HttpPost("{workerId:int}/portal-access/reset-password")]
     public async Task<ActionResult<ResetPortalPasswordResultDto>> ResetPortalPassword(int workerId)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var user = await _db.TimesheetUsers.FirstOrDefaultAsync(u => u.WorkerId == workerId);
         if (user is null)
             return NotFound("Portal account not found.");
@@ -382,9 +360,6 @@ public sealed class PeopleController : ControllerBase
     [HttpPatch("{workerId:int}/active")]
     public async Task<IActionResult> SetWorkerActive(int workerId, [FromBody] SetWorkerActiveRequest request)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var worker = await _db.Workers.FirstOrDefaultAsync(w => w.Id == workerId);
         if (worker == null)
             return NotFound("Worker not found.");
@@ -516,9 +491,6 @@ public sealed class PeopleController : ControllerBase
     [HttpGet("{workerId:int}/edit")]
     public async Task<ActionResult<WorkerForEditDto>> GetWorkerForEdit(int workerId)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var worker = await _db.Workers.AsNoTracking().FirstOrDefaultAsync(w => w.Id == workerId);
         if (worker == null)
             return NotFound("Worker not found.");
@@ -549,9 +521,6 @@ public sealed class PeopleController : ControllerBase
     [HttpPatch("{workerId:int}")]
     public async Task<IActionResult> UpdateWorkerDetails(int workerId, [FromBody] UpdateWorkerDetailsRequestDto req)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var worker = await _db.Workers.FirstOrDefaultAsync(w => w.Id == workerId);
         if (worker == null)
             return NotFound("Worker not found.");
@@ -593,9 +562,6 @@ public sealed class PeopleController : ControllerBase
     [HttpPost("{workerId:int}/rates/change-current")]
     public async Task<IActionResult> ChangeCurrentRate(int workerId, [FromBody] ChangeCurrentRateRequestDto req)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         if (req.NewRatePerHour < 0m)
             return BadRequest("Rate cannot be negative.");
 
@@ -679,9 +645,6 @@ public sealed class PeopleController : ControllerBase
     [HttpPost("{workerId:int}/rates")]
     public async Task<IActionResult> AddHistoricalRate(int workerId, [FromBody] AddWorkerRateRequestDto req)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         if (req.RatePerHour < 0m)
             return BadRequest("Rate cannot be negative.");
 
@@ -728,9 +691,6 @@ public sealed class PeopleController : ControllerBase
     [HttpPatch("{workerId:int}/rates/{rateId:int}")]
     public async Task<IActionResult> UpdateRateAmount(int workerId, int rateId, [FromBody] UpdateWorkerRateAmountRequestDto req)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         if (req.RatePerHour < 0m)
             return BadRequest("Rate cannot be negative.");
 
@@ -759,9 +719,6 @@ public sealed class PeopleController : ControllerBase
     [HttpDelete("{workerId:int}/rates/{rateId:int}")]
     public async Task<IActionResult> DeleteRate(int workerId, int rateId)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var rate = await _db.WorkerRates.FirstOrDefaultAsync(r => r.Id == rateId && r.WorkerId == workerId);
         if (rate == null)
             return NotFound("Rate not found.");

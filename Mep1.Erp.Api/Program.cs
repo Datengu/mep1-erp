@@ -63,7 +63,7 @@ builder.Services.AddSwaggerGen(c =>
     // API Key
     c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
     {
-        Description = "API Key needed to access the endpoints. Add it as: X-Api-Key: {your key}",
+        Description = "API Key needed for server-to-server calls. Header: X-Api-Key: {your key}",
         In = ParameterLocation.Header,
         Name = "X-Api-Key",
         Type = SecuritySchemeType.ApiKey
@@ -80,7 +80,9 @@ builder.Services.AddSwaggerGen(c =>
         BearerFormat = "JWT"
     });
 
-    // Require both (ApiKey + Bearer) in Swagger UI
+    // IMPORTANT:
+    // Declare that endpoints may be authorized with either ApiKey OR Bearer.
+    // (Swagger represents this as multiple requirements = OR)
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -93,7 +95,11 @@ builder.Services.AddSwaggerGen(c =>
                 }
             },
             Array.Empty<string>()
-        },
+        }
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
             new OpenApiSecurityScheme
             {
@@ -153,43 +159,57 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// --- API Key auth (minimal) ---
+// --- API Key auth (portal-only, JWT bypass) ---
 var portalApiKey = builder.Configuration["Security:PortalApiKey"];
-var adminApiKey = builder.Configuration["Security:AdminApiKey"];
 
-// Backward compat (optional): if you still have Security:ApiKey set, treat it as admin key
-var legacyApiKey = builder.Configuration["Security:ApiKey"];
-if (!string.IsNullOrWhiteSpace(legacyApiKey) && string.IsNullOrWhiteSpace(adminApiKey))
-    adminApiKey = legacyApiKey;
-
+// In Production we expect a portal key for server-to-server calls.
+// Desktop must NOT need a key.
 if (!app.Environment.IsDevelopment())
 {
     if (string.IsNullOrWhiteSpace(portalApiKey))
         throw new InvalidOperationException("Security:PortalApiKey must be set in Production.");
+}
 
-    if (string.IsNullOrWhiteSpace(adminApiKey))
-        throw new InvalidOperationException("Security:AdminApiKey must be set in Production.");
+static bool HasBearerToken(HttpContext ctx)
+{
+    if (!ctx.Request.Headers.TryGetValue("Authorization", out var auth))
+        return false;
+
+    var s = auth.ToString();
+    return s.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
 }
 
 app.Use(async (context, next) =>
 {
-    // Allow swagger + health in dev without a key (optional)
-    if (app.Environment.IsDevelopment() &&
-        (context.Request.Path.StartsWithSegments("/swagger") ||
-         context.Request.Path.StartsWithSegments("/favicon.ico") ||
-         context.Request.Path.StartsWithSegments("/api/health")))
+    var path = context.Request.Path;
+
+    // Always allow these without any API key
+    if (path.StartsWithSegments("/api/health") ||
+        path.StartsWithSegments("/swagger") ||
+        path.StartsWithSegments("/favicon.ico") ||
+        // Auth endpoints must be reachable WITHOUT a key (login/refresh/etc.)
+        path.StartsWithSegments("/api/auth"))
     {
         await next();
         return;
     }
 
-    // If no keys configured (dev), allow all (optional)
-    if (string.IsNullOrWhiteSpace(portalApiKey) && string.IsNullOrWhiteSpace(adminApiKey))
+    // If the request is JWT-authenticated (desktop after login, portal on-behalf-of-user),
+    // then bypass API key checks entirely.
+    if (HasBearerToken(context))
     {
         await next();
         return;
     }
 
+    // If no portal key configured (typical dev), don't enforce API key at all
+    if (string.IsNullOrWhiteSpace(portalApiKey))
+    {
+        await next();
+        return;
+    }
+
+    // Otherwise require the portal API key for server-to-server calls
     if (!context.Request.Headers.TryGetValue("X-Api-Key", out var provided))
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -198,30 +218,20 @@ app.Use(async (context, next) =>
     }
 
     var key = provided.ToString();
-
-    if (!string.IsNullOrWhiteSpace(adminApiKey) &&
-        string.Equals(key, adminApiKey, StringComparison.Ordinal))
+    if (!string.Equals(key, portalApiKey, StringComparison.Ordinal))
     {
-        context.Items["ApiKeyKind"] = "Admin";
-        await next();
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        await context.Response.WriteAsync("Invalid API key.");
         return;
     }
 
-    if (!string.IsNullOrWhiteSpace(portalApiKey) &&
-        string.Equals(key, portalApiKey, StringComparison.Ordinal))
-    {
-        context.Items["ApiKeyKind"] = "Portal";
-        await next();
-        return;
-    }
-
-    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-    await context.Response.WriteAsync("Invalid API key.");
+    context.Items["ApiKeyKind"] = "Portal";
+    await next();
 });
 // --- end API Key auth ---
 
 app.UseAuthentication();
-app.UseAuthorization(); // don’t expose the app publicly without proper auth in place.
+app.UseAuthorization();
 
 app.MapControllers();
 app.Run();

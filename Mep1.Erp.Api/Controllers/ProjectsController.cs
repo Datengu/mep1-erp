@@ -31,15 +31,6 @@ public class ProjectsController : ControllerBase
         _cache = cache;
     }
 
-    private bool IsAdminKey()
-    => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
-
-    private ActionResult? RequireAdminKey()
-    {
-        if (IsAdminKey()) return null;
-        return Unauthorized("Admin API key required.");
-    }
-
     private (int WorkerId, string Role, string Source) GetActorForAudit()
     {
         var id = ClaimsActor.GetWorkerId(User);
@@ -56,9 +47,6 @@ public class ProjectsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var projects = await _db.Projects
             .AsNoTracking()
             .OrderBy(p => p.JobNameOrNumber)
@@ -80,9 +68,6 @@ public class ProjectsController : ControllerBase
     [HttpGet("summary")]
     public ActionResult<List<ProjectSummaryDto>> GetSummary()
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         const string cacheKey = "projects.summary.v1";
         if (_cache.TryGetValue(cacheKey, out List<ProjectSummaryDto>? cached) && cached != null)
             return Ok(cached);
@@ -124,9 +109,6 @@ public class ProjectsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CreateProjectResponseDto>> Create([FromBody] CreateProjectRequestDto dto)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var job = (dto.JobNameOrNumber ?? "").Trim();
         if (string.IsNullOrWhiteSpace(job))
             return BadRequest("Job name / number is required.");
@@ -205,9 +187,6 @@ public class ProjectsController : ControllerBase
     [HttpGet("{jobKey}/drilldown")]
     public async Task<ActionResult<ProjectDrilldownDto>> GetDrilldown([FromRoute] string jobKey, [FromQuery] int recentTake = 25)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var project = await _db.Projects
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
@@ -266,9 +245,6 @@ public class ProjectsController : ControllerBase
     [HttpPost("{jobKey}/supplier-costs")]
     public async Task<ActionResult<SupplierCostRowDto>> AddSupplierCost([FromRoute] string jobKey, [FromBody] UpsertSupplierCostDto dto)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
         if (project == null) return NotFound();
 
@@ -307,9 +283,6 @@ public class ProjectsController : ControllerBase
     [HttpPut("{jobKey}/supplier-costs/{id:int}")]
     public async Task<IActionResult> UpdateSupplierCost([FromRoute] string jobKey, [FromRoute] int id, [FromBody] UpsertSupplierCostDto dto)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
         if (project == null) return NotFound();
 
@@ -346,9 +319,6 @@ public class ProjectsController : ControllerBase
     [HttpDelete("{jobKey}/supplier-costs/{id:int}")]
     public async Task<IActionResult> DeleteSupplierCost([FromRoute] string jobKey, [FromRoute] int id)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
         if (project == null) return NotFound();
 
@@ -378,9 +348,6 @@ public class ProjectsController : ControllerBase
     [HttpPatch("{jobKey}/active")]
     public async Task<IActionResult> SetProjectActive([FromRoute] string jobKey, [FromBody] SetProjectActiveDto dto)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.JobNameOrNumber == jobKey);
 
         if (project == null) 
@@ -414,9 +381,6 @@ public class ProjectsController : ControllerBase
     [HttpGet("picklist/invoices")]
     public async Task<ActionResult<List<InvoiceProjectPicklistItemDto>>> GetInvoicePicklist()
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         var rows = await _db.Projects
             .AsNoTracking()
             .Where(p => p.IsRealProject && p.CompanyId != null)
@@ -600,9 +564,6 @@ public class ProjectsController : ControllerBase
     [FromRoute] string jobKey,
     [FromQuery] bool includeInactive = false)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         jobKey = (jobKey ?? "").Trim();
         if (jobKey.Length == 0) return BadRequest("JobKey is required.");
 
@@ -642,9 +603,6 @@ public class ProjectsController : ControllerBase
         [FromRoute] string jobKey,
         [FromBody] CreateProjectCcfRefDto dto)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         jobKey = (jobKey ?? "").Trim();
         if (jobKey.Length == 0) return BadRequest("JobKey is required.");
 
@@ -724,9 +682,6 @@ public class ProjectsController : ControllerBase
         [FromRoute] int id,
         [FromBody] bool isActive)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         jobKey = (jobKey ?? "").Trim();
         if (jobKey.Length == 0) return BadRequest("JobKey is required.");
 
@@ -766,9 +721,6 @@ public class ProjectsController : ControllerBase
     [FromRoute] int id,
     [FromBody] UpdateProjectCcfRefDto dto)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         jobKey = (jobKey ?? "").Trim();
         if (jobKey.Length == 0) return BadRequest("JobKey is required.");
 
@@ -813,8 +765,6 @@ public class ProjectsController : ControllerBase
     [FromRoute] int id,
     [FromBody] bool isDeleted)
     {
-        RequireAdminKey();
-
         var project = await _db.Projects.FirstOrDefaultAsync(x => x.JobNameOrNumber == jobKey);
         if (project == null) return NotFound($"Project not found: {jobKey}");
 
@@ -880,9 +830,6 @@ public class ProjectsController : ControllerBase
     [HttpGet("{jobKey}/edit")]
     public async Task<ActionResult<ProjectEditDto>> GetForEdit(string jobKey)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         jobKey = (jobKey ?? "").Trim();
         if (string.IsNullOrWhiteSpace(jobKey))
             return BadRequest("Job key is required.");
@@ -908,9 +855,6 @@ public class ProjectsController : ControllerBase
     [HttpPut("{jobKey}")]
     public async Task<IActionResult> Update(string jobKey, [FromBody] UpdateProjectRequestDto dto)
     {
-        var guard = RequireAdminKey();
-        if (guard != null) return guard;
-
         jobKey = (jobKey ?? "").Trim();
         if (string.IsNullOrWhiteSpace(jobKey))
             return BadRequest("Job key is required.");

@@ -24,15 +24,6 @@ namespace Mep1.Erp.Api.Controllers
             _audit = audit;
         }
 
-        private bool IsAdminKey()
-            => string.Equals(HttpContext.Items["ApiKeyKind"] as string, "Admin", StringComparison.Ordinal);
-
-        private ActionResult? RequireAdminKey()
-        {
-            if (IsAdminKey()) return null;
-            return Unauthorized("Admin API key required.");
-        }
-
         private (int WorkerId, string Role, string Source) GetActorForAudit()
         {
             var id = ClaimsActor.GetWorkerId(User);
@@ -52,9 +43,6 @@ namespace Mep1.Erp.Api.Controllers
         [HttpGet]
         public ActionResult<List<InvoiceListEntryDto>> GetInvoices()
         {
-            var guard = RequireAdminKey();
-            if (guard != null) return guard;
-
             var rows = Reporting.GetInvoiceList(_db);
 
             var dto = rows.Select(r => new InvoiceListEntryDto
@@ -106,9 +94,6 @@ namespace Mep1.Erp.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<CreateInvoiceResponseDto>> Create([FromBody] CreateInvoiceRequestDto dto)
         {
-            var guard = RequireAdminKey();
-            if (guard != null) return guard;
-
             var invoiceNo = NormalizeInvoiceNumber(dto.InvoiceNumber);
             if (string.IsNullOrWhiteSpace(invoiceNo))
                 return BadRequest("Invoice number is required.");
@@ -205,9 +190,6 @@ namespace Mep1.Erp.Api.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<InvoiceDetailsDto>> GetById(int id)
         {
-            var guard = RequireAdminKey();
-            if (guard != null) return guard;
-
             var invoice = await _db.Invoices
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == id);
@@ -275,9 +257,6 @@ namespace Mep1.Erp.Api.Controllers
         [HttpPut("{id:int}")]
         public async Task<ActionResult<UpdateInvoiceResponseDto>> Update(int id, [FromBody] UpdateInvoiceRequestDto dto)
         {
-            var guard = RequireAdminKey();
-            if (guard != null) return guard;
-
             var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.Id == id);
             if (invoice == null)
                 return NotFound($"Invoice {id} not found.");

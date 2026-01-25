@@ -27,6 +27,7 @@ builder.Services.AddHttpClient("ErpAuth", (sp, http) =>
 
     http.BaseAddress = new Uri(cfg.BaseUrl);
     http.DefaultRequestHeaders.Add("X-Api-Key", cfg.ApiKey);
+    http.DefaultRequestHeaders.Add("X-Client-App", "Portal");
 });
 
 builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
@@ -38,6 +39,7 @@ builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
     // IMPORTANT: must match API middleware header name exactly
     // API checks "X-Api-Key"
     http.DefaultRequestHeaders.Add("X-Api-Key", cfg.ApiKey);
+    http.DefaultRequestHeaders.Add("X-Client-App", "Portal");
 })
 .AddHttpMessageHandler<RefreshOnUnauthorizedHandler>()
 .AddHttpMessageHandler<BearerTokenHandler>();
