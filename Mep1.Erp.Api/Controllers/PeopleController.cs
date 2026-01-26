@@ -53,6 +53,17 @@ public sealed class PeopleController : ControllerBase
     private static bool TryParseRole(string role, out TimesheetUserRole parsed)
         => Enum.TryParse<TimesheetUserRole>(role, ignoreCase: true, out parsed);
 
+    private static DateTime AsUtcDate(DateTime d)
+    {
+        // dto.Date.Date produces Kind=Unspecified; Postgres timestamptz requires UTC
+        return DateTime.SpecifyKind(d.Date, DateTimeKind.Utc);
+    }
+
+    private static DateTime? AsUtcDateOrNull(DateTime? d)
+    {
+        return d.HasValue ? AsUtcDate(d.Value) : (DateTime?)null;
+    }
+
     // ----------------------------
     // Portal Access (admin only)
     // ----------------------------
@@ -433,7 +444,7 @@ public sealed class PeopleController : ControllerBase
             {
                 WorkerId = worker.Id,
                 RatePerHour = rate,
-                ValidFrom = DateTime.UtcNow.Date,
+                ValidFrom = AsUtcDate(DateTime.UtcNow),
                 ValidTo = null
             });
 
@@ -578,7 +589,7 @@ public sealed class PeopleController : ControllerBase
             .Where(r => r.WorkerId == workerId && r.ValidTo == null)
             .FirstAsync();
 
-        var effectiveFrom = req.EffectiveFrom.Date;
+        var effectiveFrom = AsUtcDate(req.EffectiveFrom);
 
         if (effectiveFrom < current.ValidFrom.Date)
             return BadRequest($"EffectiveFrom must be on/after current rate ValidFrom ({current.ValidFrom:yyyy-MM-dd}).");
@@ -649,8 +660,8 @@ public sealed class PeopleController : ControllerBase
         if (req.RatePerHour < 0m)
             return BadRequest("Rate cannot be negative.");
 
-        var from = req.ValidFrom.Date;
-        var to = req.ValidTo.Date;
+        var from = AsUtcDate(req.ValidFrom);
+        var to = AsUtcDate(req.ValidTo);
 
         if (to <= from)
             return BadRequest("ValidTo must be after ValidFrom (ValidTo is exclusive).");
@@ -728,8 +739,10 @@ public sealed class PeopleController : ControllerBase
         if (rate.ValidTo == null)
             return Conflict("Cannot delete the current rate. Use 'Schedule new rate' to correct mistakes explicitly.");
 
-        var start = rate.ValidFrom.Date;
-        var endExclusive = EndExclusive(rate.ValidTo);
+        var start = AsUtcDate(rate.ValidFrom);
+        var endExclusive = rate.ValidTo.HasValue
+            ? AsUtcDate(rate.ValidTo.Value)
+            : DateTime.SpecifyKind(DateTime.MaxValue.Date, DateTimeKind.Utc);
 
         var hasEntries = await _db.TimesheetEntries
             .AsNoTracking()
