@@ -174,6 +174,18 @@ namespace Mep1.Erp.Api.Controllers
             _db.Invoices.Add(entity);
             await _db.SaveChangesAsync();
 
+            var a = GetActorForAudit();
+            await _audit.LogAsync(
+                actorWorkerId: a.WorkerId,
+                subjectWorkerId: a.WorkerId,
+                actorRole: a.Role,
+                actorSource: a.Source,
+                action: "Invoice.Create",
+                entityType: "Invoice",
+                entityId: entity.Id.ToString(),
+                summary: $"{entity.InvoiceNumber} {entity.NetAmount:0.00}net {entity.Status}"
+            );
+
             var resp = new CreateInvoiceResponseDto
             {
                 Id = entity.Id,
@@ -320,6 +332,18 @@ namespace Mep1.Erp.Api.Controllers
             invoice.Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim();
 
             await _db.SaveChangesAsync();
+
+            var a = GetActorForAudit();
+            await _audit.LogAsync(
+                actorWorkerId: a.WorkerId,
+                subjectWorkerId: a.WorkerId,
+                actorRole: a.Role,
+                actorSource: a.Source,
+                action: "Invoice.Update",
+                entityType: "Invoice",
+                entityId: invoice.Id.ToString(),
+                summary: $"{invoice.InvoiceNumber} {invoice.NetAmount:0.00}net {invoice.Status}"
+            );
 
             var resp = new UpdateInvoiceResponseDto
             {
