@@ -208,7 +208,7 @@ public class ProjectsController : ControllerBase
         var baseCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
 
         // Postgres timestamptz requires UTC DateTime parameters (Kind=Utc).
-        var today = DateTime.UtcNow.Date;
+        var today = AsUtcDate(DateTime.UtcNow);
         var monthStart = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var labourThisMonth = Reporting.GetProjectLabourByPerson(_db, project.Id, monthStart, today)
@@ -747,9 +747,9 @@ public class ProjectsController : ControllerBase
         // Apply updates
         row.EstimatedValue = dto.EstimatedValue;
         row.QuotedValue = dto.QuotedValue;
-        row.QuotedDateUtc = dto.QuotedDateUtc;
+        row.QuotedDateUtc = AsUtcDateOrNull(dto.QuotedDateUtc);
         row.AgreedValue = dto.AgreedValue;
-        row.AgreedDateUtc = dto.AgreedDateUtc;
+        row.AgreedDateUtc = AsUtcDateOrNull(dto.AgreedDateUtc);
         row.ActualValue = dto.ActualValue;
         row.Status = dto.Status ?? "";
         row.Notes = dto.Notes;
