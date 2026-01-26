@@ -321,7 +321,7 @@ public sealed class PeopleController : ControllerBase
     public ActionResult<PersonDrilldownDto> GetPersonDrilldown(int workerId)
     {
         // Postgres timestamptz requires UTC DateTime parameters (Kind=Utc).
-        var today = DateTime.UtcNow.Date;
+        var today = AsUtcDate(DateTime.UtcNow);
         var monthStart = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var rates = _db.WorkerRates
@@ -461,18 +461,20 @@ public sealed class PeopleController : ControllerBase
     }
 
     private static DateTime EndExclusive(DateTime? to)
-        => (to ?? DateTime.MaxValue).Date;
+    {
+        var d = (to ?? DateTime.MaxValue).Date;
+        return DateTime.SpecifyKind(d, DateTimeKind.Utc);
+    }
 
     // Half-open ranges: [from, to) where to is exclusive (null = infinity)
     private static bool RangesOverlap(DateTime aFrom, DateTime? aTo, DateTime bFrom, DateTime? bTo)
     {
-        var aStart = aFrom.Date;
-        var bStart = bFrom.Date;
+        var aStart = AsUtcDate(aFrom);
+        var bStart = AsUtcDate(bFrom);
 
         var aEnd = EndExclusive(aTo);
         var bEnd = EndExclusive(bTo);
 
-        // overlap iff starts before the other ends
         return aStart < bEnd && bStart < aEnd;
     }
 
@@ -485,7 +487,7 @@ public sealed class PeopleController : ControllerBase
 
         foreach (var r in rates)
         {
-            if (RangesOverlap(newFrom, newTo, r.ValidFrom.Date, r.ValidTo?.Date))
+            if (RangesOverlap(newFrom, newTo, AsUtcDate(r.ValidFrom), AsUtcDateOrNull(r.ValidTo)))
                 return $"Rate range overlaps an existing rate (Id={r.Id}, {r.ValidFrom:yyyy-MM-dd} to {(r.ValidTo.HasValue ? r.ValidTo.Value.ToString("yyyy-MM-dd") : "Current")}).";
         }
 
