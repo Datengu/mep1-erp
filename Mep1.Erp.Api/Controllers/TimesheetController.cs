@@ -81,7 +81,6 @@ public sealed class TimesheetController : ControllerBase
     }
 
     // Active projects for dropdown (real projects + internal jobs)
-    [AllowAnonymous]
     [HttpGet("projects")]
     public async Task<ActionResult<List<TimesheetProjectOptionDto>>> GetActiveProjects()
     {
@@ -103,7 +102,6 @@ public sealed class TimesheetController : ControllerBase
         return Ok(items);
     }
 
-    [AllowAnonymous]
     [HttpGet("codes")]
     public ActionResult<List<TimesheetCodeDto>> GetTimesheetCodes()
     {
