@@ -41,6 +41,12 @@ public sealed class TimesheetController : ControllerBase
         }
     }
 
+    private static DateTime AsUtcDate(DateTime d)
+    {
+        // dto.Date.Date produces Kind=Unspecified; Postgres timestamptz requires UTC
+        return DateTime.SpecifyKind(d.Date, DateTimeKind.Utc);
+    }
+
     private bool TryResolveActorAndSubject(
         int? subjectWorkerId,
         out int actorWorkerId,
@@ -210,7 +216,7 @@ public sealed class TimesheetController : ControllerBase
             WorkerId = subjectId,
             ProjectId = project.Id,
             EntryId = nextEntryId + 1,
-            Date = dto.Date.Date,
+            Date = AsUtcDate(dto.Date),
             Hours = dto.Hours,
             TaskDescription = dto.TaskDescription ?? "",
             Code = dto.Code,
@@ -374,7 +380,7 @@ public sealed class TimesheetController : ControllerBase
             return err!;
         }
 
-        if (dto.Date.Date > DateTime.Today)
+        if (AsUtcDate(dto.Date) > AsUtcDate(DateTime.UtcNow))
             return BadRequest("Future dates are not allowed.");
 
         // Ensure 0.5 increments (robust)
@@ -446,7 +452,7 @@ public sealed class TimesheetController : ControllerBase
             hours = 0m;
         }
 
-        entry.Date = dto.Date.Date;
+        entry.Date = AsUtcDate(dto.Date);
         entry.Hours = hours;
         entry.Code = code;
         entry.ProjectId = project.Id;
