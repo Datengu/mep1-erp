@@ -44,6 +44,17 @@ public class ProjectsController : ControllerBase
         return string.Equals(kind, "Admin", StringComparison.Ordinal) ? "Desktop" : "Portal";
     }
 
+    private static DateTime AsUtcDate(DateTime d)
+    {
+        // dto.Date.Date produces Kind=Unspecified; Postgres timestamptz requires UTC
+        return DateTime.SpecifyKind(d.Date, DateTimeKind.Utc);
+    }
+
+    private static DateTime? AsUtcDateOrNull(DateTime? d)
+    {
+        return d.HasValue ? AsUtcDate(d.Value) : (DateTime?)null;
+    }
+
     [HttpGet]
     public async Task<IActionResult> Get()
     {
@@ -258,7 +269,7 @@ public class ProjectsController : ControllerBase
         {
             ProjectId = project.Id,
             SupplierId = dto.SupplierId,
-            Date = dto.Date?.Date,
+            Date = AsUtcDateOrNull(dto.Date),
             Amount = dto.Amount,
             Note = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim()
         };
@@ -296,7 +307,7 @@ public class ProjectsController : ControllerBase
         if (!supplierExists) return BadRequest("Supplier not found.");
 
         entity.SupplierId = dto.SupplierId;
-        entity.Date = dto.Date?.Date;
+        entity.Date = AsUtcDateOrNull(dto.Date);
         entity.Amount = dto.Amount;
         entity.Note = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim();
 
