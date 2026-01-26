@@ -91,6 +91,18 @@ namespace Mep1.Erp.Api.Controllers
             return n.ToString("D4") + suffix;
         }
 
+        private static DateTime AsUtcDate(DateTime d)
+        {
+            // dto.InvoiceDate.Date etc produces Kind=Unspecified; Postgres timestamptz requires UTC
+            return DateTime.SpecifyKind(d.Date, DateTimeKind.Utc);
+        }
+
+        private static DateTime? AsUtcDate(DateTime? d)
+        {
+            if (!d.HasValue) return null;
+            return DateTime.SpecifyKind(d.Value.Date, DateTimeKind.Utc);
+        }
+
         [HttpPost]
         public async Task<ActionResult<CreateInvoiceResponseDto>> Create([FromBody] CreateInvoiceRequestDto dto)
         {
@@ -123,8 +135,8 @@ namespace Mep1.Erp.Api.Controllers
             if (vatRate < 0m || vatRate > 1m)
                 return BadRequest("VAT rate must be between 0 and 1 (e.g. 0.2 for 20%).");
 
-            var invoiceDate = dto.InvoiceDate.Date;
-            var dueDate = dto.DueDate.Date;
+            var invoiceDate = AsUtcDate(dto.InvoiceDate);
+            var dueDate = AsUtcDate(dto.DueDate);
 
             var vatAmount = Math.Round(dto.NetAmount * vatRate, 2, MidpointRounding.AwayFromZero);
             var grossAmount = dto.NetAmount + vatAmount;
@@ -287,8 +299,8 @@ namespace Mep1.Erp.Api.Controllers
                 invoice.ClientName = project.CompanyEntity!.Name;
             }
 
-            invoice.InvoiceDate = dto.InvoiceDate.Date;
-            invoice.DueDate = dto.DueDate?.Date;
+            invoice.InvoiceDate = AsUtcDate(dto.InvoiceDate);
+            invoice.DueDate = AsUtcDate(dto.DueDate);
 
             invoice.NetAmount = dto.NetAmount;
             invoice.VatRate = dto.VatRate;
@@ -302,7 +314,7 @@ namespace Mep1.Erp.Api.Controllers
             invoice.IsPaid = string.Equals(status, "Paid", StringComparison.OrdinalIgnoreCase);
 
             invoice.PaymentAmount = dto.PaymentAmount;
-            invoice.PaidDate = dto.PaidDate?.Date;
+            invoice.PaidDate = AsUtcDate(dto.PaidDate);
 
             invoice.FilePath = string.IsNullOrWhiteSpace(dto.FilePath) ? null : dto.FilePath.Trim();
             invoice.Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim();
