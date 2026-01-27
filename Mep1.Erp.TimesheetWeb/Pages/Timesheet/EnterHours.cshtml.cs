@@ -38,6 +38,19 @@ public sealed class EnterHoursModel : PageModel
 
     public List<SelectListItem> LevelSelectItems { get; private set; } = new();
 
+    public static readonly string[] AreaOptions =
+    [
+        "Cores",
+        "Office",
+        "Plant rooms",
+        "Switch rooms",
+        "Comms Rooms",
+        "Residential",
+        "Retail",
+        "Kitchens",
+        "Pantries",
+    ];
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
@@ -59,8 +72,7 @@ public sealed class EnterHoursModel : PageModel
 
         public string? WorkType { get; set; }
         public List<string> Levels { get; set; } = new(); // multi-select
-        public string? AreasRaw { get; set; }             // comma-separated input
-
+        public List<string> Areas { get; set; } = new();  // multi-select
     }
 
     public bool ShowWorkDetails { get; private set; }
@@ -197,12 +209,15 @@ public sealed class EnterHoursModel : PageModel
 
             if (Input.Levels.Any(l => !LevelOptions.Contains(l)))
                 ModelState.AddModelError("Input.Levels", "Please select valid level(s).");
+
+            if (Input.Areas.Any(a => !AreaOptions.Contains(a)))
+                ModelState.AddModelError("Input.Areas", "Please select valid area(s).");
         }
         else
         {
             Input.WorkType = null;
             Input.Levels.Clear();
-            Input.AreasRaw = null;
+            Input.Areas.Clear();
         }
 
         if (!ModelState.IsValid)
@@ -217,18 +232,6 @@ public sealed class EnterHoursModel : PageModel
             ? null
             : Input.TaskDescription.Trim();
 
-        static List<string> ParseTags(string? raw)
-        {
-            if (string.IsNullOrWhiteSpace(raw)) return new();
-            return raw.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                      .Select(x => x.Trim())
-                      .Where(x => x.Length > 0)
-                      .Distinct(StringComparer.OrdinalIgnoreCase)
-                      .ToList();
-        }
-
-        var areas = ParseTags(Input.AreasRaw);
-
         // Your DTO constructor is: (int WorkerId, string JobKey, DateTime Date, decimal Hours, string Code, string? TaskDescription, string? CcfRef)
         var dto = new CreateTimesheetEntryDto(
             WorkerId: workerId,
@@ -240,7 +243,7 @@ public sealed class EnterHoursModel : PageModel
             TaskDescription: cleanedTask,
             WorkType: Input.WorkType,
             Levels: Input.Levels,
-            Areas: areas
+            Areas: Input.Areas
         );
 
         await _api.CreateTimesheetEntryAsync(dto);
