@@ -2999,9 +2999,15 @@
 
                                             <!-- Areas -->
                                             <StackPanel Grid.Row="1" Orientation="Vertical">
-                                                <TextBlock Text="Areas (comma-separated)" Margin="0,0,0,4"/>
-                                                <TextBox Text="{Binding TimesheetAreasRawText, UpdateSourceTrigger=PropertyChanged}"
-                                                         ToolTip="Comma-separated areas, e.g. Core, Plant Room, Roof"/>
+                                                <TextBlock Text="Areas" Margin="0,0,0,4"/>
+                                                <ListBox x:Name="TimesheetAreasListBox"
+                                                         ItemsSource="{Binding TimesheetAreaOptions}"
+                                                         SelectionMode="Multiple"
+                                                         Height="90"
+                                                         SelectionChanged="TimesheetAreas_SelectionChanged"/>
+                                                <TextBlock Text="Select one or more"
+                                                           Opacity="0.65"
+                                                           Margin="0,4,0,0"/>
                                             </StackPanel>
                                         </Grid>
                                     </Grid>

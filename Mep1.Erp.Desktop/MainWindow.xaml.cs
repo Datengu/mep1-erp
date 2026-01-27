@@ -1226,11 +1226,24 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _timesheetSelectedLevels, value, nameof(TimesheetSelectedLevels));
         }
 
-        private string _timesheetAreasRawText = "";
-        public string TimesheetAreasRawText
+        public List<string> TimesheetAreaOptions { get; } = new()
         {
-            get => _timesheetAreasRawText;
-            set => SetField(ref _timesheetAreasRawText, value, nameof(TimesheetAreasRawText));
+            "Cores",
+            "Office",
+            "Plant rooms",
+            "Switch rooms",
+            "Comms Rooms",
+            "Residential",
+            "Retail",
+            "Kitchens",
+            "Pantries",
+        };
+
+        private List<string> _timesheetSelectedAreas = new();
+        public List<string> TimesheetSelectedAreas
+        {
+            get => _timesheetSelectedAreas;
+            set => SetField(ref _timesheetSelectedAreas, value, nameof(TimesheetSelectedAreas));
         }
 
         public bool IsTimesheetWorkDetailsVisible => IsSelectedTimesheetJobProjectCategory();
@@ -4324,12 +4337,15 @@ namespace Mep1.Erp.Desktop
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
-                validatedAreas = ParseAreas(TimesheetAreasRawText);
+                validatedAreas = (TimesheetSelectedAreas ?? new List<string>())
+                    .Where(a => TimesheetAreaOptions.Contains(a, StringComparer.OrdinalIgnoreCase))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
             }
             else
             {
                 TimesheetSelectedLevels.Clear();
-                TimesheetAreasRawText = "";
+                TimesheetSelectedAreas.Clear();
             }
 
             string? workType = null;
@@ -4603,17 +4619,19 @@ namespace Mep1.Erp.Desktop
             TimesheetSelectedLevels = items;
         }
 
-        private static List<string> ParseAreas(string? raw)
+        private void TimesheetAreas_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(raw))
-                return new List<string>();
+            if (sender is not System.Windows.Controls.ListBox lb)
+                return;
 
-            return raw
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(a => a.Trim())
-                .Where(a => a.Length > 0)
+            var items = lb.SelectedItems
+                .OfType<string>()
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            TimesheetSelectedAreas = items;
         }
 
         private async void EditSelectedTimesheetEntry_Click(object sender, RoutedEventArgs e)
@@ -4649,7 +4667,7 @@ namespace Mep1.Erp.Desktop
 
                 // Work details
                 TimesheetSelectedLevels = dto.Levels ?? new List<string>();
-                TimesheetAreasRawText = dto.Areas != null ? string.Join(", ", dto.Areas) : "";
+                TimesheetSelectedAreas = dto.Areas ?? new List<string>();
 
                 // Switch user to the Add tab (View=0, Add=1, Edit=2)
                 SelectTimesheetSubTab(1); // go to Add (edit mode)
@@ -4713,11 +4731,7 @@ namespace Mep1.Erp.Desktop
                 // Build Levels/Areas from your current UI fields
                 var levels = TimesheetSelectedLevels ?? new List<string>();
 
-                var areas = (TimesheetAreasRawText ?? "")
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(a => a.Trim())
-                    .Where(a => !string.IsNullOrWhiteSpace(a))
-                    .ToList();
+                var areas = (TimesheetSelectedAreas ?? new List<string>());
 
                 // Parse hours string (your existing validation logic can stay; this is just a safe parse)
                 if (!decimal.TryParse(
@@ -4797,11 +4811,12 @@ namespace Mep1.Erp.Desktop
             TimesheetTaskDescriptionText = "";
 
             TimesheetWorkTypeText = "";
-            TimesheetAreasRawText = "";
             TimesheetSelectedLevels = new List<string>();
+            TimesheetSelectedAreas = new List<string>();
 
             // Clear UI selection too (because SelectedItems isn't bound)
             TimesheetLevelsListBox?.UnselectAll();
+            TimesheetAreasListBox?.UnselectAll();
 
             ApplyTimesheetAllRules();
         }
