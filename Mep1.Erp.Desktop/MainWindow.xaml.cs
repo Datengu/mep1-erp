@@ -1678,6 +1678,8 @@ namespace Mep1.Erp.Desktop
             }
         }
 
+        private bool _suppressTimesheetWorkDetailsSelectionChanged;
+
         // ---------------------------------------------
         // Invoice filtering
         // ---------------------------------------------
@@ -4606,6 +4608,9 @@ namespace Mep1.Erp.Desktop
 
         private void TimesheetLevels_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_suppressTimesheetWorkDetailsSelectionChanged)
+                return;
+
             if (sender is not System.Windows.Controls.ListBox lb)
                 return;
 
@@ -4621,6 +4626,9 @@ namespace Mep1.Erp.Desktop
 
         private void TimesheetAreas_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_suppressTimesheetWorkDetailsSelectionChanged)
+                return;
+
             if (sender is not System.Windows.Controls.ListBox lb)
                 return;
 
@@ -4632,6 +4640,44 @@ namespace Mep1.Erp.Desktop
                 .ToList();
 
             TimesheetSelectedAreas = items;
+        }
+
+
+        private void ApplyTimesheetWorkDetailsSelectionToUi()
+        {
+            // Ensure listboxes exist (they should, but guard anyway)
+            if (TimesheetLevelsListBox == null || TimesheetAreasListBox == null)
+                return;
+
+            _suppressTimesheetWorkDetailsSelectionChanged = true;
+            try
+            {
+                ApplyMultiSelectListBoxSelection(TimesheetLevelsListBox, TimesheetSelectedLevels);
+                ApplyMultiSelectListBoxSelection(TimesheetAreasListBox, TimesheetSelectedAreas);
+            }
+            finally
+            {
+                _suppressTimesheetWorkDetailsSelectionChanged = false;
+            }
+        }
+
+        private static void ApplyMultiSelectListBoxSelection(
+            System.Windows.Controls.ListBox lb,
+            IEnumerable<string>? selectedValues)
+        {
+            var set = new HashSet<string>(
+                (selectedValues ?? Enumerable.Empty<string>())
+                    .Select(x => (x ?? "").Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x)),
+                StringComparer.OrdinalIgnoreCase);
+
+            lb.SelectedItems.Clear();
+
+            foreach (var item in lb.Items)
+            {
+                if (item is string s && set.Contains(s))
+                    lb.SelectedItems.Add(item);
+            }
         }
 
         private async void EditSelectedTimesheetEntry_Click(object sender, RoutedEventArgs e)
@@ -4671,6 +4717,10 @@ namespace Mep1.Erp.Desktop
 
                 // Switch user to the Add tab (View=0, Add=1, Edit=2)
                 SelectTimesheetSubTab(1); // go to Add (edit mode)
+
+                // Now push the saved selections into the multi-select listboxes
+                _ = Dispatcher.BeginInvoke(new Action(ApplyTimesheetWorkDetailsSelectionToUi),
+                    System.Windows.Threading.DispatcherPriority.Loaded);
 
                 TimesheetStatusText = $"Editing entry #{dto.Id}. Make changes and click Save Changes.";
             }
