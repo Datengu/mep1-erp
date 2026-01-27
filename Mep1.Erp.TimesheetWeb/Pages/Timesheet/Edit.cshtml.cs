@@ -41,6 +41,19 @@ public sealed class EditModel : PageModel
 
     public List<SelectListItem> LevelSelectItems { get; private set; } = new();
 
+    public static readonly string[] AreaOptions =
+    [
+        "Cores",
+        "Office",
+        "Plant rooms",
+        "Switch rooms",
+        "Comms Rooms",
+        "Residential",
+        "Retail",
+        "Kitchens",
+        "Pantries",
+    ];
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
@@ -54,7 +67,7 @@ public sealed class EditModel : PageModel
         public string? TaskDescription { get; set; }
         public string? WorkType { get; set; }
         public List<string> Levels { get; set; } = new(); // multi-select
-        public string? AreasRaw { get; set; }             // comma-separated input
+        public List<string> Areas { get; set; } = new();  // multi-select
     }
 
     public bool ShowWorkDetails { get; private set; }
@@ -91,9 +104,7 @@ public sealed class EditModel : PageModel
 
             WorkType = string.IsNullOrWhiteSpace(entry.WorkType) ? null : entry.WorkType,
             Levels = entry.Levels ?? new List<string>(),
-            AreasRaw = (entry.Areas is null || entry.Areas.Count == 0)
-                ? null
-                : string.Join(", ", entry.Areas)
+            Areas = entry.Areas ?? new List<string>()
         };
 
         var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
@@ -217,7 +228,7 @@ public sealed class EditModel : PageModel
         {
             Input.WorkType = null;
             Input.Levels.Clear();
-            Input.AreasRaw = null;
+            Input.Areas.Clear();
         }
 
         if (!ModelState.IsValid)
@@ -226,18 +237,6 @@ public sealed class EditModel : PageModel
         // ---- Build DTO & POST to API ----
         var cleanedCcf = string.IsNullOrWhiteSpace(Input.CcfRef) ? null : Input.CcfRef.Trim();
         var cleanedTask = string.IsNullOrWhiteSpace(Input.TaskDescription) ? null : Input.TaskDescription.Trim();
-
-        static List<string> ParseTags(string? raw)
-        {
-            if (string.IsNullOrWhiteSpace(raw)) return new();
-            return raw.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                      .Select(x => x.Trim())
-                      .Where(x => x.Length > 0)
-                      .Distinct(StringComparer.OrdinalIgnoreCase)
-                      .ToList();
-        }
-
-        var areas = ParseTags(Input.AreasRaw);
 
         var dto = new UpdateTimesheetEntryDto(
             WorkerId: workerId,
@@ -249,7 +248,7 @@ public sealed class EditModel : PageModel
             TaskDescription: cleanedTask,
             WorkType: Input.WorkType,
             Levels: Input.Levels,
-            Areas: areas
+            Areas: Input.Areas
         );
 
         await _api.UpdateTimesheetEntryAsync(Id, dto);

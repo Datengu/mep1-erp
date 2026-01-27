@@ -106,12 +106,26 @@
             <!-- Areas -->
             <div class="col-md-5">
                 <label class="form-label">Area(s)</label>
-                <input type="text"
-                       class="form-control"
-                       name="Input.AreasRaw"
-                       value="@Model.Input.AreasRaw"
-                       placeholder="e.g. Core, East Wing, Plantroom" />
-                <div class="form-text">Comma-separated.</div>
+                <div class="form-control level-scroll">
+                    <div class="level-grid">
+                        @foreach (var area in Mep1.Erp.TimesheetWeb.Pages.Timesheet.EditModel.AreaOptions)
+                        {
+                            var isChecked = Model.Input.Areas.Contains(area);
+                            var safe = new string(area.Where(char.IsLetterOrDigit).ToArray());
+                            var id = $"area_{safe}";
+
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="@id"
+                                       name="Input.Areas"
+                                       value="@area"
+                                       @(isChecked ? "checked" : null) />
+                                <label class="form-check-label" for="@id">@area</label>
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
 
         </div>
