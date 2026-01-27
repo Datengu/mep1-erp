@@ -1435,7 +1435,7 @@ namespace Mep1.Erp.Desktop
         }
 
         public IReadOnlyList<string> CcfStatuses { get; } =
-            new List<string> { "Draft", "Quoted", "Agreed", "Rejected", "Invoiced" };
+            new List<string> { "Draft", "Applied", "Agreed", "Rejected", "Invoiced" };
 
         private ProjectCcfRefDetailsDto? _selectedProjectCcfRef;
         public ProjectCcfRefDetailsDto? SelectedProjectCcfRef

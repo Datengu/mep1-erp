@@ -1100,7 +1100,7 @@
                                                 <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="80" IsReadOnly="True"/>
                                                 <!--<DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="80" IsReadOnly="True"/>-->
                                                 <DataGridTextColumn Header="Est." Binding="{Binding EstimatedValue, StringFormat=£{0:N2}}" Width="90" IsReadOnly="True"/>
-                                                <DataGridTextColumn Header="Quoted" Binding="{Binding QuotedValue, StringFormat=£{0:N2}}" Width="90" IsReadOnly="True"/>
+                                                <DataGridTextColumn Header="Applied" Binding="{Binding QuotedValue, StringFormat=£{0:N2}}" Width="90" IsReadOnly="True"/>
                                                 <DataGridTextColumn Header="Agreed" Binding="{Binding AgreedValue, StringFormat=£{0:N2}}" Width="90" IsReadOnly="True"/>
                                                 <DataGridTextColumn Header="Actual" Binding="{Binding ActualValue, StringFormat=£{0:N2}}" Width="90" IsReadOnly="True"/>
                                                 <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110" IsReadOnly="True"/>
@@ -1165,7 +1165,7 @@
                                                               SelectedItem="{Binding AddCcf_Status, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                 </Grid>
 
-                                                <!-- Row 1: Estimated + Quoted -->
+                                                <!-- Row 1: Estimated + Applied -->
                                                 <Grid Grid.Row="1" Margin="0,0,0,10">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
@@ -1179,12 +1179,12 @@
                                                     <TextBox Grid.Column="1" Height="28"
                                                              Text="{Binding AddCcf_EstimatedValueText, UpdateSourceTrigger=PropertyChanged}"/>
 
-                                                    <TextBlock Grid.Column="3" Text="Quoted (£)" Foreground="#FFBFBFBF" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <TextBlock Grid.Column="3" Text="Applied (£)" Foreground="#FFBFBFBF" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                                     <TextBox Grid.Column="4" Height="28"
                                                              Text="{Binding AddCcf_QuotedValueText, UpdateSourceTrigger=PropertyChanged}"/>
                                                 </Grid>
 
-                                                <!-- Row 2: Quoted Date + Agreed -->
+                                                <!-- Row 2: Applied Date + Agreed -->
                                                 <Grid Grid.Row="2" Margin="0,0,0,10">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
@@ -1194,7 +1194,7 @@
                                                         <ColumnDefinition Width="220"/>
                                                     </Grid.ColumnDefinitions>
 
-                                                    <TextBlock Grid.Column="0" Text="Quoted Date (optional)" Foreground="#FFBFBFBF" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <TextBlock Grid.Column="0" Text="Applied Date (optional)" Foreground="#FFBFBFBF" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                                     <DatePicker Grid.Column="1" Height="28"
                                                                 SelectedDate="{Binding AddCcf_QuotedDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
@@ -1314,7 +1314,7 @@
                                                               SelectedItem="{Binding EditCcf_Status, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                 </Grid>
 
-                                                <!-- Row 1: Estimated + Quoted -->
+                                                <!-- Row 1: Estimated + Applied -->
                                                 <Grid Grid.Row="1" Margin="0,0,0,10">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
@@ -1328,12 +1328,12 @@
                                                     <TextBox Grid.Column="1" Height="28"
                                                              Text="{Binding EditCcf_EstimatedValueText, UpdateSourceTrigger=PropertyChanged}"/>
 
-                                                    <TextBlock Grid.Column="3" Text="Quoted (£)" Foreground="#FFBFBFBF" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <TextBlock Grid.Column="3" Text="Applied (£)" Foreground="#FFBFBFBF" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                                     <TextBox Grid.Column="4" Height="28"
                                                              Text="{Binding EditCcf_QuotedValueText, UpdateSourceTrigger=PropertyChanged}"/>
                                                 </Grid>
 
-                                                <!-- Row 2: Quoted Date + Agreed -->
+                                                <!-- Row 2: Applied Date + Agreed -->
                                                 <Grid Grid.Row="2" Margin="0,0,0,10">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
@@ -1343,7 +1343,7 @@
                                                         <ColumnDefinition Width="220"/>
                                                     </Grid.ColumnDefinitions>
 
-                                                    <TextBlock Grid.Column="0" Text="Quoted Date (optional)" Foreground="#FFBFBFBF" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <TextBlock Grid.Column="0" Text="Applied Date (optional)" Foreground="#FFBFBFBF" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                                     <DatePicker Grid.Column="1" Height="28"
                                                                 SelectedDate="{Binding EditCcf_QuotedDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
