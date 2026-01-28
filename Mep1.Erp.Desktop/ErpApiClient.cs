@@ -38,6 +38,17 @@ namespace Mep1.Erp.Desktop
                     sw.Stop();
 
                     Debug.WriteLine($"[HTTP {id} ◀] {(int)resp.StatusCode} {resp.ReasonPhrase} {sw.ElapsedMilliseconds} ms  ({request.Method} {request.RequestUri})");
+
+                    // If server says "Upgrade Required", throw a friendly exception.
+                    // This will propagate through GetFromJsonAsync/PostAsJsonAsync/etc automatically.
+                    if ((int)resp.StatusCode == 426)
+                    {
+                        var body = await resp.Content.ReadAsStringAsync();
+                        throw new InvalidOperationException(
+                            "An update is required. Please close and re-open the desktop app to update.\n\n" +
+                            body);
+                    }
+
                     return resp;
                 }
                 catch (Exception ex)
@@ -63,6 +74,8 @@ namespace Mep1.Erp.Desktop
                 BaseAddress = new Uri(BaseUrl),
                 Timeout = TimeSpan.FromSeconds(30)
             };
+
+            SetClientHeaders();
 
             // Ask server for compressed responses (helps big JSON like summaries)
             _http.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
@@ -663,6 +676,78 @@ namespace Mep1.Erp.Desktop
             var url = $"api/projects/{Uri.EscapeDataString(jobKey)}";
             var resp = await _http.PutAsJsonAsync(url, dto);
             resp.EnsureSuccessStatusCode(); // expects 204 NoContent
+        }
+
+        private static string GetDesktopVersionString()
+        {
+            // Try MSIX package version (works in packaged app) WITHOUT referencing Windows.* at compile-time.
+            try
+            {
+                var pkgType = Type.GetType("Windows.ApplicationModel.Package, Windows, ContentType=WindowsRuntime");
+                if (pkgType != null)
+                {
+                    var currentProp = pkgType.GetProperty("Current");
+                    var pkg = currentProp?.GetValue(null);
+                    if (pkg != null)
+                    {
+                        var idProp = pkg.GetType().GetProperty("Id");
+                        var id = idProp?.GetValue(pkg);
+                        if (id != null)
+                        {
+                            var verProp = id.GetType().GetProperty("Version");
+                            var ver = verProp?.GetValue(id);
+                            if (ver != null)
+                            {
+                                int major = (int)ver.GetType().GetProperty("Major")!.GetValue(ver)!;
+                                int minor = (int)ver.GetType().GetProperty("Minor")!.GetValue(ver)!;
+                                int build = (int)ver.GetType().GetProperty("Build")!.GetValue(ver)!;
+                                int rev = (int)ver.GetType().GetProperty("Revision")!.GetValue(ver)!;
+                                return $"{major}.{minor}.{build}.{rev}";
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // ignore, fallback below
+            }
+
+            // Fallback: assembly version info (useful for Debug/unpackaged)
+            var asm = typeof(ErpApiClient).Assembly;
+
+            var info = asm.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false);
+            if (info.Length > 0)
+            {
+                var s = ((System.Reflection.AssemblyInformationalVersionAttribute)info[0]).InformationalVersion;
+                if (!string.IsNullOrWhiteSpace(s)) return s.Trim();
+            }
+
+            return asm.GetName().Version?.ToString() ?? "0.0.0.0";
+        }
+
+        private void SetClientHeaders()
+        {
+            const string appHeader = "X-Client-App";
+            const string verHeader = "X-Client-Version";
+
+            if (_http.DefaultRequestHeaders.Contains(appHeader))
+                _http.DefaultRequestHeaders.Remove(appHeader);
+            if (_http.DefaultRequestHeaders.Contains(verHeader))
+                _http.DefaultRequestHeaders.Remove(verHeader);
+
+            _http.DefaultRequestHeaders.Add(appHeader, "Desktop");
+            _http.DefaultRequestHeaders.Add(verHeader, GetDesktopVersionString());
+        }
+
+        private static async Task ThrowFriendlyIfUpgradeRequiredAsync(HttpResponseMessage resp)
+        {
+            if ((int)resp.StatusCode != 426) return;
+
+            var body = await resp.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(
+                "A new version of the desktop app is available. Please close and re-open the app to update.\n\n" +
+                "Details: " + body);
         }
     }
 }

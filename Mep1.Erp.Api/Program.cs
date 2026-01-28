@@ -1,5 +1,6 @@
 using Mep1.Erp.Api.Security;
 using Mep1.Erp.Api.Services;
+using Mep1.Erp.Api.Middleware;
 using Mep1.Erp.Core;
 using Mep1.Erp.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -158,6 +159,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<DesktopCompatibilityMiddleware>();
 
 // --- API Key auth (portal-only, JWT bypass) ---
 var portalApiKey = builder.Configuration["Security:PortalApiKey"];
