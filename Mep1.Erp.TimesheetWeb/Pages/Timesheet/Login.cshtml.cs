@@ -42,6 +42,13 @@ public sealed class LoginModel : PageModel
 
     public void OnGet()
     {
+        var flash = HttpContext.Session.GetString("FlashMessage");
+        if (!string.IsNullOrWhiteSpace(flash))
+        {
+            ErrorMessage = flash;
+            HttpContext.Session.Remove("FlashMessage");
+        }
+
         if (User.Identity?.IsAuthenticated == true)
         {
             if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
