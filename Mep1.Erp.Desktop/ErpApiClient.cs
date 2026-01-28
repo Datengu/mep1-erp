@@ -1,5 +1,10 @@
 ﻿using DocumentFormat.OpenXml.Wordprocessing;
 using Mep1.Erp.Core.Contracts;
+using Microsoft.Win32;
+using System.Linq;
+using System.IO;
+using System.Xml.Linq;
+using System.Reflection;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,6 +23,8 @@ namespace Mep1.Erp.Desktop
         public string BaseUrl { get; }
         public bool IsStaging => (BaseUrl ?? "").IndexOf("staging", StringComparison.OrdinalIgnoreCase) >= 0;
 
+        private static readonly Lazy<string> _desktopVersion = new Lazy<string>(ComputeDesktopVersionString);
+
 
         private sealed class TimingHandler : DelegatingHandler
         {
@@ -31,6 +38,8 @@ namespace Mep1.Erp.Desktop
                 var sw = Stopwatch.StartNew();
 
                 Debug.WriteLine($"[HTTP {id} ▶] {request.Method} {request.RequestUri}");
+
+                System.Diagnostics.Debug.WriteLine("BaseDirectory = " + AppContext.BaseDirectory);
 
                 try
                 {
@@ -678,53 +687,43 @@ namespace Mep1.Erp.Desktop
             resp.EnsureSuccessStatusCode(); // expects 204 NoContent
         }
 
-        private static string GetDesktopVersionString()
+        private static string ComputeDesktopVersionString()
         {
-            // Try MSIX package version (works in packaged app) WITHOUT referencing Windows.* at compile-time.
+            // 1) Packaged: try to find AppxManifest.xml near the running app and read Identity Version
             try
             {
-                var pkgType = Type.GetType("Windows.ApplicationModel.Package, Windows, ContentType=WindowsRuntime");
-                if (pkgType != null)
+                var dir = new DirectoryInfo(AppContext.BaseDirectory);
+
+                // Walk up a few levels from the deployed executable folder
+                for (int i = 0; i < 10 && dir != null; i++)
                 {
-                    var currentProp = pkgType.GetProperty("Current");
-                    var pkg = currentProp?.GetValue(null);
-                    if (pkg != null)
+                    var manifestPath = Path.Combine(dir.FullName, "AppxManifest.xml");
+                    if (File.Exists(manifestPath))
                     {
-                        var idProp = pkg.GetType().GetProperty("Id");
-                        var id = idProp?.GetValue(pkg);
-                        if (id != null)
-                        {
-                            var verProp = id.GetType().GetProperty("Version");
-                            var ver = verProp?.GetValue(id);
-                            if (ver != null)
-                            {
-                                int major = (int)ver.GetType().GetProperty("Major")!.GetValue(ver)!;
-                                int minor = (int)ver.GetType().GetProperty("Minor")!.GetValue(ver)!;
-                                int build = (int)ver.GetType().GetProperty("Build")!.GetValue(ver)!;
-                                int rev = (int)ver.GetType().GetProperty("Revision")!.GetValue(ver)!;
-                                return $"{major}.{minor}.{build}.{rev}";
-                            }
-                        }
+                        var doc = XDocument.Load(manifestPath);
+
+                        var identity = doc.Descendants()
+                            .FirstOrDefault(e => e.Name.LocalName == "Identity");
+
+                        var v = identity?.Attribute("Version")?.Value;
+                        if (!string.IsNullOrWhiteSpace(v))
+                            return v.Trim();
                     }
+
+                    dir = dir.Parent;
                 }
             }
             catch
             {
-                // ignore, fallback below
+                // ignore and fall back
             }
 
-            // Fallback: assembly version info (useful for Debug/unpackaged)
+            // 2) Fallback: assembly version (unpackaged)
             var asm = typeof(ErpApiClient).Assembly;
-
-            var info = asm.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false);
-            if (info.Length > 0)
-            {
-                var s = ((System.Reflection.AssemblyInformationalVersionAttribute)info[0]).InformationalVersion;
-                if (!string.IsNullOrWhiteSpace(s)) return s.Trim();
-            }
-
             return asm.GetName().Version?.ToString() ?? "0.0.0.0";
         }
+
+        private static string GetDesktopVersionString() => _desktopVersion.Value;
 
         private void SetClientHeaders()
         {
