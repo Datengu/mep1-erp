@@ -25,29 +25,38 @@ public sealed class GlobalPageExceptionFilter : IAsyncExceptionFilter
         // Always log server-side with request id
         _log.LogError(ex, "Unhandled exception in TimesheetWeb. RequestId={RequestId}", http.TraceIdentifier);
 
-        // 1) Auth failures coming back from API calls
-        if (ex is HttpRequestException hre &&
-            (hre.StatusCode == HttpStatusCode.Unauthorized || hre.StatusCode == HttpStatusCode.Forbidden))
+        // 1) Auth failures coming back from API calls (expired JWT, forbidden, bad API key etc.)
+        if (ex is Services.ErpTimesheetApiClient.TimesheetApiAuthException authEx)
         {
-            await ForceSignOutWithMessage(context, "You were signed out. Please log in again.");
+            await ForceSignOutWithMessage(context, authEx.Message);
             return;
         }
 
-        // 2) Connectivity / DNS / TLS / timeout etc. (HttpRequestException often has StatusCode == null)
-        if (ex is HttpRequestException hre2 && hre2.StatusCode == null)
+        // 2) Connectivity / DNS / TLS / timeout etc.
+        if (ex is Services.ErpTimesheetApiClient.TimesheetApiUnavailableException)
         {
-            RedirectToTemporarilyUnavailable(context);
+            RedirectToTemporarilyUnavailable(context, "Temporarily unavailable. Please try again in a moment.");
             return;
         }
 
-        if (ex is TaskCanceledException)
+        // 3) Rate limiting (429)
+        if (ex is Services.ErpTimesheetApiClient.TimesheetApiRateLimitException rateEx)
         {
-            RedirectToTemporarilyUnavailable(context);
+            RedirectToTemporarilyUnavailable(context, rateEx.Message);
             return;
         }
+
+        // 4) Not found (if any call throws it; some of your methods convert 404 -> null already)
+        if (ex is Services.ErpTimesheetApiClient.TimesheetApiNotFoundException nfEx)
+        {
+            RedirectToTemporarilyUnavailable(context, nfEx.Message);
+            return;
+        }
+
+        // 5) Validation (400) - do NOT redirect globally; let the page handle ModelState later
+        // if (ex is Services.ErpTimesheetApiClient.TimesheetApiValidationException) { }
 
         // Otherwise let the normal exception handler handle it (/Error)
-        // by not marking it handled.
     }
 
     private static async Task ForceSignOutWithMessage(ExceptionContext context, string message)
@@ -65,12 +74,11 @@ public sealed class GlobalPageExceptionFilter : IAsyncExceptionFilter
         context.ExceptionHandled = true;
     }
 
-    private static void RedirectToTemporarilyUnavailable(ExceptionContext context)
+    private static void RedirectToTemporarilyUnavailable(ExceptionContext context, string message)
     {
         var http = context.HttpContext;
 
-        // Store friendly message for the status page
-        http.Session.SetString("FlashMessage", "Temporarily unavailable. Please try again in a moment.");
+        http.Session.SetString("FlashMessage", message);
 
         context.Result = new RedirectToPageResult("/Timesheet/Unavailable");
         context.ExceptionHandled = true;
