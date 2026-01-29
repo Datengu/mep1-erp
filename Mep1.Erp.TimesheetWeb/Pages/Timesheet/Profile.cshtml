@@ -27,12 +27,18 @@
 }
 
 <form method="post" asp-page-handler="SaveSignature">
-    <div>
-        <label>Signature name (used on PDFs)</label>
-        <input type="text" name="SignatureName" value="@Model.SignatureName" required />
+    <div class="mb-3">
+        <label class="form-label">Signature name (used on PDFs)</label>
+        <input type="text"
+               name="SignatureName"
+               class="form-control"
+               value="@Model.SignatureName"
+               required />
     </div>
 
-    <button type="submit">Save signature</button>
+    <button type="submit" class="btn btn-primary">
+        Save signature
+    </button>
 </form>
 
 <hr />
@@ -40,15 +46,58 @@
 <h3>Change Password</h3>
 
 <form method="post" asp-page-handler="ChangePassword">
-    <div>
-        <label>Current password</label>
-        <input type="password" name="CurrentPassword" required />
+    <div class="mb-3">
+        <label class="form-label">Current password</label>
+
+        <div class="input-group">
+            <input id="currentPassword"
+                   type="password"
+                   name="CurrentPassword"
+                   class="form-control"
+                   required />
+            <button type="button"
+                    class="btn btn-outline-secondary toggle-password"
+                    data-target="currentPassword"
+                    aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
     </div>
 
-    <div>
-        <label>New password</label>
-        <input type="password" name="NewPassword" required />
+    <div class="mb-3">
+        <label class="form-label">New password</label>
+
+        <div class="input-group">
+            <input id="newPassword"
+                   type="password"
+                   name="NewPassword"
+                   class="form-control"
+                   required />
+            <button type="button"
+                    class="btn btn-outline-secondary toggle-password"
+                    data-target="newPassword"
+                    aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
     </div>
 
-    <button type="submit">Change password</button>
+    <button type="submit" class="btn btn-primary">
+        Change password
+    </button>
 </form>
+
+<script>
+    document.querySelectorAll(".toggle-password").forEach(button => {
+        button.addEventListener("click", () => {
+            const input = document.getElementById(button.dataset.target);
+            const icon = button.querySelector("i");
+
+            const show = input.type === "password";
+            input.type = show ? "text" : "password";
+
+            icon.classList.toggle("bi-eye", !show);
+            icon.classList.toggle("bi-eye-slash", show);
+        });
+    });
+</script>
