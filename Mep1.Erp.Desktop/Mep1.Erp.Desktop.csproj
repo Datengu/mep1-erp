@@ -22,11 +22,11 @@
     <ProjectReference Include="..\Mep1.Erp.Application\Mep1.Erp.Application.csproj" />
   </ItemGroup>
 
-  <PropertyGroup>
+  <!--<PropertyGroup>
     <Version>1.0.11.0</Version>
     <AssemblyVersion>1.0.11.0</AssemblyVersion>
     <FileVersion>1.0.11.0</FileVersion>
-  </PropertyGroup>
+  </PropertyGroup>-->
 
   <ItemGroup>
     <Content Include="settings.template.prod.json">
