@@ -24,6 +24,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<RefreshOnUnauthorizedHandler>();
 builder.Services.AddTransient<BearerTokenHandler>();
 
+builder.Services.AddTransient<CorrelationIdHandler>();
+
 builder.Services.AddHttpClient("ErpAuth", (sp, http) =>
 {
     var cfg = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ErpApiSettings>>().Value;
@@ -31,19 +33,18 @@ builder.Services.AddHttpClient("ErpAuth", (sp, http) =>
     http.BaseAddress = new Uri(cfg.BaseUrl);
     http.DefaultRequestHeaders.Add("X-Api-Key", cfg.ApiKey);
     http.DefaultRequestHeaders.Add("X-Client-App", "Portal");
-});
+})
+.AddHttpMessageHandler<CorrelationIdHandler>();
 
 builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
 {
     var cfg = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ErpApiSettings>>().Value;
 
     http.BaseAddress = new Uri(cfg.BaseUrl);
-
-    // IMPORTANT: must match API middleware header name exactly
-    // API checks "X-Api-Key"
     http.DefaultRequestHeaders.Add("X-Api-Key", cfg.ApiKey);
     http.DefaultRequestHeaders.Add("X-Client-App", "Portal");
 })
+.AddHttpMessageHandler<CorrelationIdHandler>()
 .AddHttpMessageHandler<RefreshOnUnauthorizedHandler>()
 .AddHttpMessageHandler<BearerTokenHandler>();
 
