@@ -91,5 +91,42 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
+
+    <div id="cookie-notice"
+         style="display:none; position:fixed; bottom:0; left:0; right:0;
+            background:#1e1e1e; color:#ffffff; padding:12px 16px;
+            font-size:14px; z-index:1000; box-shadow:0 -2px 6px rgba(0,0,0,0.3);">
+
+        <span>
+            This site uses essential cookies required for authentication and security.
+            See our <a href="/Privacy" style="color:#9ecbff; text-decoration:underline;">Privacy Policy</a> for details.
+        </span>
+
+        <button id="cookie-accept"
+                style="margin-left:16px; padding:6px 12px; background:#007acc;
+                   color:#fff; border:none; border-radius:4px; cursor:pointer;">
+            OK
+        </button>
+    </div>
+
+    <script>
+        (function () {
+            const key = "mep1_cookie_notice_accepted";
+            const notice = document.getElementById("cookie-notice");
+            const button = document.getElementById("cookie-accept");
+
+            if (!localStorage.getItem(key)) {
+                notice.style.display = "flex";
+                notice.style.justifyContent = "space-between";
+                notice.style.alignItems = "center";
+            }
+
+            button.addEventListener("click", function () {
+                localStorage.setItem(key, "true");
+                notice.style.display = "none";
+            });
+        })();
+    </script>
+
 </body>
 </html>
