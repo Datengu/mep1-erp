@@ -42,6 +42,13 @@ public sealed class LoginModel : PageModel
 
     public void OnGet()
     {
+        var flash = HttpContext.Session.GetString("FlashMessage");
+        if (!string.IsNullOrWhiteSpace(flash))
+        {
+            ErrorMessage = flash;
+            HttpContext.Session.Remove("FlashMessage");
+        }
+
         if (User.Identity?.IsAuthenticated == true)
         {
             if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
@@ -65,15 +72,18 @@ public sealed class LoginModel : PageModel
         {
             login = await _api.LoginAsync(Input.Username, Input.Password, Input.RememberMe);
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+        catch (ErpTimesheetApiClient.TimesheetApiRateLimitException)
         {
-            // Throttled/locked out (your new rate limit)
             ErrorMessage = "Too many failed login attempts. Please wait a moment and try again.";
             return Page();
         }
-        catch (HttpRequestException)
+        catch (ErpTimesheetApiClient.TimesheetApiUnavailableException)
         {
-            // Any other non-success (e.g. API down, 5xx, etc.)
+            ErrorMessage = "Login temporarily unavailable. Please try again.";
+            return Page();
+        }
+        catch (ErpTimesheetApiClient.TimesheetApiServerException)
+        {
             ErrorMessage = "Login temporarily unavailable. Please try again.";
             return Page();
         }

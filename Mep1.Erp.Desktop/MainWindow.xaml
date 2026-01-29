@@ -2119,6 +2119,25 @@
                                           IsReadOnly="True"
                                           Style="{StaticResource DarkDataGridStyle}">
 
+                                    <DataGrid.Resources>
+                                        <!-- Clone of DarkDataGridStyle's ColumnHeaderStyle, but scoped to this DataGrid only -->
+                                        <Style x:Key="InvoicesGridHeaderBaseStyle" TargetType="DataGridColumnHeader">
+                                            <Setter Property="Background" Value="#FF333333"/>
+                                            <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                                            <Setter Property="BorderBrush" Value="#FF444444"/>
+                                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+
+                                    <DataGrid.CellStyle>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="16,3,16,3"/>
+                                        </Style>
+                                    </DataGrid.CellStyle>
+
                                     <DataGrid.Columns>
 
                                         <!-- Identity -->
@@ -2156,25 +2175,232 @@
                                                             Width="80"/>
 
                                         <!-- Amounts -->
-                                        <DataGridTextColumn Header="Net"
-                                                            Binding="{Binding NetAmount, StringFormat={}{0:0.00}}"
-                                                            Width="90"/>
+                                        <DataGridTemplateColumn Header="Net" Width="90">
+                                            <DataGridTemplateColumn.HeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader"
+                                                       BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
+                                                    <Setter Property="Padding" Value="10,0,10,0"/>
+                                                </Style>
+                                            </DataGridTemplateColumn.HeaderStyle>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="10,0,10,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
 
-                                        <DataGridTextColumn Header="Gross"
-                                                            Binding="{Binding GrossAmount, StringFormat={}{0:0.00}}"
-                                                            Width="90"/>
+                                                        <!-- £ (blank when null) -->
+                                                        <TextBlock Margin="0,0,4,0" VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="£"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding NetAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value=""/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
 
-                                        <DataGridTextColumn Header="Payment"
-                                                            Binding="{Binding PaymentAmount, StringFormat={}{0:0.00}}"
-                                                            Width="90"/>
+                                                        <!-- Value (right aligned, "-" when null) -->
+                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextAlignment="Right">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="{Binding NetAmount, StringFormat={}{0:N2}}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding NetAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value="-"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
 
-                                        <DataGridTextColumn Header="Outstanding Net"
-                                                            Binding="{Binding OutstandingNet, StringFormat={}{0:0.00}}"
-                                                            Width="110"/>
+                                        <DataGridTemplateColumn Header="Gross" Width="90">
+                                            <DataGridTemplateColumn.HeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader"
+                                                       BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
+                                                    <Setter Property="Padding" Value="10,0,10,0"/>
+                                                </Style>
+                                            </DataGridTemplateColumn.HeaderStyle>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="10,0,10,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
 
-                                        <DataGridTextColumn Header="Outstanding Gross"
-                                                            Binding="{Binding OutstandingGross, StringFormat={}{0:0.00}}"
-                                                            Width="120"/>
+                                                        <TextBlock Margin="0,0,4,0" VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="£"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding GrossAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value=""/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+
+                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextAlignment="Right">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="{Binding GrossAmount, StringFormat={}{0:N2}}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding GrossAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value="-"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTemplateColumn Header="Payment" Width="90">
+                                            <DataGridTemplateColumn.HeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader"
+                                                       BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
+                                                    <Setter Property="Padding" Value="10,0,10,0"/>
+                                                </Style>
+                                            </DataGridTemplateColumn.HeaderStyle>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="10,0,10,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock Margin="0,0,4,0" VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="£"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding PaymentAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value=""/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+
+                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextAlignment="Right">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="{Binding PaymentAmount, StringFormat={}{0:N2}}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding PaymentAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value="-"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTemplateColumn Header="Outstanding Net" Width="120">
+                                            <DataGridTemplateColumn.HeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader"
+                                                       BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
+                                                    <Setter Property="Padding" Value="10,0,10,0"/>
+                                                </Style>
+                                            </DataGridTemplateColumn.HeaderStyle>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="10,0,10,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock Margin="0,0,4,0" VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="£"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding OutstandingNet}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value=""/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+
+                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextAlignment="Right">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="{Binding OutstandingNet, StringFormat={}{0:N2}}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding OutstandingNet}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value="-"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTemplateColumn Header="Outstanding Gross" Width="130">
+                                            <DataGridTemplateColumn.HeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader"
+                                                       BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
+                                                    <Setter Property="Padding" Value="10,0,10,0"/>
+                                                </Style>
+                                            </DataGridTemplateColumn.HeaderStyle>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="10,0,10,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock Margin="0,0,4,0" VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="£"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding OutstandingGross}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value=""/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+
+                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextAlignment="Right">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="{Binding OutstandingGross, StringFormat={}{0:N2}}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding OutstandingGross}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value="-"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
 
                                         <!-- Notes (wrapped) -->
                                         <DataGridTemplateColumn Header="Notes" Width="300">
@@ -2187,7 +2413,7 @@
                                         </DataGridTemplateColumn>
 
                                         <!-- Optional: File path (wrapped) -->
-                                        <DataGridTemplateColumn Header="File" Width="240">
+                                        <DataGridTemplateColumn Header="File" Width="220">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding FilePath}"

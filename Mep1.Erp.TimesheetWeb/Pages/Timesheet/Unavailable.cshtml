@@ -1,0 +1,17 @@
+﻿@page
+@model Mep1.Erp.TimesheetWeb.Pages.Timesheet.UnavailableModel
+@{
+    ViewData["Title"] = "Temporarily unavailable";
+}
+
+<h2>Temporarily unavailable</h2>
+
+<p>@Model.Message</p>
+
+<p style="opacity:0.8">
+    Request ID: <strong>@Model.RequestId</strong>
+</p>
+
+<p>
+    <a href="/Timesheet/Login">Back to login</a>
+</p>

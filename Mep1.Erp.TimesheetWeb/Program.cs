@@ -1,8 +1,11 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Mep1.Erp.TimesheetWeb;
+using Mep1.Erp.TimesheetWeb.Infrastructure;
+using Mep1.Erp.TimesheetWeb.Middleware;
 using Mep1.Erp.TimesheetWeb.Services;
-using QuestPDF.Infrastructure;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +24,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<RefreshOnUnauthorizedHandler>();
 builder.Services.AddTransient<BearerTokenHandler>();
 
+builder.Services.AddTransient<CorrelationIdHandler>();
+
 builder.Services.AddHttpClient("ErpAuth", (sp, http) =>
 {
     var cfg = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ErpApiSettings>>().Value;
@@ -28,19 +33,18 @@ builder.Services.AddHttpClient("ErpAuth", (sp, http) =>
     http.BaseAddress = new Uri(cfg.BaseUrl);
     http.DefaultRequestHeaders.Add("X-Api-Key", cfg.ApiKey);
     http.DefaultRequestHeaders.Add("X-Client-App", "Portal");
-});
+})
+.AddHttpMessageHandler<CorrelationIdHandler>();
 
 builder.Services.AddHttpClient<ErpTimesheetApiClient>((sp, http) =>
 {
     var cfg = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ErpApiSettings>>().Value;
 
     http.BaseAddress = new Uri(cfg.BaseUrl);
-
-    // IMPORTANT: must match API middleware header name exactly
-    // API checks "X-Api-Key"
     http.DefaultRequestHeaders.Add("X-Api-Key", cfg.ApiKey);
     http.DefaultRequestHeaders.Add("X-Client-App", "Portal");
 })
+.AddHttpMessageHandler<CorrelationIdHandler>()
 .AddHttpMessageHandler<RefreshOnUnauthorizedHandler>()
 .AddHttpMessageHandler<BearerTokenHandler>();
 
@@ -65,20 +69,42 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.HttpOnly = true;
         options.Cookie.IsEssential = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        //options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // set Always in prod if always https
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToLogin = ctx =>
+            {
+                // If they hit a protected page while signed out
+                ctx.HttpContext.Session.SetString("FlashMessage", "Please log in to continue.");
+                ctx.Response.Redirect(ctx.RedirectUri);
+                return Task.CompletedTask;
+            },
+            OnRedirectToAccessDenied = ctx =>
+            {
+                // If authenticated but forbidden by policy/role (if you add that later)
+                ctx.HttpContext.Session.SetString("FlashMessage", "You do not have access to that page.");
+                ctx.Response.Redirect(ctx.RedirectUri);
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
 
 builder.Services.AddRazorPages(options =>
 {
-    // Protect /Timesheet/* by default
     options.Conventions.AuthorizeFolder("/Timesheet");
-
-    // Allow anonymous access to login
     options.Conventions.AllowAnonymousToPage("/Timesheet/Login");
+
+    // Add global exception handling for Razor Pages
+    options.Conventions.ConfigureFilter(new ServiceFilterAttribute(typeof(GlobalPageExceptionFilter)));
+
+    // Allow anonymous to Unavailable page too
+    options.Conventions.AllowAnonymousToPage("/Timesheet/Unavailable");
 });
+
+builder.Services.AddScoped<GlobalPageExceptionFilter>();
 
 builder.Services.AddSingleton<Mep1.Erp.TimesheetWeb.Services.TechnicalDiaryPdfBuilder>();
 
@@ -96,6 +122,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseForwardedHeaders();
+
+app.UseMiddleware<CorrelationIdResponseHeaderMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

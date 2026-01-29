@@ -16,7 +16,21 @@
 
     <div class="mb-3">
         <label class="form-label">Password</label>
-        <input class="form-control" asp-for="Input.Password" type="password" />
+
+        <div class="input-group">
+            <input id="passwordInput"
+                   class="form-control"
+                   asp-for="Input.Password"
+                   type="password" />
+
+            <button class="btn btn-outline-secondary"
+                    type="button"
+                    id="togglePassword"
+                    aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
+
         <span class="text-danger" asp-validation-for="Input.Password"></span>
     </div>
 
@@ -34,3 +48,17 @@
 
     <button class="btn btn-primary" type="submit">Login</button>
 </form>
+
+<script>
+    const toggle = document.getElementById("togglePassword");
+    const input = document.getElementById("passwordInput");
+    const icon = toggle.querySelector("i");
+
+    toggle.addEventListener("click", () => {
+        const show = input.type === "password";
+        input.type = show ? "text" : "password";
+
+        icon.classList.toggle("bi-eye", !show);
+        icon.classList.toggle("bi-eye-slash", show);
+    });
+</script>

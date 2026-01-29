@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Net;
 using Mep1.Erp.Core.Contracts;
 
 namespace Mep1.Erp.TimesheetWeb.Services;
@@ -14,6 +15,160 @@ public sealed class ErpTimesheetApiClient
     {
         PropertyNameCaseInsensitive = true
     };
+    private const string CorrelationHeader = "X-Correlation-Id";
+
+    public abstract class TimesheetApiException : Exception
+    {
+        protected TimesheetApiException(string message, HttpStatusCode? statusCode, string? correlationId, string? responseBody = null)
+            : base(message)
+        {
+            StatusCode = statusCode;
+            CorrelationId = correlationId;
+            ResponseBody = responseBody;
+        }
+
+        public HttpStatusCode? StatusCode { get; }
+        public string? CorrelationId { get; }
+        public string? ResponseBody { get; }
+    }
+
+    public sealed class TimesheetApiAuthException : TimesheetApiException
+    {
+        public TimesheetApiAuthException(string message, HttpStatusCode statusCode, string? correlationId, string? responseBody = null)
+            : base(message, statusCode, correlationId, responseBody) { }
+    }
+
+    public sealed class TimesheetApiValidationException : TimesheetApiException
+    {
+        public TimesheetApiValidationException(string message, string? correlationId, string? responseBody = null)
+            : base(message, HttpStatusCode.BadRequest, correlationId, responseBody) { }
+    }
+
+    public sealed class TimesheetApiNotFoundException : TimesheetApiException
+    {
+        public TimesheetApiNotFoundException(string message, string? correlationId, string? responseBody = null)
+            : base(message, HttpStatusCode.NotFound, correlationId, responseBody) { }
+    }
+
+    public sealed class TimesheetApiRateLimitException : TimesheetApiException
+    {
+        public TimesheetApiRateLimitException(string message, string? correlationId, string? responseBody = null)
+            : base(message, HttpStatusCode.TooManyRequests, correlationId, responseBody) { }
+    }
+
+    public sealed class TimesheetApiServerException : TimesheetApiException
+    {
+        public TimesheetApiServerException(string message, HttpStatusCode statusCode, string? correlationId, string? responseBody = null)
+            : base(message, statusCode, correlationId, responseBody) { }
+    }
+
+    public sealed class TimesheetApiUnavailableException : TimesheetApiException
+    {
+        public TimesheetApiUnavailableException(string message, Exception? inner = null)
+            : base(message, null, null)
+        {
+            if (inner != null) InnerExceptionCaptured = inner;
+        }
+
+        // purely to keep the original exception accessible without changing base Exception internals
+        public Exception? InnerExceptionCaptured { get; }
+    }
+
+    private static string? TryGetCorrelationId(HttpResponseMessage res)
+    {
+        if (res.Headers.TryGetValues(CorrelationHeader, out var vals))
+            return vals.FirstOrDefault();
+        return null;
+    }
+
+    private static async Task<string?> TryReadBodyAsync(HttpResponseMessage res)
+    {
+        try
+        {
+            return await res.Content.ReadAsStringAsync();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void ThrowForNonSuccess(HttpResponseMessage res, string? correlationId, string? body)
+    {
+        var sc = res.StatusCode;
+
+        // safe, user-facing message defaults
+        string msg = sc switch
+        {
+            HttpStatusCode.BadRequest => "Some fields were invalid. Please review and try again.",
+            HttpStatusCode.Unauthorized => "You are no longer signed in. Please log in again.",
+            HttpStatusCode.Forbidden => "You do not have permission to do that.",
+            HttpStatusCode.NotFound => "That item could not be found (it may have been deleted).",
+            HttpStatusCode.TooManyRequests => "Too many attempts. Please wait and try again.",
+            _ when (int)sc >= 500 => "The server ran into a problem. Please try again.",
+            _ => $"Request failed (HTTP {(int)sc})."
+        };
+
+        if (sc is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            throw new TimesheetApiAuthException(msg, sc, correlationId, body);
+
+        if (sc == HttpStatusCode.BadRequest)
+            throw new TimesheetApiValidationException(msg, correlationId, body);
+
+        if (sc == HttpStatusCode.NotFound)
+            throw new TimesheetApiNotFoundException(msg, correlationId, body);
+
+        if (sc == HttpStatusCode.TooManyRequests)
+            throw new TimesheetApiRateLimitException(msg, correlationId, body);
+
+        if ((int)sc >= 500)
+            throw new TimesheetApiServerException(msg, sc, correlationId, body);
+
+        throw new TimesheetApiServerException(msg, sc, correlationId, body);
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage req)
+    {
+        AddApiKeyHeader(req);
+
+        try
+        {
+            return await _http.SendAsync(req);
+        }
+        catch (TaskCanceledException ex)
+        {
+            throw new TimesheetApiUnavailableException("API request timed out.", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new TimesheetApiUnavailableException("Cannot reach the API server.", ex);
+        }
+    }
+
+    private async Task<T?> SendJsonAsync<T>(HttpRequestMessage req)
+    {
+        using var res = await SendAsync(req);
+
+        if (res.IsSuccessStatusCode)
+            return await res.Content.ReadFromJsonAsync<T>(_jsonOptions);
+
+        var correlationId = TryGetCorrelationId(res);
+        var body = await TryReadBodyAsync(res);
+        ThrowForNonSuccess(res, correlationId, body);
+        return default;
+    }
+
+    private async Task SendNoContentAsync(HttpRequestMessage req)
+    {
+        using var res = await SendAsync(req);
+
+        if (res.IsSuccessStatusCode)
+            return;
+
+        var correlationId = TryGetCorrelationId(res);
+        var body = await TryReadBodyAsync(res);
+        ThrowForNonSuccess(res, correlationId, body);
+    }
 
     public ErpTimesheetApiClient(HttpClient http, IConfiguration config)
     {
@@ -35,12 +190,7 @@ public sealed class ErpTimesheetApiClient
     public async Task<List<TimesheetProjectOptionDto>?> GetActiveProjectsAsync()
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, "/api/timesheet/projects");
-        AddApiKeyHeader(req);
-
-        using var res = await _http.SendAsync(req);
-        res.EnsureSuccessStatusCode();
-
-        return await res.Content.ReadFromJsonAsync<List<TimesheetProjectOptionDto>>();
+        return await SendJsonAsync<List<TimesheetProjectOptionDto>>(req);
     }
 
     public sealed record TimesheetLoginRequest(string Username, string Password, bool RememberMe);
@@ -77,119 +227,102 @@ public sealed class ErpTimesheetApiClient
         {
             Content = JsonContent.Create(body, options: _jsonOptions)
         };
-        AddApiKeyHeader(req);
 
-        using var res = await _http.SendAsync(req);
-
-        // Wrong password/username should be a normal "null" result, not an exception
-        if (res.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        try
+        {
+            return await SendJsonAsync<TimesheetLoginResponse>(req);
+        }
+        catch (TimesheetApiAuthException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
             return null;
-
-        // If something else goes wrong, still fail loudly
-        res.EnsureSuccessStatusCode();
-
-        return await res.Content.ReadFromJsonAsync<TimesheetLoginResponse>(_jsonOptions);
+        }
     }
 
     public async Task CreateTimesheetEntryAsync(CreateTimesheetEntryDto dto)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/timesheet/entries")
         {
-            Content = JsonContent.Create(dto)
+            Content = JsonContent.Create(dto, options: _jsonOptions)
         };
-        AddApiKeyHeader(req);
 
-        using var res = await _http.SendAsync(req);
-        res.EnsureSuccessStatusCode();
+        await SendNoContentAsync(req);
     }
 
     public async Task<TimesheetEntryEditDto?> GetTimesheetEntryAsync(int id)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/timesheet/entries/{id}");
-        AddApiKeyHeader(req);
 
-        using var res = await _http.SendAsync(req);
-        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        try
+        {
+            return await SendJsonAsync<TimesheetEntryEditDto>(req);
+        }
+        catch (TimesheetApiNotFoundException)
+        {
             return null;
-
-        res.EnsureSuccessStatusCode();
-        return await res.Content.ReadFromJsonAsync<TimesheetEntryEditDto>(_jsonOptions);
+        }
     }
 
     public async Task<List<TimesheetEntrySummaryDto>?> GetTimesheetEntriesAsync(int skip = 0, int take = 100)
     {
         var url = $"/api/timesheet/entries?skip={skip}&take={take}";
-
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
-        AddApiKeyHeader(req);
-
-        using var res = await _http.SendAsync(req);
-        res.EnsureSuccessStatusCode();
-
-        return await res.Content.ReadFromJsonAsync<List<TimesheetEntrySummaryDto>>(_jsonOptions);
+        return await SendJsonAsync<List<TimesheetEntrySummaryDto>>(req);
     }
 
     public async Task UpdateTimesheetEntryAsync(int id, UpdateTimesheetEntryDto dto)
     {
         using var req = new HttpRequestMessage(HttpMethod.Put, $"/api/timesheet/entries/{id}")
         {
-            Content = JsonContent.Create(dto)
+            Content = JsonContent.Create(dto, options: _jsonOptions)
         };
-        AddApiKeyHeader(req);
 
-        using var res = await _http.SendAsync(req);
-        res.EnsureSuccessStatusCode();
+        await SendNoContentAsync(req);
     }
 
     public async Task DeleteTimesheetEntryAsync(int id)
     {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/timesheet/entries/{id}");
-        AddApiKeyHeader(req);
-
-        using var res = await _http.SendAsync(req);
-        res.EnsureSuccessStatusCode();
+        await SendNoContentAsync(req);
     }
 
     public async Task<WorkerSignatureDto?> GetWorkerSignatureAsync(int workerId)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/timesheet/workers/{workerId}/signature");
-        AddApiKeyHeader(req);
 
-        using var res = await _http.SendAsync(req);
-        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        try
+        {
+            return await SendJsonAsync<WorkerSignatureDto>(req);
+        }
+        catch (TimesheetApiNotFoundException)
+        {
             return null;
-
-        res.EnsureSuccessStatusCode();
-        return await res.Content.ReadFromJsonAsync<WorkerSignatureDto>(_jsonOptions);
+        }
     }
 
     public async Task SetWorkerSignatureAsync(int workerId, string signatureName)
     {
         var dto = new UpdateWorkerSignatureDto { SignatureName = signatureName };
 
-        using var req = new HttpRequestMessage(
-            HttpMethod.Put,
-            $"/api/timesheet/workers/{workerId}/signature")
+        using var req = new HttpRequestMessage(HttpMethod.Put, $"/api/timesheet/workers/{workerId}/signature")
         {
             Content = JsonContent.Create(dto, options: _jsonOptions)
         };
-        AddApiKeyHeader(req);
 
-        using var res = await _http.SendAsync(req);
-        res.EnsureSuccessStatusCode();
+        await SendNoContentAsync(req);
     }
 
     public async Task<WorkerSignatureDto?> GetOwnerSignatureAsync()
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, "/api/timesheet/owner-signature");
-        AddApiKeyHeader(req);
 
-        using var res = await _http.SendAsync(req);
-        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        try
+        {
+            return await SendJsonAsync<WorkerSignatureDto>(req);
+        }
+        catch (TimesheetApiNotFoundException)
+        {
             return null;
-
-        res.EnsureSuccessStatusCode();
-        return await res.Content.ReadFromJsonAsync<WorkerSignatureDto>(_jsonOptions);
+        }
     }
 
     public sealed record ChangePasswordRequest(string Username, string CurrentPassword, string NewPassword);
@@ -202,14 +335,13 @@ public sealed class ErpTimesheetApiClient
         {
             Content = JsonContent.Create(body, options: _jsonOptions)
         };
-        AddApiKeyHeader(req);
 
-        using var res = await _http.SendAsync(req);
+        using var res = await SendAsync(req);
 
         if (res.IsSuccessStatusCode)
             return (true, null);
 
-        var msg = await res.Content.ReadAsStringAsync();
+        var msg = await TryReadBodyAsync(res);
         if (string.IsNullOrWhiteSpace(msg))
             msg = $"HTTP {(int)res.StatusCode} {res.StatusCode}";
 
@@ -224,14 +356,15 @@ public sealed class ErpTimesheetApiClient
         {
             Content = JsonContent.Create(body, options: _jsonOptions)
         };
-        AddApiKeyHeader(req);
 
-        using var res = await _http.SendAsync(req);
-        if (res.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        try
+        {
+            return await SendJsonAsync<TimesheetRefreshResponse>(req);
+        }
+        catch (TimesheetApiAuthException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
             return null;
-
-        res.EnsureSuccessStatusCode();
-        return await res.Content.ReadFromJsonAsync<TimesheetRefreshResponse>(_jsonOptions);
+        }
     }
 
     public async Task LogoutAsync(string refreshToken)
@@ -243,22 +376,21 @@ public sealed class ErpTimesheetApiClient
             Content = JsonContent.Create(body, options: _jsonOptions)
         };
 
-        AddApiKeyHeader(req);
-
-        using var res = await _http.SendAsync(req);
-        // you can ignore failures or call EnsureSuccessStatusCode()
+        try
+        {
+            using var res = await SendAsync(req);
+            // ignore non-success (by design)
+        }
+        catch (TimesheetApiUnavailableException)
+        {
+            // ignore (by design)
+        }
     }
 
     public async Task<List<TimesheetCodeDto>> GetTimesheetCodesAsync()
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, "/api/timesheet/codes");
-        AddApiKeyHeader(req);
-
-        using var res = await _http.SendAsync(req);
-        res.EnsureSuccessStatusCode();
-
-        return await res.Content.ReadFromJsonAsync<List<TimesheetCodeDto>>(_jsonOptions)
-               ?? new();
+        return await SendJsonAsync<List<TimesheetCodeDto>>(req) ?? new();
     }
 
     public async Task<List<string>?> GetCcfRefsForJobAsync(string jobKey)
@@ -267,11 +399,6 @@ public sealed class ErpTimesheetApiClient
             HttpMethod.Get,
             $"/api/timesheet/ccf-refs?jobKey={Uri.EscapeDataString(jobKey)}");
 
-        AddApiKeyHeader(req);
-
-        using var res = await _http.SendAsync(req);
-        res.EnsureSuccessStatusCode();
-
-        return await res.Content.ReadFromJsonAsync<List<string>>(_jsonOptions);
+        return await SendJsonAsync<List<string>>(req);
     }
 }
