@@ -803,6 +803,32 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _editInvoiceValidationText, value, nameof(EditInvoiceValidationText));
         }
 
+        private string _editInvoicePaymentAmountText = "";
+        public string EditInvoicePaymentAmountText
+        {
+            get => _editInvoicePaymentAmountText;
+            set
+            {
+                if (SetField(ref _editInvoicePaymentAmountText, value, nameof(EditInvoicePaymentAmountText)))
+                {
+                    UpdateEditInvoiceValidation();
+                }
+            }
+        }
+
+        private DateTime? _editInvoicePaidDate;
+        public DateTime? EditInvoicePaidDate
+        {
+            get => _editInvoicePaidDate;
+            set
+            {
+                if (SetField(ref _editInvoicePaidDate, value, nameof(EditInvoicePaidDate)))
+                {
+                    UpdateEditInvoiceValidation();
+                }
+            }
+        }
+
         private List<DueScheduleEntryDto> _dueSchedule = new();
         public List<DueScheduleEntryDto> DueSchedule
         {
@@ -3954,6 +3980,31 @@ namespace Mep1.Erp.Desktop
             if (EditInvoiceSelectedProject == null)
                 issues.Add("Project is required.");
 
+            // Payment fields are optional, but must be consistent if provided.
+            var paymentText = EditInvoicePaymentAmountText;
+
+            if (!string.IsNullOrWhiteSpace(paymentText))
+            {
+                if (!TryParseMoney(paymentText, out var paid))
+                {
+                    issues.Add("Payment amount must be a valid number (or leave blank).");
+                }
+                else
+                {
+                    if (paid < 0m)
+                        issues.Add("Payment amount cannot be negative.");
+
+                    if (paid > 0m && EditInvoicePaidDate == null)
+                        issues.Add("Paid date is required when payment amount is > 0.");
+                }
+            }
+            else
+            {
+                // If no payment amount, don't allow a paid date to be set (avoids nonsense state)
+                if (EditInvoicePaidDate != null)
+                    issues.Add("Paid date should be blank when payment amount is blank.");
+            }
+
             EditInvoiceValidationText = issues.Count == 0
                 ? "Ready to save."
                 : string.Join(Environment.NewLine, issues);
@@ -3993,6 +4044,9 @@ namespace Mep1.Erp.Desktop
 
                 EditInvoiceNotesText = dto.Notes ?? "";
 
+                EditInvoicePaymentAmountText = dto.PaymentAmount.HasValue ? dto.PaymentAmount.Value.ToString("0.00") : "";
+                EditInvoicePaidDate = dto.PaidDate;
+
                 EditInvoiceStatusBarText = "Loaded. Make changes and click Save Changes.";
                 UpdateEditInvoiceValidation();
             }
@@ -4029,6 +4083,18 @@ namespace Mep1.Erp.Desktop
             {
                 EditInvoiceStatusBarText = "Saving changes...";
 
+                decimal? paymentAmount = null;
+                if (!string.IsNullOrWhiteSpace(EditInvoicePaymentAmountText))
+                {
+                    if (!TryParseMoney(EditInvoicePaymentAmountText, out var parsedPayment))
+                    {
+                        EditInvoiceStatusBarText = "Payment amount is invalid.";
+                        return;
+                    }
+
+                    paymentAmount = parsedPayment;
+                }
+
                 var req = new UpdateInvoiceRequestDto
                 {
                     ProjectId = EditInvoiceSelectedProject?.ProjectId,
@@ -4037,6 +4103,10 @@ namespace Mep1.Erp.Desktop
                     NetAmount = net,
                     VatRate = vatRate,
                     Status = EditInvoiceStatusText ?? "Outstanding",
+
+                    PaymentAmount = paymentAmount,
+                    PaidDate = EditInvoicePaidDate,
+
                     Notes = string.IsNullOrWhiteSpace(EditInvoiceNotesText) ? null : EditInvoiceNotesText.Trim()
                 };
 
@@ -4067,6 +4137,9 @@ namespace Mep1.Erp.Desktop
             EditInvoiceNetAmountText = "";
             EditInvoiceVatRateText = "20%";
             EditInvoiceNotesText = "";
+
+            EditInvoicePaymentAmountText = "";
+            EditInvoicePaidDate = null;
 
             RecalculateEditInvoiceTotals();
             UpdateEditInvoiceValidation();
@@ -5517,6 +5590,79 @@ namespace Mep1.Erp.Desktop
             }
 
             System.Windows.Application.Current.Shutdown();
+        }
+
+        private async void MarkInvoiceAsPaid_Click(object sender, RoutedEventArgs e)
+        {
+            if (InvoicesGrid.SelectedItem is not InvoiceListEntryDto selected)
+            {
+                WpfMessageBox.Show(
+                    "Select an invoice first.",
+                    "Mark as paid",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+                return;
+            }
+
+            try
+            {
+                // Pull full details so we can safely re-submit the same invoice fields in Update
+                var details = await _api.GetInvoiceByIdAsync(selected.Id);
+
+                var gross = details.GrossAmount;
+                var currentPaid = details.PaymentAmount ?? 0m;
+
+                var remaining = gross - currentPaid;
+                if (remaining < 0m) remaining = 0m;
+
+                // Default payment to remaining amount so "Mark as paid" is a 2-click workflow
+                var dlg = new MarkInvoicePaidWindow(DateTime.Today, remaining)
+                {
+                    Owner = this
+                };
+
+                if (dlg.ShowDialog() != true)
+                    return;
+
+                // Treat PaymentAmount as "total paid so far" (single-field v1 model)
+                var newTotalPaid = currentPaid + dlg.AmountPaidThisTime;
+                if (newTotalPaid > gross)
+                    newTotalPaid = gross;
+
+                var status = (newTotalPaid >= gross) ? "Paid" : "Part-Paid";
+
+                var update = new UpdateInvoiceRequestDto
+                {
+                    ProjectId = details.ProjectId,
+                    InvoiceDate = details.InvoiceDate,
+                    DueDate = details.DueDate,
+                    NetAmount = details.NetAmount,
+                    VatRate = details.VatRate,
+
+                    Status = status,
+
+                    PaymentAmount = newTotalPaid,
+                    PaidDate = dlg.PaidDate,
+
+                    FilePath = details.FilePath,
+                    Notes = details.Notes
+                };
+
+                await _api.UpdateInvoiceAsync(details.Id, update);
+
+                // Refresh grid + keep current filter
+                await RefreshInvoicesAsync();
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    "Failed to mark invoice as paid:\n\n" + ex.Message,
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+            }
         }
     }
 }

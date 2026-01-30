@@ -2080,34 +2080,50 @@
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- Filter toolbar -->
-                                <StackPanel Orientation="Horizontal"
-                                            Margin="8,8,8,4"
-                                            VerticalAlignment="Center">
-                                    <TextBlock Text="Filter:"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0"/>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- Filter toolbar -->
+                                    <StackPanel Orientation="Horizontal"
+                                                Margin="8,8,8,4"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="Filter:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
 
-                                    <Button Content="All"
-                                            Margin="0,0,4,0"
-                                            Padding="8,3"
-                                            Click="ShowAllInvoices_Click"/>
+                                        <Button Content="All"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowAllInvoices_Click"/>
 
-                                    <Button Content="Overdue"
-                                            Margin="0,0,4,0"
-                                            Padding="8,3"
-                                            Click="ShowOverdueInvoices_Click"/>
+                                        <Button Content="Overdue"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowOverdueInvoices_Click"/>
 
-                                    <Button Content="Due next 30 days"
-                                            Margin="0,0,4,0"
-                                            Padding="8,3"
-                                            Click="ShowDueNext30Invoices_Click"/>
+                                        <Button Content="Due next 30 days"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowDueNext30Invoices_Click"/>
 
-                                    <Button Content="All with outstanding"
-                                            Margin="0,0,4,0"
-                                            Padding="8,3"
-                                            Click="ShowOpenInvoices_Click"/>
-                                </StackPanel>
+                                        <Button Content="All with outstanding"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowOpenInvoices_Click"/>
+                                    </StackPanel>
+
+                                    <!-- RIGHT: Action -->
+                                    <Button Grid.Column="1"
+                                            Content="Mark as paid"
+                                            Padding="12,4"
+                                            MinWidth="110"
+                                            HorizontalAlignment="Right"
+                                            Click="MarkInvoiceAsPaid_Click"/>
+
+                                </Grid>
 
                                 <!-- Invoices grid -->
                                 <DataGrid x:Name="InvoicesGrid"
@@ -2695,6 +2711,7 @@
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="*"/>
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
@@ -2867,8 +2884,44 @@
                                             </Grid>
                                         </Border>
 
-                                        <!-- Notes -->
+                                        <!-- Payment (correction only) -->
                                         <Border Grid.Row="5" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Payment Amount"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+
+                                                <TextBox Grid.Row="0" Grid.Column="1"
+                                                         Text="{Binding EditInvoicePaymentAmountText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="0,0,12,6"/>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Paid Date"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+
+                                                <DatePicker Grid.Row="0" Grid.Column="3"
+                                                            SelectedDate="{Binding EditInvoicePaidDate}"
+                                                            Margin="0,0,0,6"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
+                                                           Text="Note: These fields are for correcting mistakes. Normal workflow is Invoices list → Mark as paid."
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.75"
+                                                           TextWrapping="Wrap"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Notes -->
+                                        <Border Grid.Row="6" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="160"/>
@@ -2887,7 +2940,7 @@
                                         </Border>
 
                                         <!-- Status strip -->
-                                        <Border Grid.Row="6" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                        <Border Grid.Row="7" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
                                             <TextBlock Text="{Binding EditInvoiceStatusBarText}"
                                                        Foreground="#FFE0E0E0"
                                                        Opacity="0.9"
@@ -2895,7 +2948,7 @@
                                         </Border>
 
                                         <!-- Buttons -->
-                                        <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <StackPanel Grid.Row="9" Orientation="Horizontal" HorizontalAlignment="Left">
                                             <Button Content="Save Changes"
                                                     Padding="12,6"
                                                     Margin="0,0,8,0"
