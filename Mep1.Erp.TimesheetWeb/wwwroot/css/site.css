@@ -249,3 +249,17 @@ a {
 :root[data-theme="dark"] .form-control:focus {
     box-shadow: 0 0 0 0.2rem rgba(95, 211, 106, 0.25) !important;
 }
+
+.navbar-action-link {
+    color: var(--text);
+    font-weight: 500; /* slightly stronger, not bold */
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.navbar-action-link:hover,
+.navbar-action-link:focus-visible {
+    color: var(--primary);
+    text-decoration-thickness: 2px;
+}

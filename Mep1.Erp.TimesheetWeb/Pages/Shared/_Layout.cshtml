@@ -56,13 +56,7 @@
                             ?? "";
                         }
 
-                        @if (!isAuthed)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Timesheet/Login">Login</a>
-                            </li>
-                        }
-                        else
+                        @if (isAuthed)
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/Timesheet/EnterHours">Enter Hours</a>
@@ -73,25 +67,39 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/Timesheet/Profile">Profile</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Timesheet/Logout">Logout</a>
-                            </li>
                         }
                     </ul>
 
-                    <div class="d-flex align-items-center gap-2 ms-sm-3">
-                        @* Optional: show who is logged in *@
-                        @if (isAuthed && !string.IsNullOrWhiteSpace(displayName))
-                        {
-                            <span class="navbar-text text-muted d-none d-sm-inline">Signed in as @displayName</span>
-                        }
-
+                    <div class="d-flex align-items-center gap-3 ms-sm-3">
                         <button id="theme-toggle"
                                 type="button"
                                 class="btn btn-outline-secondary btn-sm"
                                 aria-label="Toggle theme">
                             Dark mode
                         </button>
+
+                        @if (!isAuthed)
+                        {
+                            <span class="text-muted d-none d-sm-inline">|</span>
+
+                            <a class="nav-link p-0 d-none d-sm-inline navbar-action-link"
+                               asp-page="/Timesheet/Login">
+                                Login
+                            </a>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(displayName))
+                        {
+                            <span class="navbar-text text-muted d-none d-sm-inline">
+                                Signed in as @displayName
+                            </span>
+
+                            <span class="text-muted d-none d-sm-inline">|</span>
+
+                            <a class="nav-link p-0 d-none d-sm-inline navbar-action-link"
+                               asp-page="/Timesheet/Logout">
+                                Logout
+                            </a>
+                        }
                     </div>
                 </div>
             </div>
