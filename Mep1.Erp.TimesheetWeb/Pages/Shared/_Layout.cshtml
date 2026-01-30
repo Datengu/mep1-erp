@@ -4,6 +4,21 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
+    <script>
+        (function () {
+          try {
+            const key = "mep1_theme";
+            const saved = localStorage.getItem(key);
+            const theme = (saved === "light" || saved === "dark")
+              ? saved
+              : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+
+            document.documentElement.setAttribute("data-theme", theme);
+          } catch (e) {
+            // ignore (e.g. localStorage blocked)
+          }
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - MEP1 BIM</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
@@ -17,7 +32,7 @@
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow mb-3">
             <div class="container">
                 <a class="navbar-brand" asp-area="" asp-page="/Index">
                     <img src="~/assets/logo.svg"
@@ -32,7 +47,7 @@
                 </button>
 
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+                    <ul class="navbar-nav flex-grow-1 align-items-center">
 
                         @{
                             var isAuthed = User?.Identity?.IsAuthenticated == true;
@@ -61,16 +76,23 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/Timesheet/Logout">Logout</a>
                             </li>
-
-                            @* Optional: show who is logged in *@
-                            @if (!string.IsNullOrWhiteSpace(displayName))
-                            {
-                                <li class="nav-item ms-auto">
-                                    <span class="navbar-text text-muted">Signed in as @displayName</span>
-                                </li>
-                            }
                         }
                     </ul>
+
+                    <div class="d-flex align-items-center gap-2 ms-sm-3">
+                        @* Optional: show who is logged in *@
+                        @if (isAuthed && !string.IsNullOrWhiteSpace(displayName))
+                        {
+                            <span class="navbar-text text-muted d-none d-sm-inline">Signed in as @displayName</span>
+                        }
+
+                        <button id="theme-toggle"
+                                type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                aria-label="Toggle theme">
+                            Dark mode
+                        </button>
+                    </div>
                 </div>
             </div>
         </nav>
@@ -133,6 +155,61 @@
                 localStorage.setItem(key, "true");
                 notice.style.display = "none";
             });
+        })();
+    </script>
+
+    <script>
+        (function () {
+            const storageKey = "mep1_theme";
+            const root = document.documentElement;
+            const toggleBtn = document.getElementById("theme-toggle");
+
+            function getPreferredTheme() {
+                const saved = localStorage.getItem(storageKey);
+                if (saved === "light" || saved === "dark") return saved;
+
+                // default to system preference
+                return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+                    ? "dark"
+                    : "light";
+            }
+
+            function applyTheme(theme) {
+                root.setAttribute("data-theme", theme);
+
+                if (toggleBtn) {
+                    toggleBtn.textContent = theme === "dark"
+                        ? "Light mode"
+                        : "Dark mode";
+
+                    toggleBtn.setAttribute(
+                        "aria-label",
+                        theme === "dark"
+                            ? "Switch to light mode"
+                            : "Switch to dark mode"
+                    );
+                }
+            }
+
+            function toggleTheme() {
+                const current = root.getAttribute("data-theme") || "light";
+                const next = current === "dark" ? "light" : "dark";
+                localStorage.setItem(storageKey, next);
+                applyTheme(next);
+            }
+
+            // Initial apply
+            applyTheme(getPreferredTheme());
+
+            // If user hasn't chosen a theme, track system changes live
+            const mql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+            if (mql && !localStorage.getItem(storageKey)) {
+                mql.addEventListener("change", () => applyTheme(getPreferredTheme()));
+            }
+
+            if (toggleBtn) {
+                toggleBtn.addEventListener("click", toggleTheme);
+            }
         })();
     </script>
 

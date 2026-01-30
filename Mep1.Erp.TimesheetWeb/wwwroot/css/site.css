@@ -33,9 +33,9 @@ body {
     padding-bottom: 0.5rem;
 }
 
-    .navbar-nav .nav-link:hover {
-        opacity: 0.8;
-    }
+.navbar-nav .nav-link:hover {
+    opacity: 0.8;
+}
 
 .week-block {
     margin-bottom: 2rem;
@@ -69,4 +69,183 @@ body {
     .level-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+}
+
+/* ---------------------------
+   Light/Dark theme variables
+   --------------------------- */
+
+:root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f8f9fa;
+    --text: #212529;
+    --muted: #6c757d;
+    --border: #cccccc;
+    --border-strong: #999999;
+    --link: #0d6efd;
+    --focus: #258cfb;
+    --nav-bg: #ffffff;
+    --primary: #4caf50;
+    --primary-hover: #449d48;
+    --primary-focus: #6fdc7a;
+}
+
+:root[data-theme="dark"] {
+    --bg: #0f1115;
+    --surface: #151922;
+    --surface-2: #111827;
+    --text: #e9ecef;
+    --muted: #a7b0bb;
+    --border: #2a2f3a;
+    --border-strong: #3a4150;
+    --link: #79b8ff;
+    --focus: #79b8ff;
+    --nav-bg: #111827;
+    --primary: #5fd36a;
+    --primary-hover: #52c35d;
+    --primary-focus: #7ef08a;
+}
+
+/* Base */
+html, body {
+    background: var(--bg);
+    color: var(--text);
+}
+
+a {
+    color: var(--link);
+}
+
+/* Navbar (your layout uses bg-white/navbar-light, so we override) */
+.navbar {
+    background-color: var(--nav-bg) !important;
+    border-color: var(--border) !important;
+}
+
+.navbar .nav-link,
+.navbar .navbar-brand,
+.navbar .navbar-text {
+    color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .bg-white {
+    background-color: var(--nav-bg) !important;
+}
+
+/* Your custom blocks (these were hard-coded light in your file) */
+.week-block {
+    border: 1px solid var(--border) !important;
+    background-color: var(--surface-2) !important;
+    color: var(--text) !important;
+}
+
+.week-header {
+    border-bottom: 2px solid var(--border-strong) !important;
+}
+
+/* Focus ring uses hard-coded blue in your CSS; make it theme-aware */
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem var(--bg), 0 0 0 0.25rem var(--focus) !important;
+}
+
+:root[data-theme="dark"] .text-dark {
+    color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .form-control,
+:root[data-theme="dark"] .form-select,
+:root[data-theme="dark"] textarea {
+    background-color: #111827;
+    color: var(--text);
+    border-color: var(--border);
+}
+
+:root[data-theme="dark"] .form-control::placeholder,
+:root[data-theme="dark"] textarea::placeholder {
+    color: var(--muted);
+}
+
+:root[data-theme="dark"] .form-control:focus,
+:root[data-theme="dark"] .form-select:focus {
+    background-color: #111827;
+    color: var(--text);
+}
+
+/* Dark mode: bootstrap "text-muted" */
+:root[data-theme="dark"] .text-muted {
+    color: var(--muted) !important;
+}
+
+/* Dark mode: bootstrap tables (Bootstrap 5 uses CSS variables for tables) */
+:root[data-theme="dark"] .table {
+    color: var(--text) !important;
+    /* Bootstrap 5 table variables */
+    --bs-table-color: var(--text);
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--border);
+    --bs-table-striped-color: var(--text);
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.03);
+    --bs-table-hover-color: var(--text);
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.05);
+}
+
+/* Make sure table header + cells don’t stay dark via other rules */
+:root[data-theme="dark"] .table th,
+:root[data-theme="dark"] .table td {
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+}
+
+/* Brand primary button (green) */
+.btn-primary {
+    color: #fff !important;
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
+}
+
+.btn-primary:focus,
+.btn-primary:active:focus {
+    box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.35) !important;
+}
+
+:root[data-theme="dark"] .btn-primary:focus,
+:root[data-theme="dark"] .btn-primary:active:focus {
+    box-shadow: 0 0 0 0.2rem rgba(95, 211, 106, 0.35) !important;
+}
+
+/* Brand form controls (checkbox / radio) */
+.form-check-input:checked {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+.form-check-input:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25) !important;
+}
+
+/* Optional: radios sometimes want a slightly stronger border */
+.form-check-input[type="radio"]:checked {
+    border-color: var(--primary) !important;
+}
+
+:root[data-theme="dark"] .form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(95, 211, 106, 0.25) !important;
+}
+
+.form-select:focus,
+.form-control:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25) !important;
+}
+
+:root[data-theme="dark"] .form-select:focus,
+:root[data-theme="dark"] .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(95, 211, 106, 0.25) !important;
 }
