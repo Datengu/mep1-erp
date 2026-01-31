@@ -35,7 +35,10 @@
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow mb-3">
             <div class="container">
                 <a class="navbar-brand" asp-area="" asp-page="/Index">
-                    <img src="~/assets/logo.svg"
+                    <img id="navbar-logo"
+                         src="~/assets/logo.svg"
+                         data-logo-light="/assets/logo.svg"
+                         data-logo-dark="/assets/logo-white.svg"
                          alt="MEP1BIM"
                          height="64"
                          class="d-inline-block align-text-middle" />
@@ -184,6 +187,17 @@
 
             function applyTheme(theme) {
                 root.setAttribute("data-theme", theme);
+
+                // Swap navbar logo based on theme
+                const logo = document.getElementById("navbar-logo");
+                if (logo) {
+                    const lightSrc = logo.getAttribute("data-logo-light");
+                    const darkSrc = logo.getAttribute("data-logo-dark");
+
+                    // dark theme => use the white logo
+                    if (theme === "dark" && darkSrc) logo.src = darkSrc;
+                    if (theme !== "dark" && lightSrc) logo.src = lightSrc;
+                }
 
                 if (toggleBtn) {
                     toggleBtn.textContent = theme === "dark"
