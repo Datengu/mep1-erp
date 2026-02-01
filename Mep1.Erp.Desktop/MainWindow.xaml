@@ -3451,54 +3451,54 @@
 
                         <!-- API Base URL -->
                         <TextBlock Text="API Base URL:"
-                       Grid.Row="0" Grid.Column="0"
-                       Margin="0,4"
-                       VerticalAlignment="Center"/>
+                                   Grid.Row="0" Grid.Column="0"
+                                   Margin="0,4"
+                                   VerticalAlignment="Center"/>
 
                         <TextBox x:Name="ApiBaseUrlTextBox" Text="{Binding Settings.ApiBaseUrl, UpdateSourceTrigger=PropertyChanged}"
-                     Grid.Row="0" Grid.Column="1"
-                     Margin="8,4"
-                     Background="#FF262626"
-                     Foreground="#FFE0E0E0"
-                     IsReadOnly="True"/>
+                                 Grid.Row="0" Grid.Column="1"
+                                 Margin="8,4"
+                                 Background="#FF262626"
+                                 Foreground="#FFE0E0E0"
+                                 IsReadOnly="True"/>
 
                         <Button Content="Change..."
-                    Grid.Row="0" Grid.Column="2"
-                    Margin="8,4"
-                    Padding="8,4"
-                    Click="ChangeApiBaseUrl_Click"/>
+                                Grid.Row="0" Grid.Column="2"
+                                Margin="8,4"
+                                Padding="8,4"
+                                Click="ChangeApiBaseUrl_Click"/>
 
                         <!-- Upcoming applications horizon -->
                         <TextBlock Text="Upcoming apps (days ahead):"
-                       Grid.Row="1" Grid.Column="0"
-                       Margin="0,4"
-                       VerticalAlignment="Center"/>
+                                   Grid.Row="1" Grid.Column="0"
+                                   Margin="0,4"
+                                   VerticalAlignment="Center"/>
 
                         <TextBox Text="{Binding Settings.UpcomingApplicationsDaysAhead, UpdateSourceTrigger=PropertyChanged}"
-                     Grid.Row="1" Grid.Column="1"
-                     Margin="8,4"
-                     Background="#FF262626"
-                     Foreground="#FFE0E0E0"/>
+                                 Grid.Row="1" Grid.Column="1"
+                                 Margin="8,4"
+                                 Background="#FF262626"
+                                 Foreground="#FFE0E0E0"/>
 
                         <TextBlock Text="How far ahead to generate application reminders (e.g. 30, 60, 90)."
-                       Grid.Row="1" Grid.Column="2"
-                       Margin="8,4"
-                       VerticalAlignment="Center"
-                       Opacity="0.6"
-                       FontSize="11"/>
+                                   Grid.Row="1" Grid.Column="2"
+                                   Margin="8,4"
+                                   VerticalAlignment="Center"
+                                   Opacity="0.6"
+                                   FontSize="11"/>
 
                         <!-- Save button -->
                         <Button Content="Save settings"
-                    Grid.Row="2" Grid.Column="0"
-                    Grid.ColumnSpan="3"
-                    Margin="0,16,0,0"
-                    Padding="10,5"
-                    HorizontalAlignment="Left"
-                    Background="#FF444444"
-                    Foreground="#FFE0E0E0"
-                    BorderBrush="#FF666666"
-                    BorderThickness="1"
-                    Click="SaveSettingsButton_Click"/>
+                                Grid.Row="2" Grid.Column="0"
+                                Grid.ColumnSpan="3"
+                                Margin="0,16,0,0"
+                                Padding="10,5"
+                                HorizontalAlignment="Left"
+                                Background="#FF444444"
+                                Foreground="#FFE0E0E0"
+                                BorderBrush="#FF666666"
+                                BorderThickness="1"
+                                Click="SaveSettingsButton_Click"/>
                     </Grid>
                 </ScrollViewer>
             </TabItem>
