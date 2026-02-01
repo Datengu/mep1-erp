@@ -2,11 +2,37 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using QuestPDF.Drawing;
+using System.Reflection;
 
 namespace Mep1.Erp.TimesheetWeb.Services;
 
 public sealed class TechnicalDiaryPdfBuilder
 {
+    private static bool _fontRegistered;
+
+    private static void EnsureSignatureFontRegistered()
+    {
+        if (_fontRegistered) return;
+
+        // Works for both local run and VPS publish:
+        // published output will include wwwroot/assets/VLADIMIR.TTF
+        var fontPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "assets", "VLADIMIR.TTF");
+
+        if (!File.Exists(fontPath))
+        {
+            // Fallback attempt for some hosting layouts (rare, but harmless)
+            fontPath = Path.Combine(AppContext.BaseDirectory, "assets", "VLADIMIR.TTF");
+        }
+
+        if (File.Exists(fontPath))
+        {
+            FontManager.RegisterFont(File.OpenRead(fontPath));
+            _fontRegistered = true;
+        }
+        // If it doesn't exist, we just won't apply the font and it will render in default.
+    }
+
     public byte[] BuildWeekPdf(
         string workerName,
         string workerSignatureName,
@@ -17,6 +43,8 @@ public sealed class TechnicalDiaryPdfBuilder
         // Defensive: ensure only the week’s rows are passed in
         var ordered = entries.OrderBy(e => e.Date).ToList();
         var totalHours = ordered.Sum(e => e.Hours);
+
+        EnsureSignatureFontRegistered();
 
         var doc = Document.Create(container =>
         {
@@ -109,7 +137,9 @@ public sealed class TechnicalDiaryPdfBuilder
                         row.RelativeItem().AlignRight().Text(txt =>
                         {
                             txt.Span("Checked: ");
-                            txt.Span(checkedBySignatureName).Italic();
+                            txt.Span(checkedBySignatureName)
+                            .FontFamily("Vladimir Script")
+                            .Italic();
                         });
                     });
 
