@@ -364,48 +364,25 @@ namespace Mep1.Erp.Importer
             // Use migrations now (not EnsureCreated)
             db.Database.Migrate();
 
-            // Bootstrap: ensure at least one TimesheetUser exists on a fresh database
-            if (!db.TimesheetUsers.Any())
-            {
-                const string username = "jason.dean";
-                const string tempPassword = "test1234";
+            // Bootstrap: ensure required TimesheetUsers exist (safe to re-run)
 
-                // Find-or-create the owner worker (Jason Dean) by a stable identifier.
-                // Do NOT assume WorkerId == 1, because IDs depend on insert order.
-                var ownerWorker = db.Workers.SingleOrDefault(w => w.Name == "Jason Dean");
-                if (ownerWorker == null)
-                {
-                    ownerWorker = new Worker
-                    {
-                        Name = "Jason Dean",
-                        Initials = "JWD",
-                        IsActive = true
-                    };
+            SeedUser(
+                db,
+                username: "jason.dean",
+                tempPassword: "test1234",
+                workerName: "Jason Dean",
+                workerInitials: "JWD",
+                role: TimesheetUserRole.Owner
+            );
 
-                    db.Workers.Add(ownerWorker);
-                    db.SaveChanges();
-                }
-
-                var passwordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword);
-
-                db.TimesheetUsers.Add(new TimesheetUser
-                {
-                    Username = username,
-                    PasswordHash = passwordHash,
-                    WorkerId = ownerWorker.Id,
-                    Role = TimesheetUserRole.Owner,
-                    MustChangePassword = true,
-                    IsActive = true
-                });
-
-                db.SaveChanges();
-
-                Console.WriteLine("Seeded initial OWNER TimesheetUser:");
-                Console.WriteLine("  Username: jason.dean");
-                Console.WriteLine("  Temp password: test1234");
-                Console.WriteLine("  MustChangePassword = true");
-                Console.WriteLine($"  Linked worker: {ownerWorker.Name} (Id={ownerWorker.Id})");
-            }
+            SeedUser(
+                db,
+                username: "jack.dean",
+                tempPassword: "test1234",
+                workerName: "Jack Dean",
+                workerInitials: "JTD",
+                role: TimesheetUserRole.Admin
+            );
 
             // Import worker rate history from Finance Sheet
             var financeSheetPath = GetFinanceSheetPathFromConfig();
@@ -1655,5 +1632,53 @@ namespace Mep1.Erp.Importer
         static DateTime AsUtcDate(DateTime dt)
             => DateTime.SpecifyKind(dt.Date, DateTimeKind.Utc);
 
+        static void SeedUser(
+            AppDbContext db,
+            string username,
+            string tempPassword,
+            string workerName,
+            string workerInitials,
+            TimesheetUserRole role)
+        {
+            if (db.TimesheetUsers.Any(u => u.Username == username))
+            {
+                Console.WriteLine($"TimesheetUser already exists: {username}");
+                return;
+            }
+
+            var worker = db.Workers.SingleOrDefault(w => w.Name == workerName);
+            if (worker == null)
+            {
+                worker = new Worker
+                {
+                    Name = workerName,
+                    Initials = workerInitials,
+                    IsActive = true
+                };
+
+                db.Workers.Add(worker);
+                db.SaveChanges();
+            }
+
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword);
+
+            db.TimesheetUsers.Add(new TimesheetUser
+            {
+                Username = username,
+                PasswordHash = passwordHash,
+                WorkerId = worker.Id,
+                Role = role,
+                MustChangePassword = true,
+                IsActive = true
+            });
+
+            db.SaveChanges();
+
+            Console.WriteLine($"Seeded {role} TimesheetUser:");
+            Console.WriteLine($"  Username: {username}");
+            Console.WriteLine($"  Temp password: {tempPassword}");
+            Console.WriteLine("  MustChangePassword = true");
+            Console.WriteLine($"  Linked worker: {worker.Name} (Id={worker.Id})");
+        }
     }
 }
