@@ -151,11 +151,36 @@ builder.Services.AddScoped<AuditLogger>();
 
 var app = builder.Build();
 
+// --- DB migrations on startup (staging/prod) ---
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    try
+    {
+        Console.WriteLine("[DB] Applying migrations...");
+        db.Database.Migrate();
+        Console.WriteLine("[DB] Migrations applied / already up to date.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("[DB] Migration failed:");
+        Console.WriteLine(ex);
+
+        // Fail fast so you don't run the API on a mismatched schema
+        throw;
+    }
+}
+// --- end DB migrations on startup ---
+
 //Do not enable Swagger in Production unless protected.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
 }
 
 app.UseHttpsRedirection();
