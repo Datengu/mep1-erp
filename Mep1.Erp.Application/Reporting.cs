@@ -129,7 +129,11 @@ namespace Mep1.Erp.Application
             // (Trimming inside SQL is awkward/slow; do it once in-memory)
             var invoiceSumsByCode = db.Invoices
                 .AsNoTracking()
-                .Where(i => i.ProjectCode != null && i.ProjectCode != "")
+                .Where(i =>
+                    i.ProjectCode != null &&
+                    i.ProjectCode != "" &&
+                    i.Status != "VOID"
+                )
                 .Select(i => new { i.ProjectCode, i.NetAmount, i.GrossAmount })
                 .ToList()
                 .GroupBy(i => (i.ProjectCode ?? string.Empty).Trim())
