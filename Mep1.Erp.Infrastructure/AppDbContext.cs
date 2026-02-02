@@ -23,6 +23,7 @@ namespace Mep1.Erp.Infrastructure
         public DbSet<Supplier> Suppliers => Set<Supplier>();
         public DbSet<SupplierCost> SupplierCosts => Set<SupplierCost>();
         public DbSet<Invoice> Invoices => Set<Invoice>();
+        public DbSet<Application> Applications => Set<Application>();
         public DbSet<ApplicationSchedule> ApplicationSchedules => Set<ApplicationSchedule>();
         public DbSet<TimesheetUser> TimesheetUsers => Set<TimesheetUser>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -157,6 +158,47 @@ namespace Mep1.Erp.Infrastructure
 
             modelBuilder.Entity<Invoice>()
                 .HasIndex(i => i.ProjectCode);
+
+            modelBuilder.Entity<Invoice>()
+                .HasIndex(i => i.InvoiceNumber);
+
+            modelBuilder.Entity<Invoice>()
+                .HasIndex(i => i.ProjectCode);
+
+            // Applications (real submissions) - distinct from ApplicationSchedule (notifications/rules)
+            modelBuilder.Entity<Application>(e =>
+            {
+                e.HasIndex(a => new { a.ProjectCode, a.ApplicationNumber })
+                 .IsUnique();
+
+                e.HasIndex(a => a.ProjectCode);
+
+                // Postgres-safe: these are business "dates", not instants in time
+                if (!isSqlite)
+                {
+                    e.Property(x => x.DateApplied).HasColumnType("date");
+                    e.Property(x => x.DateAgreed).HasColumnType("date");
+                }
+
+                e.Property(x => x.ProjectCode).IsRequired();
+
+                e.Property(x => x.Status)
+                 .IsRequired()
+                 .HasMaxLength(32);
+            });
+
+            // Optional 1:1 link: Invoice chooses an Application
+            // UNIQUE on nullable ApplicationId enforces 1 invoice per application while allowing many nulls in Postgres.
+            modelBuilder.Entity<Invoice>()
+                .HasIndex(i => i.ApplicationId)
+                .IsUnique();
+
+            modelBuilder.Entity<Invoice>()
+                .HasOne(i => i.Application)
+                .WithOne(a => a.Invoice)
+                .HasForeignKey<Invoice>(i => i.ApplicationId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<ApplicationSchedule>()
                 .HasIndex(a => new { a.ProjectCode, a.ApplicationSubmissionDate });

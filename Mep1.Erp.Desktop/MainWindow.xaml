@@ -2997,45 +2997,64 @@
 
             <!-- 🔹 APPLICATIONS TAB -->
             <TabItem Header="Applications" x:Name="ApplicationsTabItem">
-                <Grid Margin="8" Background="#FF1E1E1E">
-                    <DataGrid ItemsSource="{Binding UpcomingApplications}"
-                              Style="{StaticResource DarkDataGridStyle}"
-                              AutoGenerateColumns="False">
-                        <DataGrid.Columns>
+                <Border Background="#FF1E1E1E"
+                        BorderBrush="#FF333333"
+                        BorderThickness="1"
+                        Padding="6">
 
-                            <DataGridTextColumn Header="Project" Binding="{Binding ProjectLabel}" Width="220"/>
+                    <TabControl Background="#FF1E1E1E"
+                                BorderThickness="0"
+                                Margin="0">
 
-                            <DataGridTextColumn Header="Project Code" Binding="{Binding ProjectCode}" Width="90"/>
+                        <TabItem Header="Applications">
+                            
+                            
+                        </TabItem>
 
-                            <!-- Application Date (bold) -->
-                            <DataGridTextColumn Header="Application Date"
-                                                Binding="{Binding ApplicationDate, StringFormat=\{0:yyyy-MM-dd\}}"
-                                                Width="130">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BoldDateTextBlock}"/>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
+                        <TabItem Header="Application Notifications">
+                        <Grid Margin="8" Background="#FF1E1E1E">
+                            <DataGrid ItemsSource="{Binding UpcomingApplications}"
+                                      Style="{StaticResource DarkDataGridStyle}"
+                                      AutoGenerateColumns="False">
+                                <DataGrid.Columns>
 
-                            <DataGridTextColumn Header="Days"
-                                                Binding="{Binding DaysUntil}"
-                                                Width="60" />
+                                    <DataGridTextColumn Header="Project" Binding="{Binding ProjectLabel}" Width="220"/>
 
-                            <DataGridTextColumn Header="Schedule Type" Binding="{Binding ScheduleType}" Width="110"/>
+                                    <DataGridTextColumn Header="Project Code" Binding="{Binding ProjectCode}" Width="90"/>
 
-                            <DataGridTextColumn Header="Rule Type" Binding="{Binding RuleType}" Width="110"/>
+                                    <!-- Application Date (bold) -->
+                                    <DataGridTextColumn Header="Application Date"
+                                                        Binding="{Binding ApplicationDate, StringFormat=\{0:yyyy-MM-dd\}}"
+                                                        Width="130">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource BoldDateTextBlock}"/>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
 
-                            <!-- Notes (wrap + fill remaining space) -->
-                            <DataGridTextColumn Header="Notes"
-                                                Binding="{Binding Notes}"
-                                                Width="*">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource WrappedCellTextBlock}"/>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Days"
+                                                        Binding="{Binding DaysUntil}"
+                                                        Width="60" />
 
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
+                                    <DataGridTextColumn Header="Schedule Type" Binding="{Binding ScheduleType}" Width="110"/>
+
+                                    <DataGridTextColumn Header="Rule Type" Binding="{Binding RuleType}" Width="110"/>
+
+                                    <!-- Notes (wrap + fill remaining space) -->
+                                    <DataGridTextColumn Header="Notes"
+                                                        Binding="{Binding Notes}"
+                                                        Width="*">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource WrappedCellTextBlock}"/>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </TabItem>
+                        
+                    </TabControl>
+                </Border>
             </TabItem>
 
             <!-- 🔹 TIMESHEET TAB -->
