@@ -61,7 +61,7 @@ namespace Mep1.Erp.Api.Controllers
                 return new ApplicationListEntryDto
                 {
                     Id = a.Id,
-                    ApplicationNumber = a.ApplicationNumber.ToString(),
+                    ApplicationNumber = FormatApplicationRef(a.ApplicationNumber),
                     ProjectCode = a.ProjectCode,
                     JobName = a.Project?.JobNameOrNumber ?? "",
                     ClientName = a.Project?.CompanyEntity?.Name ?? "",
@@ -134,7 +134,7 @@ namespace Mep1.Erp.Api.Controllers
                 .AnyAsync(a => a.ProjectCode == projectCode && a.ApplicationNumber == appNo);
 
             if (exists)
-                return Conflict($"Application '{appNo}' already exists for project '{projectCode}'.");
+                return Conflict($"Application '{FormatApplicationRef(appNo)}' already exists for project '{projectCode}'.");
 
             var status = CleanStatus(dto.Status);
 
@@ -175,7 +175,7 @@ namespace Mep1.Erp.Api.Controllers
             var resp = new CreateApplicationResponseDto
             {
                 Id = entity.Id,
-                ApplicationNumber = entity.ApplicationNumber.ToString(),
+                ApplicationNumber = FormatApplicationRef(entity.ApplicationNumber),
 
                 ProjectId = project.Id,
                 ProjectCode = projectCode,
@@ -218,7 +218,7 @@ namespace Mep1.Erp.Api.Controllers
             var resp = new ApplicationDetailsDto
             {
                 Id = a.Id,
-                ApplicationNumber = a.ApplicationNumber.ToString(),
+                ApplicationNumber = FormatApplicationRef(a.ApplicationNumber),
 
                 ProjectId = a.ProjectId,
                 ProjectCode = a.ProjectCode,
@@ -318,7 +318,7 @@ namespace Mep1.Erp.Api.Controllers
             var resp = new UpdateApplicationResponseDto
             {
                 Id = entity.Id,
-                ApplicationNumber = entity.ApplicationNumber.ToString(),
+                ApplicationNumber = FormatApplicationRef(entity.ApplicationNumber),
 
                 ProjectId = entity.ProjectId,
                 ProjectCode = entity.ProjectCode,
@@ -345,7 +345,27 @@ namespace Mep1.Erp.Api.Controllers
         private static int ParseApplicationNumber(string? s)
         {
             s = (s ?? "").Trim();
-            return int.TryParse(s, out var n) ? n : 0;
+
+            if (string.IsNullOrWhiteSpace(s))
+                return 0;
+
+            // Allow "APP001", "app1", "APP 002"
+            s = s.Replace(" ", "", StringComparison.OrdinalIgnoreCase);
+
+            if (s.StartsWith("APP", StringComparison.OrdinalIgnoreCase))
+                s = s.Substring(3);
+
+            // Now s should be digits (leading zeros allowed)
+            if (!int.TryParse(s, out var n))
+                return 0;
+
+            return n;
+        }
+
+        private static string FormatApplicationRef(int n)
+        {
+            // D3 => 1 => 001, 12 => 012, 999 => 999, 1000 => 1000
+            return $"APP{n.ToString("D3", System.Globalization.CultureInfo.InvariantCulture)}";
         }
 
         private static (decimal VatAmount, decimal GrossAmount) ComputeVat(decimal net, decimal vatRate)

@@ -1792,6 +1792,9 @@ namespace Mep1.Erp.Desktop
                     return;
 
                 NewApplicationDerivedCompanyName = value?.CompanyName ?? "";
+
+                SuggestNextApplicationNumberIfEmpty();
+
                 UpdateAddApplicationValidation();
             }
         }
@@ -6130,10 +6133,8 @@ namespace Mep1.Erp.Desktop
             if (!TryParseVatRateText(NewApplicationVatRateText, out _))
                 problems.Add("VAT rate required");
 
-            if (!TryNormalizeApplicationNumber(NewApplicationNumberText, out var normalized))
-                problems.Add("Application number must be a positive integer");
-            else if (!string.Equals(NewApplicationNumberText.Trim(), normalized, StringComparison.Ordinal))
-                NewApplicationNumberText = normalized;
+            if (!TryNormalizeApplicationRef(NewApplicationNumberText, out _))
+                problems.Add("Application ref must be like APP001 (or 1 / 01 / 001).");
 
             // Agreed rules: optional, but must be consistent
             var hasDateAgreed = NewApplicationDateAgreed.HasValue;
@@ -6170,10 +6171,8 @@ namespace Mep1.Erp.Desktop
             if (!TryParseVatRateText(EditApplicationVatRateText, out _))
                 problems.Add("VAT rate required");
 
-            if (!TryNormalizeApplicationNumber(EditApplicationNumberText, out var normalized))
-                problems.Add("Application number must be a positive integer");
-            else if (!string.Equals(EditApplicationNumberText.Trim(), normalized, StringComparison.Ordinal))
-                EditApplicationNumberText = normalized;
+            if (!TryNormalizeApplicationRef(EditApplicationNumberText, out _))
+                problems.Add("Application ref must be like APP001 (or 1 / 01 / 001).");
 
             var hasDateAgreed = EditApplicationDateAgreed.HasValue;
             var hasAgreedNet = TryParseDecimalMoney(EditApplicationAgreedNetAmountText, out var agreedNet) && agreedNet > 0m;
@@ -6363,13 +6362,15 @@ namespace Mep1.Erp.Desktop
                     return;
                 }
 
-                if (!TryNormalizeApplicationNumber(NewApplicationNumberText, out var normalized))
+                var rawRef = (NewApplicationNumberText ?? "").Trim();
+
+                if (!TryNormalizeApplicationRef(rawRef, out var normalizedRef))
                 {
-                    AddApplicationStatusText = "Application number is invalid.";
+                    AddApplicationStatusText = "Application ref is invalid. Use APP001 or 1 / 01 / 001.";
                     return;
                 }
 
-                NewApplicationNumberText = normalized;
+                NewApplicationNumberText = normalizedRef;
 
                 var dto = new CreateApplicationRequestDto
                 {
@@ -6434,7 +6435,7 @@ namespace Mep1.Erp.Desktop
 
             // Default selections
             NewApplicationVatRateText = "20%";
-            NewApplicationStatusText = "Outstanding";
+            NewApplicationStatusText = "Draft";
 
             RecalculateAddApplicationTotals();
             UpdateAddApplicationValidation();
@@ -6449,66 +6450,64 @@ namespace Mep1.Erp.Desktop
             if (!string.IsNullOrWhiteSpace(NewApplicationNumberText))
                 return;
 
-            if (Applications == null || Applications.Count == 0)
+            if (NewApplicationSelectedProject == null)
                 return;
 
-            var max = -1;
+            var projectCode = GetBaseProjectCodeFromJobNameOrNumber(NewApplicationSelectedProject.JobNameOrNumber);
+            if (string.IsNullOrWhiteSpace(projectCode))
+                return;
 
-            foreach (var app in Applications)
+            var max = 0;
+
+            if (Applications != null)
             {
-                var s = app.ApplicationNumber?.Trim();
-                if (string.IsNullOrWhiteSpace(s))
-                    continue;
-
-                // Take leading digits only (handles 0507a, 0507b, etc.)
-                int i = 0;
-                while (i < s.Length && char.IsDigit(s[i])) i++;
-
-                if (i == 0)
-                    continue;
-
-                var prefix = s.Substring(0, i);
-
-                if (int.TryParse(prefix, out var n))
+                foreach (var app in Applications)
                 {
-                    if (n > max) max = n;
+                    if (!string.Equals((app.ProjectCode ?? "").Trim(), projectCode, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var s = (app.ApplicationNumber ?? "").Trim();
+                    if (string.IsNullOrWhiteSpace(s))
+                        continue;
+
+                    s = s.Replace(" ", "");
+                    if (s.StartsWith("APP", StringComparison.OrdinalIgnoreCase))
+                        s = s.Substring(3);
+
+                    if (int.TryParse(s, out var n) && n > max)
+                        max = n;
                 }
             }
 
-            if (max < 0)
-                return;
-
             var next = max + 1;
+            NewApplicationNumberText = $"APP{next.ToString("D3", System.Globalization.CultureInfo.InvariantCulture)}";
+        }
 
-            NewApplicationNumberText = FormatApplicationNumber(next);
+        private static string GetBaseProjectCodeFromJobNameOrNumber(string? jobNameOrNumber)
+        {
+            var s = (jobNameOrNumber ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(s))
+                return "";
 
-            UpdateAddApplicationValidation();
+            // JobNameOrNumber format: "1234 - Job Name"
+            // We want the base code ("1234") to match API storage.
+            var dashIndex = s.IndexOf('-');
+            if (dashIndex >= 0)
+                s = s.Substring(0, dashIndex).Trim();
+
+            return s;
         }
 
         private static string FormatApplicationNumber(int n)
         {
             if (n <= 0) return "";
-            return n < 1000 ? n.ToString("D4") : n.ToString();
+            return $"APP{n.ToString("D3", System.Globalization.CultureInfo.InvariantCulture)}";
         }
 
         private static bool TryNormalizeApplicationNumber(string? input, out string normalized)
         {
-            normalized = "";
-
-            if (string.IsNullOrWhiteSpace(input))
-                return false;
-
-            var s = input.Trim();
-
-            // Allow only digits
-            if (s.Any(c => !char.IsDigit(c)))
-                return false;
-
-            if (!int.TryParse(s, out var n) || n <= 0)
-                return false;
-
-            normalized = FormatApplicationNumber(n);
-            return true;
+            // Keep this helper for any existing call sites, but align it with APP### rules.
+            return TryNormalizeApplicationRef(input, out normalized);
         }
 
         private async void LoadSelectedApplication_Click(object sender, RoutedEventArgs e)
@@ -6665,6 +6664,26 @@ namespace Mep1.Erp.Desktop
                 MessageBoxButton.OK,
                 MessageBoxImage.Information
             );
+        }
+
+        private static bool TryNormalizeApplicationRef(string? input, out string normalized)
+        {
+            normalized = "";
+
+            var s = (input ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(s))
+                return false;
+
+            s = s.Replace(" ", "");
+
+            if (s.StartsWith("APP", StringComparison.OrdinalIgnoreCase))
+                s = s.Substring(3);
+
+            if (!int.TryParse(s, out var n) || n <= 0)
+                return false;
+
+            normalized = $"APP{n.ToString("D3", System.Globalization.CultureInfo.InvariantCulture)}";
+            return true;
         }
 
     }
