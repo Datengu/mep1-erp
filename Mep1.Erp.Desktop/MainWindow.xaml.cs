@@ -6685,19 +6685,34 @@ namespace Mep1.Erp.Desktop
                 return;
             }
 
-            // Quick+simple input prompt.
-            // If you don’t like this later, we can replace with a proper WPF dialog.
-            var invoiceNo = Microsoft.VisualBasic.Interaction.InputBox(
-                "Enter invoice number to link (e.g. 1, 01, 0001).",
-                "Link to invoice",
-                ""
-            )?.Trim();
-
-            if (string.IsNullOrWhiteSpace(invoiceNo))
-                return;
-
             try
             {
+                // Ensure invoices loaded
+                if (Invoices == null || Invoices.Count == 0)
+                    Invoices = await _api.GetInvoicesAsync();
+
+                // Ensure applications loaded (we need InvoiceId set to compute linked invoices)
+                if (Applications == null || Applications.Count == 0)
+                    Applications = await _api.GetApplicationsAsync();
+
+                var linkedInvoiceIds = Applications
+                    .Where(a => a.InvoiceId.HasValue)
+                    .Select(a => a.InvoiceId!.Value)
+                    .ToList();
+
+                var win = new LinkInvoiceWindow(SelectedApplicationListItem, Invoices, linkedInvoiceIds)
+                {
+                    Owner = this
+                };
+
+                var ok = win.ShowDialog();
+                if (ok != true)
+                    return;
+
+                var invoiceNo = (win.SelectedInvoiceNumber ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(invoiceNo))
+                    return;
+
                 await _api.LinkInvoiceToApplicationAsync(SelectedApplicationListItem.Id, invoiceNo);
 
                 // Refresh list + view
