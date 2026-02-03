@@ -14,4 +14,5 @@ public sealed class ApplicationListEntryDto
     public DateTime? DateAgreed { get; set; }
     public string Notes { get; set; } = "";
     public int? InvoiceId { get; set; }
+    public string? InvoiceNumber { get; set; }
 }

@@ -3,5 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:Mep1.Erp.Desktop">
     <Application.Resources>
+        <SolidColorBrush x:Key="BrushWindowBg" Color="#FF1E1E1E"/>
+        <SolidColorBrush x:Key="BrushPanelBg"  Color="#FF262626"/>
+        <SolidColorBrush x:Key="BrushHeaderBg" Color="#FF333333"/>
+        <SolidColorBrush x:Key="BrushInputBg"  Color="#FF2E2E2E"/>
+        <SolidColorBrush x:Key="BrushBorder"   Color="#FF444444"/>
+        <SolidColorBrush x:Key="BrushText"     Color="#FFE0E0E0"/>
+        <SolidColorBrush x:Key="BrushSubText"  Color="#FFAAAAAA"/>
+        <SolidColorBrush x:Key="BrushButtonBg" Color="#FF2D2D2D"/>
+        <SolidColorBrush x:Key="BrushButtonHoverBg" Color="#FF3A3A3A"/>
     </Application.Resources>
 </Application>

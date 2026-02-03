@@ -4,16 +4,78 @@
         Title="Link invoice" Height="520" Width="980"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
-        Background="#FF1E1E1E"
-        Foreground="#FFE0E0E0">
+        Background="{StaticResource BrushWindowBg}"
+        Foreground="{StaticResource BrushText}">
 
     <Window.Resources>
 
-        <!-- Dark DataGrid style for Applications tab -->
+        <!-- Secondary text (so we don't hardcode #666 which is too dark on dark mode) -->
+        <Style x:Key="SecondaryText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource BrushSubText}"/>
+        </Style>
+
+        <!-- Dark TextBox style -->
+        <Style x:Key="DarkTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{StaticResource BrushText}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource BrushText}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="#FF6A6A6A"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.55"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Dark CheckBox style -->
+        <Style x:Key="DarkCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource BrushText}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
+        <!-- Dark Button style -->
+        <Style x:Key="DarkButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource BrushButtonBg}"/>
+            <Setter Property="Foreground" Value="{StaticResource BrushText}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource BrushButtonHoverBg}"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#FF444444"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.55"/>
+                </Trigger>
+
+                <!-- Make the default button read as "primary" without introducing a bright color -->
+                <Trigger Property="IsDefault" Value="True">
+                    <Setter Property="Background" Value="#FF3A3A3A"/>
+                    <Setter Property="BorderBrush" Value="#FF6A6A6A"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- ====== Your existing dark DataGrid style (unchanged) ====== -->
         <Style x:Key="DarkDataGridStyle" TargetType="DataGrid">
-            <Setter Property="Background" Value="#FF262626"/>
-            <Setter Property="Foreground" Value="#FFE0E0E0"/>
-            <Setter Property="RowBackground" Value="#FF262626"/>
+            <Setter Property="Background" Value="{StaticResource BrushPanelBg}"/>
+            <Setter Property="Foreground" Value="{StaticResource BrushText}"/>
+            <Setter Property="RowBackground" Value="{StaticResource BrushPanelBg}"/>
             <Setter Property="AlternatingRowBackground" Value="#FF303030"/>
             <Setter Property="GridLinesVisibility" Value="None"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -23,7 +85,6 @@
             <Setter Property="IsReadOnly" Value="True"/>
             <Setter Property="Margin" Value="0"/>
 
-            <!-- Selection colors (avoid default bright blue) -->
             <Setter Property="SelectionUnit" Value="FullRow"/>
             <Setter Property="SelectionMode" Value="Single"/>
 
@@ -31,8 +92,8 @@
                 <Setter.Value>
                     <Style TargetType="DataGridCell">
                         <Setter Property="Background" Value="{Binding RelativeSource={RelativeSource AncestorType=DataGrid}, Path=Background}"/>
-                        <Setter Property="Foreground" Value="#FFE0E0E0"/>
-                        <Setter Property="BorderBrush" Value="#FF444444"/>
+                        <Setter Property="Foreground" Value="{StaticResource BrushText}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
                         <Setter Property="BorderThickness" Value="0,0,0,1"/>
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
@@ -47,9 +108,9 @@
             <Setter Property="ColumnHeaderStyle">
                 <Setter.Value>
                     <Style TargetType="DataGridColumnHeader">
-                        <Setter Property="Background" Value="#FF333333"/>
-                        <Setter Property="Foreground" Value="#FFE0E0E0"/>
-                        <Setter Property="BorderBrush" Value="#FF444444"/>
+                        <Setter Property="Background" Value="{StaticResource BrushHeaderBg}"/>
+                        <Setter Property="Foreground" Value="{StaticResource BrushText}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
                         <Setter Property="BorderThickness" Value="0,0,0,1"/>
                         <Setter Property="FontWeight" Value="SemiBold"/>
                         <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -58,23 +119,9 @@
             </Setter>
         </Style>
 
-        <!-- Wrapped text style for Notes column -->
-        <Style x:Key="WrappedCellTextBlock" TargetType="TextBlock">
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-            <Setter Property="Margin" Value="0,2,0,2"/>
-        </Style>
-
-        <!-- Bolder date style -->
-        <Style x:Key="BoldDateTextBlock" TargetType="TextBlock" BasedOn="{StaticResource WrappedCellTextBlock}">
-            <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
-
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-
     </Window.Resources>
 
-    <Grid Background="#FF1E1E1E" Margin="12">
+    <Grid Background="{StaticResource BrushWindowBg}" Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -85,73 +132,108 @@
         <!-- Header -->
         <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,0,0,10">
             <TextBlock Text="Link invoice to application" FontSize="18" FontWeight="SemiBold"/>
-            <TextBlock Text="{Binding HeaderLine}" Foreground="#666" Margin="0,2,0,0"/>
+            <TextBlock Text="{Binding HeaderLine}" Style="{StaticResource SecondaryText}" Margin="0,2,0,0"/>
+            <TextBlock Text="{Binding CompareNetText}" Style="{StaticResource SecondaryText}" Margin="0,2,0,0"/>
+            <TextBlock Text="{Binding CompareDateText}" Style="{StaticResource SecondaryText}" Margin="0,2,0,0"/>
         </StackPanel>
 
-        <!-- Filters -->
-        <Grid Grid.Row="1" Margin="0,0,0,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="220"/>
-                <ColumnDefinition Width="20"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="260"/>
-                <ColumnDefinition Width="20"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="140"/>
-                <ColumnDefinition Width="20"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <Border Grid.Row="1" Grid.RowSpan="2"
+                Background="{StaticResource BrushPanelBg}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="12">
 
-            <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Project"/>
-            <TextBox Grid.Column="1" Text="{Binding ProjectCode, Mode=OneWay}" IsReadOnly="True"/>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Filters -->
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="260"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="140"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Project"/>
+                    <TextBox Grid.Column="1"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             Text="{Binding ProjectCode, Mode=OneWay}"
+                             IsReadOnly="True"/>
+
+                    <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="Client"/>
+                    <TextBox Grid.Column="4"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             Text="{Binding ClientName, Mode=OneWay}"
+                             IsReadOnly="True"/>
+
+                    <TextBlock Grid.Column="6" VerticalAlignment="Center" Text="Search"/>
+                    <TextBox Grid.Column="7"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <CheckBox Grid.Column="9"
+                              Style="{StaticResource DarkCheckBoxStyle}"
+                              Content="Unlinked only"
+                              IsChecked="{Binding UnlinkedOnly}"/>
+
+                    <TextBlock Grid.Column="10"
+                               Style="{StaticResource SecondaryText}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right"
+                               Text="{Binding ResultsCountText}"/>
             
-            <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="Client"/>
-            <TextBox Grid.Column="4" Text="{Binding ClientName, Mode=OneWay}" IsReadOnly="True"/>
-            
-            <TextBlock Grid.Column="6" VerticalAlignment="Center" Text="Search"/>
-            <TextBox Grid.Column="7" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                </Grid>
 
-            <CheckBox Grid.Column="9" VerticalAlignment="Center" Content="Unlinked only"
-                      IsChecked="{Binding UnlinkedOnly}"/>
+                <!-- Grid -->
+                <DataGrid Grid.Row="2"
+                          ItemsSource="{Binding InvoiceView}"
+                          SelectedItem="{Binding SelectedRow}"
+                          Style="{StaticResource DarkDataGridStyle}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          SelectionUnit="FullRow"
+                          CanUserSortColumns="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="90"/>
+                        <DataGridTextColumn Header="Date" Binding="{Binding InvoiceDate, StringFormat=dd/MM/yyyy}" Width="95"/>
+                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110"/>
 
-            <TextBlock Grid.Column="10" VerticalAlignment="Center" HorizontalAlignment="Right"
-                       Text="{Binding ResultsCountText}" Foreground="#666"/>
-        </Grid>
+                        <DataGridTextColumn Header="Net" Binding="{Binding NetAmount, StringFormat=N2}" Width="95"/>
+                        <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingNet, StringFormat=N2}" Width="105"/>
+                        <DataGridTextColumn Header="Δ Net" Binding="{Binding DeltaNet, StringFormat=N2}" Width="95"/>
 
-        <!-- Grid -->
-        <DataGrid Grid.Row="2"
-                  ItemsSource="{Binding InvoiceView}"
-                  SelectedItem="{Binding SelectedRow}"
-                  Style="{StaticResource DarkDataGridStyle}"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  SelectionMode="Single"
-                  SelectionUnit="FullRow"
-                  CanUserSortColumns="True">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="90"/>
-                <DataGridTextColumn Header="Date" Binding="{Binding InvoiceDate, StringFormat=dd/MM/yyyy}" Width="95"/>
-                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110"/>
+                        <DataGridTextColumn Header="Job" Binding="{Binding JobName}" Width="*"/>
+                        <DataGridTextColumn Header="Linked?" Binding="{Binding IsLinkedText}" Width="75"/>
+                    </DataGrid.Columns>
+                </DataGrid>
 
-                <DataGridTextColumn Header="Net" Binding="{Binding NetAmount, StringFormat=N2}" Width="95"/>
-                <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingNet, StringFormat=N2}" Width="105"/>
-                <DataGridTextColumn Header="Δ Net" Binding="{Binding DeltaNet, StringFormat=N2}" Width="95"/>
-
-                <DataGridTextColumn Header="Job" Binding="{Binding JobName}" Width="*"/>
-                <DataGridTextColumn Header="Linked?" Binding="{Binding IsLinkedText}" Width="75"/>
-            </DataGrid.Columns>
-        </DataGrid>
+            </Grid>
+        </Border>
 
         <!-- Buttons -->
         <DockPanel Grid.Row="3" Margin="0,12,0,0" LastChildFill="False">
-            <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Foreground="#666"
+            <TextBlock DockPanel.Dock="Left"
+                       Style="{StaticResource SecondaryText}"
+                       VerticalAlignment="Center"
                        Text="Select an invoice then click Link."/>
 
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Cancel" MinWidth="90" Margin="0,0,10,0" IsCancel="True"/>
-                <Button Content="Link selected" MinWidth="120" IsDefault="True"
+                <Button Style="{StaticResource DarkButtonStyle}" Content="Cancel" MinWidth="90" Margin="0,0,10,0" IsCancel="True"/>
+                <Button Style="{StaticResource DarkButtonStyle}" Content="Link selected" MinWidth="120" IsDefault="True"
                         Click="LinkSelected_Click"/>
             </StackPanel>
         </DockPanel>

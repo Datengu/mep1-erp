@@ -51,6 +51,27 @@ namespace Mep1.Erp.Api.Controllers
                 .ThenBy(a => a.ApplicationNumber)
                 .ToListAsync();
 
+            // Pull invoice links in one query (avoid N+1)
+            var appIds = apps.Select(a => a.Id).ToList();
+
+            var invoiceLinks = await _db.Invoices
+                .AsNoTracking()
+                .Where(i => i.ApplicationId != null && appIds.Contains(i.ApplicationId.Value))
+                .Select(i => new
+                {
+                    AppId = i.ApplicationId!.Value,
+                    InvoiceId = i.Id,
+                    i.InvoiceNumber
+                })
+                .ToListAsync();
+
+            var invoiceByAppId = invoiceLinks
+                .GroupBy(x => x.AppId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.First()
+                );
+
             // VAT is not stored on Application (yet) - mirror Invoice UX by computing it.
             const decimal defaultVatRate = 0.20m;
 
@@ -72,10 +93,8 @@ namespace Mep1.Erp.Api.Controllers
                     AgreedNetAmount = a.AgreedNetAmount,
                     DateAgreed = a.DateAgreed,
                     Notes = a.Notes ?? "",
-                    InvoiceId = _db.Invoices
-                        .Where(i => i.ApplicationId == a.Id)
-                        .Select(i => (int?)i.Id)
-                        .FirstOrDefault()
+                    InvoiceId = invoiceByAppId.TryGetValue(a.Id, out var inv) ? inv.InvoiceId : (int?)null,
+                    InvoiceNumber = invoiceByAppId.TryGetValue(a.Id, out var inv2) ? inv2.InvoiceNumber : null
                 };
             }).ToList();
 

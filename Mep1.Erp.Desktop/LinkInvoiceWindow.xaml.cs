@@ -20,6 +20,8 @@ namespace Mep1.Erp.Desktop
 
         public string ProjectCode { get; }
         public string ClientName { get; }
+        public string CompareNetText { get; }
+        public string CompareDateText { get; }
         public string HeaderLine { get; }
 
         private string _searchText = "";
@@ -89,6 +91,17 @@ namespace Mep1.Erp.Desktop
 
             // Compare against agreed net if present, otherwise net
             _compareNet = application.AgreedNetAmount ?? application.NetAmount ?? 0m;
+
+            CompareNetText =
+                application.AgreedNetAmount.HasValue
+                    ? $"Agreed net: {_compareNet.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)}"
+                    : $"Applied net: {_compareNet.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)}";
+
+            // Date agreed (if present)
+            CompareDateText =
+                application.DateAgreed.HasValue
+                    ? $"Agreed date: {application.DateAgreed.Value:dd/MM/yyyy}"
+                    : "Agreed date: (none)";
 
             var linkedSet = new HashSet<int>(linkedInvoiceIds);
 

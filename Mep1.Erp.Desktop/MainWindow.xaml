@@ -3204,6 +3204,8 @@
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
+                                        
+                                        <!-- Agreed -->
 
                                         <DataGridTemplateColumn Header="Agreed Net" Width="110">
                                             <DataGridTemplateColumn.HeaderStyle>
@@ -3251,6 +3253,15 @@
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
+
+                                        <DataGridTextColumn Header="Agreed Date"
+                                                            Binding="{Binding DateAgreed, StringFormat=yyyy-MM-dd}"
+                                                            Width="110"/>
+
+                                        <!-- Linked Invoice Number-->
+                                        <DataGridTextColumn Header="Invoice"
+                                                            Binding="{Binding InvoiceNumber}"
+                                                            Width="90"/>
 
                                         <!-- Notes (wrapped) -->
                                         <DataGridTemplateColumn Header="Notes" Width="300">
