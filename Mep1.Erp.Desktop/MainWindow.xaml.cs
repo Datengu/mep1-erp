@@ -6433,6 +6433,11 @@ namespace Mep1.Erp.Desktop
             NewApplicationNetAmountText = "";
             NewApplicationNotesText = "";
 
+            NewApplicationAgreedNetAmountText = "";
+            NewApplicationDateAgreed = null;
+            NewApplicationAgreedVatAmountText = "";
+            NewApplicationAgreedGrossAmountText = "";
+
             // Default selections
             NewApplicationVatRateText = "20%";
             NewApplicationStatusText = "Draft";
