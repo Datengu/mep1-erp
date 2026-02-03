@@ -3451,6 +3451,24 @@
                                                 <DatePicker Grid.Row="0" Grid.Column="3"
                                                             SelectedDate="{Binding NewApplicationDateAgreed}"
                                                             Margin="0,0,0,6"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Agreed VAT"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="1"
+                                                           Text="{Binding NewApplicationAgreedVatAmountText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,12,0"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Agreed Gross"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="3"
+                                                           Text="{Binding NewApplicationAgreedGrossAmountText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"/>
+
                                             </Grid>
                                         </Border>
 
@@ -3740,6 +3758,23 @@
                                                 <DatePicker Grid.Row="0" Grid.Column="3"
                                                             SelectedDate="{Binding EditApplicationDateAgreed}"
                                                             Margin="0,0,0,6"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Agreed VAT"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="1"
+                                                           Text="{Binding EditApplicationAgreedVatAmountText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,12,0"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Agreed Gross"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="3"
+                                                           Text="{Binding EditApplicationAgreedGrossAmountText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"/>
                                             </Grid>
                                         </Border>
 

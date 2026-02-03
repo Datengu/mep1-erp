@@ -1826,6 +1826,7 @@ namespace Mep1.Erp.Desktop
                 if (SetField(ref _newApplicationVatRateText, value, nameof(NewApplicationVatRateText)))
                 {
                     RecalculateAddApplicationTotals();
+                    RecalculateAddApplicationAgreedTotals();
                     UpdateAddApplicationValidation();
                 }
             }
@@ -1952,6 +1953,7 @@ namespace Mep1.Erp.Desktop
                 if (SetField(ref _editApplicationVatRateText, value, nameof(EditApplicationVatRateText)))
                 {
                     RecalculateEditApplicationTotals();
+                    RecalculateEditApplicationAgreedTotals();
                     UpdateEditApplicationValidation();
                 }
             }
@@ -1999,7 +2001,14 @@ namespace Mep1.Erp.Desktop
         public string NewApplicationAgreedNetAmountText
         {
             get => _newApplicationAgreedNetAmountText;
-            set => SetField(ref _newApplicationAgreedNetAmountText, value, nameof(NewApplicationAgreedNetAmountText));
+            set
+            {
+                if (SetField(ref _newApplicationAgreedNetAmountText, value, nameof(NewApplicationAgreedNetAmountText)))
+                {
+                    RecalculateAddApplicationAgreedTotals();
+                    UpdateAddApplicationValidation();
+                }
+            }
         }
 
         private DateTime? _newApplicationDateAgreed;
@@ -2016,18 +2025,18 @@ namespace Mep1.Erp.Desktop
             }
         }
 
-        private string _newApplicationExternalReferenceText = "";
-        public string NewApplicationExternalReferenceText
-        {
-            get => _newApplicationExternalReferenceText;
-            set => SetField(ref _newApplicationExternalReferenceText, value, nameof(NewApplicationExternalReferenceText));
-        }
-
         private string _editApplicationAgreedNetAmountText = "";
         public string EditApplicationAgreedNetAmountText
         {
             get => _editApplicationAgreedNetAmountText;
-            set => SetField(ref _editApplicationAgreedNetAmountText, value, nameof(EditApplicationAgreedNetAmountText));
+            set
+            {
+                if (SetField(ref _editApplicationAgreedNetAmountText, value, nameof(EditApplicationAgreedNetAmountText)))
+                {
+                    RecalculateEditApplicationAgreedTotals();
+                    UpdateEditApplicationValidation();
+                }
+            }
         }
 
         private DateTime? _editApplicationDateAgreed;
@@ -2044,11 +2053,32 @@ namespace Mep1.Erp.Desktop
             }
         }
 
-        private string _editApplicationExternalReferenceText = "";
-        public string EditApplicationExternalReferenceText
+        private string _newApplicationAgreedVatAmountText = "";
+        public string NewApplicationAgreedVatAmountText
         {
-            get => _editApplicationExternalReferenceText;
-            set => SetField(ref _editApplicationExternalReferenceText, value, nameof(EditApplicationExternalReferenceText));
+            get => _newApplicationAgreedVatAmountText;
+            set => SetField(ref _newApplicationAgreedVatAmountText, value, nameof(NewApplicationAgreedVatAmountText));
+        }
+
+        private string _newApplicationAgreedGrossAmountText = "";
+        public string NewApplicationAgreedGrossAmountText
+        {
+            get => _newApplicationAgreedGrossAmountText;
+            set => SetField(ref _newApplicationAgreedGrossAmountText, value, nameof(NewApplicationAgreedGrossAmountText));
+        }
+
+        private string _editApplicationAgreedVatAmountText = "";
+        public string EditApplicationAgreedVatAmountText
+        {
+            get => _editApplicationAgreedVatAmountText;
+            set => SetField(ref _editApplicationAgreedVatAmountText, value, nameof(EditApplicationAgreedVatAmountText));
+        }
+
+        private string _editApplicationAgreedGrossAmountText = "";
+        public string EditApplicationAgreedGrossAmountText
+        {
+            get => _editApplicationAgreedGrossAmountText;
+            set => SetField(ref _editApplicationAgreedGrossAmountText, value, nameof(EditApplicationAgreedGrossAmountText));
         }
 
         // ---------------------------------------------
@@ -6100,6 +6130,11 @@ namespace Mep1.Erp.Desktop
             if (!TryParseVatRateText(NewApplicationVatRateText, out _))
                 problems.Add("VAT rate required");
 
+            if (!TryNormalizeApplicationNumber(NewApplicationNumberText, out var normalized))
+                problems.Add("Application number must be a positive integer");
+            else if (!string.Equals(NewApplicationNumberText.Trim(), normalized, StringComparison.Ordinal))
+                NewApplicationNumberText = normalized;
+
             // Agreed rules: optional, but must be consistent
             var hasDateAgreed = NewApplicationDateAgreed.HasValue;
             var hasAgreedNet = TryParseDecimalMoney(NewApplicationAgreedNetAmountText, out var agreedNet) && agreedNet > 0m;
@@ -6134,6 +6169,11 @@ namespace Mep1.Erp.Desktop
 
             if (!TryParseVatRateText(EditApplicationVatRateText, out _))
                 problems.Add("VAT rate required");
+
+            if (!TryNormalizeApplicationNumber(EditApplicationNumberText, out var normalized))
+                problems.Add("Application number must be a positive integer");
+            else if (!string.Equals(EditApplicationNumberText.Trim(), normalized, StringComparison.Ordinal))
+                EditApplicationNumberText = normalized;
 
             var hasDateAgreed = EditApplicationDateAgreed.HasValue;
             var hasAgreedNet = TryParseDecimalMoney(EditApplicationAgreedNetAmountText, out var agreedNet) && agreedNet > 0m;
@@ -6197,6 +6237,52 @@ namespace Mep1.Erp.Desktop
 
             EditApplicationSelectedSummaryText =
                 $"{SelectedApplicationListItem.ApplicationNumber} - {SelectedApplicationListItem.JobName}";
+        }
+
+        private void RecalculateAddApplicationAgreedTotals()
+        {
+            if (!TryParseDecimalMoney(NewApplicationAgreedNetAmountText, out var agreedNet) || agreedNet <= 0m)
+            {
+                NewApplicationAgreedVatAmountText = "";
+                NewApplicationAgreedGrossAmountText = "";
+                return;
+            }
+
+            if (!TryParseVatRateText(NewApplicationVatRateText, out var vatRate))
+            {
+                NewApplicationAgreedVatAmountText = "";
+                NewApplicationAgreedGrossAmountText = "";
+                return;
+            }
+
+            var vat = Math.Round(agreedNet * vatRate, 2, MidpointRounding.AwayFromZero);
+            var gross = agreedNet + vat;
+
+            NewApplicationAgreedVatAmountText = vat.ToString("0.00");
+            NewApplicationAgreedGrossAmountText = gross.ToString("0.00");
+        }
+
+        private void RecalculateEditApplicationAgreedTotals()
+        {
+            if (!TryParseDecimalMoney(EditApplicationAgreedNetAmountText, out var agreedNet) || agreedNet <= 0m)
+            {
+                EditApplicationAgreedVatAmountText = "";
+                EditApplicationAgreedGrossAmountText = "";
+                return;
+            }
+
+            if (!TryParseVatRateText(EditApplicationVatRateText, out var vatRate))
+            {
+                EditApplicationAgreedVatAmountText = "";
+                EditApplicationAgreedGrossAmountText = "";
+                return;
+            }
+
+            var vat = Math.Round(agreedNet * vatRate, 2, MidpointRounding.AwayFromZero);
+            var gross = agreedNet + vat;
+
+            EditApplicationAgreedVatAmountText = vat.ToString("0.00");
+            EditApplicationAgreedGrossAmountText = gross.ToString("0.00");
         }
 
         // --- Event handlers (wired from XAML) ---
@@ -6277,6 +6363,14 @@ namespace Mep1.Erp.Desktop
                     return;
                 }
 
+                if (!TryNormalizeApplicationNumber(NewApplicationNumberText, out var normalized))
+                {
+                    AddApplicationStatusText = "Application number is invalid.";
+                    return;
+                }
+
+                NewApplicationNumberText = normalized;
+
                 var dto = new CreateApplicationRequestDto
                 {
                     ProjectId = NewApplicationSelectedProject.ProjectId,
@@ -6286,7 +6380,6 @@ namespace Mep1.Erp.Desktop
                     VatRate = vatRate,
                     AgreedNetAmount = ParseNullableMoney(NewApplicationAgreedNetAmountText),
                     DateAgreed = NewApplicationDateAgreed,
-                    ExternalReference = string.IsNullOrWhiteSpace(NewApplicationExternalReferenceText) ? null : NewApplicationExternalReferenceText.Trim(),
                     Status = statusText.Trim(),
                     Notes = string.IsNullOrWhiteSpace(NewApplicationNotesText) ? null : NewApplicationNotesText.Trim()
                 };
@@ -6320,7 +6413,8 @@ namespace Mep1.Erp.Desktop
             NewApplicationVatRateText = "20%";
             NewApplicationAgreedNetAmountText = "";
             NewApplicationDateAgreed = null;
-            NewApplicationExternalReferenceText = "";
+            NewApplicationAgreedVatAmountText = "";
+            NewApplicationAgreedGrossAmountText = "";
             NewApplicationNotesText = "";
             AddApplicationStatusText = "";
             AddApplicationValidationText = "";
@@ -6386,10 +6480,35 @@ namespace Mep1.Erp.Desktop
 
             var next = max + 1;
 
-            // Keep your desired leading zeros (0500 style)
-            NewApplicationNumberText = next.ToString("D4");
+            NewApplicationNumberText = FormatApplicationNumber(next);
 
             UpdateAddApplicationValidation();
+        }
+
+        private static string FormatApplicationNumber(int n)
+        {
+            if (n <= 0) return "";
+            return n < 1000 ? n.ToString("D4") : n.ToString();
+        }
+
+        private static bool TryNormalizeApplicationNumber(string? input, out string normalized)
+        {
+            normalized = "";
+
+            if (string.IsNullOrWhiteSpace(input))
+                return false;
+
+            var s = input.Trim();
+
+            // Allow only digits
+            if (s.Any(c => !char.IsDigit(c)))
+                return false;
+
+            if (!int.TryParse(s, out var n) || n <= 0)
+                return false;
+
+            normalized = FormatApplicationNumber(n);
+            return true;
         }
 
         private async void LoadSelectedApplication_Click(object sender, RoutedEventArgs e)
@@ -6416,7 +6535,6 @@ namespace Mep1.Erp.Desktop
 
                 EditApplicationAgreedNetAmountText = dto.AgreedNetAmount?.ToString("0.00") ?? "";
                 EditApplicationDateAgreed = dto.DateAgreed;
-                EditApplicationExternalReferenceText = dto.ExternalReference ?? "";
 
                 // select project in picklist
                 if (dto.ProjectId.HasValue)
@@ -6432,6 +6550,7 @@ namespace Mep1.Erp.Desktop
                 EditApplicationDerivedCompanyName = dto.CompanyName ?? "";
 
                 UpdateEditApplicationValidation();
+                RecalculateEditApplicationAgreedTotals();
                 EditApplicationStatusBarText = "Loaded.";
             }
             catch (Exception ex)
@@ -6490,7 +6609,6 @@ namespace Mep1.Erp.Desktop
                     VatRate = vatRate,
                     AgreedNetAmount = ParseNullableMoney(EditApplicationAgreedNetAmountText),
                     DateAgreed = EditApplicationDateAgreed,
-                    ExternalReference = string.IsNullOrWhiteSpace(EditApplicationExternalReferenceText) ? null : EditApplicationExternalReferenceText.Trim(),
                     Status = statusText.Trim(),
                     Notes = string.IsNullOrWhiteSpace(EditApplicationNotesText) ? null : EditApplicationNotesText.Trim()
                 };
@@ -6521,7 +6639,8 @@ namespace Mep1.Erp.Desktop
             EditApplicationVatRateText = "20%";
             EditApplicationAgreedNetAmountText = "";
             EditApplicationDateAgreed = null;
-            EditApplicationExternalReferenceText = "";
+            EditApplicationAgreedVatAmountText = "";
+            EditApplicationAgreedGrossAmountText = "";
             EditApplicationNotesText = "";
             EditApplicationStatusBarText = "";
             EditApplicationValidationText = "";
