@@ -3007,8 +3007,823 @@
                                 Margin="0">
 
                         <TabItem Header="Applications">
-                            
-                            
+                            <Grid Background="#FF1E1E1E">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Filter toolbar -->
+                                    <StackPanel Orientation="Horizontal"
+                                                Margin="8,8,8,4"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="Filter:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+
+                                        <Button Content="All"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowAllApplications_Click"/>
+
+                                        <Button Content="Without invoice"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowApplicationsWithoutInvoice_Click"/>
+
+                                        <Button Content="Last 30 days (no invoice)"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowRecentApplicationsWithoutInvoice_Click"/>
+
+                                        <Button Content="Older than 30 days (no invoice)"
+                                                Margin="0,0,4,0"
+                                                Padding="8,3"
+                                                Click="ShowOlderApplicationsWithoutInvoice_Click"/>
+                                    </StackPanel>
+
+                                    <!-- RIGHT: Action -->
+                                    <Button Grid.Column="1"
+                                            Content="Mark as submitted"
+                                            Padding="12,4"
+                                            MinWidth="130"
+                                            HorizontalAlignment="Right"
+                                            Click="MarkApplicationAsSubmitted_Click"/>
+                                </Grid>
+
+                                <!-- Applications grid -->
+                                <DataGrid x:Name="ApplicationsGrid"
+                                          Grid.Row="1"
+                                          Margin="8,0,8,8"
+                                          ItemsSource="{Binding ApplicationView}"
+                                          SelectedItem="{Binding SelectedApplicationListItem}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          Style="{StaticResource DarkDataGridStyle}">
+
+                                    <DataGrid.Resources>
+                                        <!-- Scoped header style clone (same pattern as invoices) -->
+                                        <Style x:Key="ApplicationsGridHeaderBaseStyle" TargetType="DataGridColumnHeader">
+                                            <Setter Property="Background" Value="#FF333333"/>
+                                            <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                                            <Setter Property="BorderBrush" Value="#FF444444"/>
+                                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+
+                                    <DataGrid.CellStyle>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="16,3,16,3"/>
+                                        </Style>
+                                    </DataGrid.CellStyle>
+
+                                    <DataGrid.Columns>
+
+                                        <!-- Identity -->
+                                        <DataGridTextColumn Header="Application No."
+                                                            Binding="{Binding ApplicationNumber}"
+                                                            Width="90"/>
+
+                                        <DataGridTextColumn Header="Client"
+                                                            Binding="{Binding ClientName}"
+                                                            Width="170"/>
+
+                                        <DataGridTextColumn Header="Project Code"
+                                                            Binding="{Binding ProjectCode}"
+                                                            Width="80"/>
+
+                                        <DataGridTextColumn Header="Job Name"
+                                                            Binding="{Binding JobName}"
+                                                            Width="160"/>
+
+                                        <DataGridTextColumn Header="Status"
+                                                            Binding="{Binding Status}"
+                                                            Width="90"/>
+
+                                        <!-- Dates -->
+                                        <DataGridTextColumn Header="Application Date"
+                                                            Binding="{Binding ApplicationDate, StringFormat=yyyy-MM-dd}"
+                                                            Width="110"/>
+
+                                        <!-- Amounts -->
+                                        <DataGridTemplateColumn Header="Net" Width="90">
+                                            <DataGridTemplateColumn.HeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader"
+                                                       BasedOn="{StaticResource ApplicationsGridHeaderBaseStyle}">
+                                                    <Setter Property="Padding" Value="10,0,10,0"/>
+                                                </Style>
+                                            </DataGridTemplateColumn.HeaderStyle>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="10,0,10,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock Margin="0,0,4,0" VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="£"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding NetAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value=""/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+
+                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextAlignment="Right">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="{Binding NetAmount, StringFormat={}{0:N2}}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding NetAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value="-"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTemplateColumn Header="Gross" Width="90">
+                                            <DataGridTemplateColumn.HeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader"
+                                                       BasedOn="{StaticResource ApplicationsGridHeaderBaseStyle}">
+                                                    <Setter Property="Padding" Value="10,0,10,0"/>
+                                                </Style>
+                                            </DataGridTemplateColumn.HeaderStyle>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="10,0,10,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock Margin="0,0,4,0" VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="£"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding GrossAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value=""/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+
+                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextAlignment="Right">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="{Binding GrossAmount, StringFormat={}{0:N2}}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding GrossAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value="-"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTemplateColumn Header="Agreed Net" Width="110">
+                                            <DataGridTemplateColumn.HeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader"
+                                                       BasedOn="{StaticResource ApplicationsGridHeaderBaseStyle}">
+                                                    <Setter Property="Padding" Value="10,0,10,0"/>
+                                                </Style>
+                                            </DataGridTemplateColumn.HeaderStyle>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="10,0,10,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <!-- £ (blank when null) -->
+                                                        <TextBlock Margin="0,0,4,0" VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="£"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding AgreedNetAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value=""/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+
+                                                        <!-- Value (right aligned, "-" when null) -->
+                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextAlignment="Right">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="{Binding AgreedNetAmount, StringFormat={}{0:N2}}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding AgreedNetAmount}" Value="{x:Null}">
+                                                                            <Setter Property="Text" Value="-"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!-- Notes (wrapped) -->
+                                        <DataGridTemplateColumn Header="Notes" Width="300">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Notes}"
+                                                               Style="{StaticResource WrappedCellTextBlock}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- ADD APPLICATION -->
+                        <TabItem Header="Add Application">
+                            <Grid Background="#FF1E1E1E" Margin="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Left: Form -->
+                                <Border Grid.Column="0"
+                                        Background="#FF262626"
+                                        CornerRadius="6"
+                                        Padding="12"
+                                        Margin="0,0,10,0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Add Application"
+                                                   FontSize="16"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,0,0,12"
+                                                   Foreground="#FFE0E0E0"/>
+
+                                        <!-- Application Identity -->
+                                        <Border Grid.Row="1" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Application Number"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <TextBox Grid.Row="0" Grid.Column="1"
+                                                         Text="{Binding NewApplicationNumberText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="0,0,12,6"/>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Status"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <ComboBox Grid.Row="0" Grid.Column="3"
+                                                          SelectedItem="{Binding NewApplicationStatusText, Mode=TwoWay}"
+                                                          SelectedIndex="0"
+                                                          Margin="0,0,0,6">
+                                                    <ComboBox.ItemsSource>
+                                                        <x:Array Type="{x:Type sys:String}">
+                                                            <sys:String>Draft</sys:String>
+                                                            <sys:String>Submitted</sys:String>
+                                                            <sys:String>Approved</sys:String>
+                                                            <sys:String>Overdue</sys:String>
+                                                            <sys:String>VOID</sys:String>
+                                                        </x:Array>
+                                                    </ComboBox.ItemsSource>
+                                                </ComboBox>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Application Date"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <DatePicker Grid.Row="1" Grid.Column="1"
+                                                            SelectedDate="{Binding NewApplicationDate}"
+                                                            Margin="0,0,12,0"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Project / Company (derived) -->
+                                        <Border Grid.Row="2" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" Text="Project"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <ComboBox Grid.Column="1"
+                                                          ItemsSource="{Binding ApplicationProjectPicklist}"
+                                                          SelectedItem="{Binding NewApplicationSelectedProject}"
+                                                          DisplayMemberPath="JobNameOrNumber"
+                                                          Margin="0,0,12,0"/>
+
+                                                <TextBlock Grid.Column="2" Text="Company (from project)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBox Grid.Column="3"
+                                                         Text="{Binding NewApplicationDerivedCompanyName}"
+                                                         IsReadOnly="True"
+                                                         Opacity="0.85"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Amounts -->
+                                        <Border Grid.Row="3" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Net Amount"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <TextBox Grid.Row="0" Grid.Column="1"
+                                                         Text="{Binding NewApplicationNetAmountText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="0,0,12,6"/>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="VAT Rate"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <ComboBox Grid.Row="0" Grid.Column="3"
+                                                          SelectedItem="{Binding NewApplicationVatRateText, Mode=TwoWay}"
+                                                          SelectedIndex="2"
+                                                          Margin="0,0,0,6">
+                                                    <ComboBox.ItemsSource>
+                                                        <x:Array Type="{x:Type sys:String}">
+                                                            <sys:String>0%</sys:String>
+                                                            <sys:String>5%</sys:String>
+                                                            <sys:String>20%</sys:String>
+                                                        </x:Array>
+                                                    </ComboBox.ItemsSource>
+                                                </ComboBox>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="VAT Amount"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="1"
+                                                           Text="{Binding NewApplicationVatAmountText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,12,0"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Gross Amount"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="3"
+                                                           Text="{Binding NewApplicationGrossAmountText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Agreed (optional) -->
+                                        <Border Grid.Row="4" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Agreed Net (optional)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <TextBox Grid.Row="0" Grid.Column="1"
+                                                         Text="{Binding NewApplicationAgreedNetAmountText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="0,0,12,6"/>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Date Agreed (optional)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <DatePicker Grid.Row="0" Grid.Column="3"
+                                                            SelectedDate="{Binding NewApplicationDateAgreed}"
+                                                            Margin="0,0,0,6"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="External Ref (optional)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
+                                                         Text="{Binding NewApplicationExternalReferenceText, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Notes -->
+                                        <Border Grid.Row="5" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" Text="Notes (optional)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Top" Margin="0,2,8,0"/>
+                                                <TextBox Grid.Column="1"
+                                                         Text="{Binding NewApplicationNotesText, UpdateSourceTrigger=PropertyChanged}"
+                                                         AcceptsReturn="True"
+                                                         TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         Height="80"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Status strip -->
+                                        <Border Grid.Row="6" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <TextBlock Text="{Binding AddApplicationStatusText}"
+                                                       Foreground="#FFE0E0E0"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"/>
+                                        </Border>
+
+                                        <!-- Buttons -->
+                                        <StackPanel Grid.Row="9" Orientation="Horizontal" HorizontalAlignment="Left">
+                                            <Button Content="Save Application"
+                                                    Padding="12,6"
+                                                    Margin="0,0,8,0"
+                                                    Click="AddApplication_Click"/>
+
+                                            <Button Content="Clear"
+                                                    Padding="12,6"
+                                                    Click="ClearAddApplicationForm_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Right: Requirements -->
+                                <Border Grid.Column="1"
+                                        Background="#FF262626"
+                                        CornerRadius="6"
+                                        Padding="12">
+                                    <StackPanel>
+                                        <TextBlock Text="Requirements"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,0,0,10"
+                                                   Foreground="#FFE0E0E0"/>
+
+                                        <TextBlock Text="- Application number required"
+                                                   Foreground="#FFE0E0E0" Opacity="0.85" Margin="0,0,0,4"/>
+                                        <TextBlock Text="- Project required"
+                                                   Foreground="#FFE0E0E0" Opacity="0.85" Margin="0,0,0,4"/>
+                                        <TextBlock Text="- Application date required"
+                                                   Foreground="#FFE0E0E0" Opacity="0.85" Margin="0,0,0,4"/>
+                                        <TextBlock Text="- Net amount required"
+                                                   Foreground="#FFE0E0E0" Opacity="0.85" Margin="0,0,0,4"/>
+
+                                        <Border Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,12,0,0">
+                                            <TextBlock Text="{Binding AddApplicationValidationText}"
+                                                       Foreground="#FFE0E0E0"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- EDIT APPLICATION -->
+                        <TabItem Header="Edit Application">
+                            <Grid Background="#FF1E1E1E" Margin="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0"
+                                        Background="#FF262626"
+                                        CornerRadius="6"
+                                        Padding="12"
+                                        Margin="0,0,10,0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Edit Application"
+                                                   FontSize="16"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,0,0,12"
+                                                   Foreground="#FFE0E0E0"/>
+
+                                        <!-- Load selected -->
+                                        <Border Grid.Row="1" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0"
+                                                           Text="Selected application"
+                                                           Foreground="#FFE0E0E0"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,8,0"/>
+
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding EditApplicationSelectedSummaryText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.9"
+                                                           VerticalAlignment="Center"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,0,12,0"/>
+
+                                                <Button Grid.Column="2"
+                                                        Content="Load selected"
+                                                        Padding="12,6"
+                                                        Click="LoadSelectedApplication_Click"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Identity + status -->
+                                        <Border Grid.Row="2" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Application Number"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <TextBox Grid.Row="0" Grid.Column="1"
+                                                         Text="{Binding EditApplicationNumberText}"
+                                                         IsReadOnly="True"
+                                                         Opacity="0.85"
+                                                         Margin="0,0,12,6"/>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Status"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <ComboBox Grid.Row="0" Grid.Column="3"
+                                                          SelectedItem="{Binding EditApplicationStatusText}"
+                                                          Margin="0,0,0,6">
+                                                    <ComboBox.ItemsSource>
+                                                        <x:Array Type="{x:Type sys:String}">
+                                                            <sys:String>Draft</sys:String>
+                                                            <sys:String>Submitted</sys:String>
+                                                            <sys:String>Approved</sys:String>
+                                                            <sys:String>Overdue</sys:String>
+                                                            <sys:String>VOID</sys:String>
+                                                        </x:Array>
+                                                    </ComboBox.ItemsSource>
+                                                </ComboBox>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Application Date"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <DatePicker Grid.Row="1" Grid.Column="1"
+                                                            SelectedDate="{Binding EditApplicationDate}"
+                                                            Margin="0,0,12,0"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Project / Company -->
+                                        <Border Grid.Row="3" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" Text="Project"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <ComboBox Grid.Column="1"
+                                                          ItemsSource="{Binding ApplicationProjectPicklist}"
+                                                          SelectedItem="{Binding EditApplicationSelectedProject}"
+                                                          DisplayMemberPath="JobNameOrNumber"
+                                                          Margin="0,0,12,0"/>
+
+                                                <TextBlock Grid.Column="2" Text="Company (from project)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBox Grid.Column="3"
+                                                         Text="{Binding EditApplicationDerivedCompanyName}"
+                                                         IsReadOnly="True"
+                                                         Opacity="0.85"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Amounts -->
+                                        <Border Grid.Row="4" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Net Amount"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <TextBox Grid.Row="0" Grid.Column="1"
+                                                         Text="{Binding EditApplicationNetAmountText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="0,0,12,6"/>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="VAT Rate"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <ComboBox Grid.Row="0" Grid.Column="3"
+                                                          SelectedItem="{Binding EditApplicationVatRateText}"
+                                                          Margin="0,0,0,6">
+                                                    <ComboBox.ItemsSource>
+                                                        <x:Array Type="{x:Type sys:String}">
+                                                            <sys:String>0%</sys:String>
+                                                            <sys:String>5%</sys:String>
+                                                            <sys:String>20%</sys:String>
+                                                        </x:Array>
+                                                    </ComboBox.ItemsSource>
+                                                </ComboBox>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="VAT Amount"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="1"
+                                                           Text="{Binding EditApplicationVatAmountText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,12,0"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Gross Amount"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="3"
+                                                           Text="{Binding EditApplicationGrossAmountText}"
+                                                           Foreground="#FFE0E0E0"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Agreed (optional) -->
+                                        <Border Grid.Row="5" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Agreed Net (optional)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <TextBox Grid.Row="0" Grid.Column="1"
+                                                         Text="{Binding EditApplicationAgreedNetAmountText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="0,0,12,6"/>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Date Agreed (optional)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                                                <DatePicker Grid.Row="0" Grid.Column="3"
+                                                            SelectedDate="{Binding EditApplicationDateAgreed}"
+                                                            Margin="0,0,0,6"/>
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="External Ref (optional)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
+                                                         Text="{Binding EditApplicationExternalReferenceText, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Notes -->
+                                        <Border Grid.Row="6" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" Text="Notes (optional)"
+                                                           Foreground="#FFE0E0E0" VerticalAlignment="Top" Margin="0,2,8,0"/>
+                                                <TextBox Grid.Column="1"
+                                                         Text="{Binding EditApplicationNotesText, UpdateSourceTrigger=PropertyChanged}"
+                                                         AcceptsReturn="True"
+                                                         TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         Height="80"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Status strip -->
+                                        <Border Grid.Row="7" Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                            <TextBlock Text="{Binding EditApplicationStatusBarText}"
+                                                       Foreground="#FFE0E0E0"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"/>
+                                        </Border>
+
+                                        <!-- Buttons -->
+                                        <StackPanel Grid.Row="9" Orientation="Horizontal" HorizontalAlignment="Left">
+                                            <Button Content="Save Changes"
+                                                    Padding="12,6"
+                                                    Margin="0,0,8,0"
+                                                    Click="SaveApplicationEdits_Click"/>
+
+                                            <Button Content="Clear"
+                                                    Padding="12,6"
+                                                    Click="ClearEditApplicationForm_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Right: Validation / help -->
+                                <Border Grid.Column="1"
+                                        Background="#FF262626"
+                                        CornerRadius="6"
+                                        Padding="12">
+                                    <StackPanel>
+                                        <TextBlock Text="Edit rules"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,0,0,10"
+                                                   Foreground="#FFE0E0E0"/>
+
+                                        <TextBlock Text="- Select an application in the list and click Load selected"
+                                                   Foreground="#FFE0E0E0" Opacity="0.85" Margin="0,0,0,4"/>
+                                        <TextBlock Text="- Application number is read-only"
+                                                   Foreground="#FFE0E0E0" Opacity="0.85" Margin="0,0,0,4"/>
+                                        <TextBlock Text="- Net amount must be > 0"
+                                                   Foreground="#FFE0E0E0" Opacity="0.85" Margin="0,0,0,4"/>
+
+                                        <Border Background="#FF1E1E1E" CornerRadius="6" Padding="10" Margin="0,12,0,0">
+                                            <TextBlock Text="{Binding EditApplicationValidationText}"
+                                                       Foreground="#FFE0E0E0"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
                         </TabItem>
 
                         <TabItem Header="Application Notifications">

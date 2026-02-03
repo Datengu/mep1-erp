@@ -1706,6 +1706,351 @@ namespace Mep1.Erp.Desktop
 
         private bool _suppressTimesheetWorkDetailsSelectionChanged;
 
+        private List<ApplicationListEntryDto> _applications = new();
+        public List<ApplicationListEntryDto> Applications
+        {
+            get => _applications;
+            set => SetField(ref _applications, value, nameof(Applications));
+        }
+
+        private ICollectionView _applicationView = null!;
+        public ICollectionView ApplicationView
+        {
+            get => _applicationView;
+            set => SetField(ref _applicationView, value, nameof(ApplicationView));
+        }
+
+        private List<ApplicationProjectPicklistItemDto> _applicationProjectPicklist = new();
+        public List<ApplicationProjectPicklistItemDto> ApplicationProjectPicklist
+        {
+            get => _applicationProjectPicklist;
+            set => SetField(ref _applicationProjectPicklist, value, nameof(ApplicationProjectPicklist));
+        }
+
+        private ApplicationListEntryDto? _selectedApplicationListItem;
+        public ApplicationListEntryDto? SelectedApplicationListItem
+        {
+            get => _selectedApplicationListItem;
+            set
+            {
+                if (SetField(ref _selectedApplicationListItem, value, nameof(SelectedApplicationListItem)))
+                {
+                    UpdateEditApplicationValidation();
+                    UpdateEditApplicationSelectedSummary();
+                }
+            }
+        }
+
+        // --- Add Application bindings (clone naming pattern) ---
+
+        private string _newApplicationNumberText = "";
+        public string NewApplicationNumberText
+        {
+            get => _newApplicationNumberText;
+            set
+            {
+                if (SetField(ref _newApplicationNumberText, value, nameof(NewApplicationNumberText)))
+                {
+                    UpdateAddApplicationValidation();
+                }
+            }
+        }
+
+        private string _newApplicationStatusText = "Draft";
+        public string NewApplicationStatusText
+        {
+            get => _newApplicationStatusText;
+            set
+            {
+                if (SetField(ref _newApplicationStatusText, value, nameof(NewApplicationStatusText)))
+                {
+                    UpdateAddApplicationValidation();
+                }
+            }
+        }
+
+        private DateTime? _newApplicationDate = DateTime.Today;
+        public DateTime? NewApplicationDate
+        {
+            get => _newApplicationDate;
+            set
+            {
+                if (SetField(ref _newApplicationDate, value, nameof(NewApplicationDate)))
+                {
+                    UpdateAddApplicationValidation();
+                }
+            }
+        }
+
+        private ApplicationProjectPicklistItemDto? _newApplicationSelectedProject;
+        public ApplicationProjectPicklistItemDto? NewApplicationSelectedProject
+        {
+            get => _newApplicationSelectedProject;
+            set
+            {
+                if (!SetField(ref _newApplicationSelectedProject, value, nameof(NewApplicationSelectedProject)))
+                    return;
+
+                NewApplicationDerivedCompanyName = value?.CompanyName ?? "";
+                UpdateAddApplicationValidation();
+            }
+        }
+
+        private string _newApplicationDerivedCompanyName = "";
+        public string NewApplicationDerivedCompanyName
+        {
+            get => _newApplicationDerivedCompanyName;
+            set => SetField(ref _newApplicationDerivedCompanyName, value, nameof(NewApplicationDerivedCompanyName));
+        }
+
+        private string _newApplicationNetAmountText = "";
+        public string NewApplicationNetAmountText
+        {
+            get => _newApplicationNetAmountText;
+            set
+            {
+                if (SetField(ref _newApplicationNetAmountText, value, nameof(NewApplicationNetAmountText)))
+                {
+                    RecalculateAddApplicationTotals();
+                    UpdateAddApplicationValidation();
+                }
+            }
+        }
+
+        private string _newApplicationVatRateText = "20%";
+        public string NewApplicationVatRateText
+        {
+            get => _newApplicationVatRateText;
+            set
+            {
+                if (SetField(ref _newApplicationVatRateText, value, nameof(NewApplicationVatRateText)))
+                {
+                    RecalculateAddApplicationTotals();
+                    UpdateAddApplicationValidation();
+                }
+            }
+        }
+
+        private string _newApplicationVatAmountText = "";
+        public string NewApplicationVatAmountText
+        {
+            get => _newApplicationVatAmountText;
+            set => SetField(ref _newApplicationVatAmountText, value, nameof(NewApplicationVatAmountText));
+        }
+
+        private string _newApplicationGrossAmountText = "";
+        public string NewApplicationGrossAmountText
+        {
+            get => _newApplicationGrossAmountText;
+            set => SetField(ref _newApplicationGrossAmountText, value, nameof(NewApplicationGrossAmountText));
+        }
+
+        private string _newApplicationNotesText = "";
+        public string NewApplicationNotesText
+        {
+            get => _newApplicationNotesText;
+            set => SetField(ref _newApplicationNotesText, value, nameof(NewApplicationNotesText));
+        }
+
+        private string _addApplicationStatusText = "";
+        public string AddApplicationStatusText
+        {
+            get => _addApplicationStatusText;
+            set => SetField(ref _addApplicationStatusText, value, nameof(AddApplicationStatusText));
+        }
+
+        private string _addApplicationValidationText = "";
+        public string AddApplicationValidationText
+        {
+            get => _addApplicationValidationText;
+            set => SetField(ref _addApplicationValidationText, value, nameof(AddApplicationValidationText));
+        }
+
+        // --- Edit Application bindings ---
+
+        private string _editApplicationSelectedSummaryText = "No application selected.";
+        public string EditApplicationSelectedSummaryText
+        {
+            get => _editApplicationSelectedSummaryText;
+            set => SetField(ref _editApplicationSelectedSummaryText, value, nameof(EditApplicationSelectedSummaryText));
+        }
+
+        private string _editApplicationNumberText = "";
+        public string EditApplicationNumberText
+        {
+            get => _editApplicationNumberText;
+            set => SetField(ref _editApplicationNumberText, value, nameof(EditApplicationNumberText));
+        }
+
+        private string _editApplicationStatusText = "Draft";
+        public string EditApplicationStatusText
+        {
+            get => _editApplicationStatusText;
+            set
+            {
+                if (SetField(ref _editApplicationStatusText, value, nameof(EditApplicationStatusText)))
+                {
+                    UpdateEditApplicationValidation();
+                }
+            }
+        }
+
+        private DateTime? _editApplicationDate = DateTime.Today;
+        public DateTime? EditApplicationDate
+        {
+            get => _editApplicationDate;
+            set
+            {
+                if (SetField(ref _editApplicationDate, value, nameof(EditApplicationDate)))
+                {
+                    UpdateEditApplicationValidation();
+                }
+            }
+        }
+
+        private ApplicationProjectPicklistItemDto? _editApplicationSelectedProject;
+        public ApplicationProjectPicklistItemDto? EditApplicationSelectedProject
+        {
+            get => _editApplicationSelectedProject;
+            set
+            {
+                if (SetField(ref _editApplicationSelectedProject, value, nameof(EditApplicationSelectedProject)))
+                {
+                    EditApplicationDerivedCompanyName = value?.CompanyName ?? "";
+                    UpdateEditApplicationValidation();
+                }
+            }
+        }
+
+        private string _editApplicationDerivedCompanyName = "";
+        public string EditApplicationDerivedCompanyName
+        {
+            get => _editApplicationDerivedCompanyName;
+            set => SetField(ref _editApplicationDerivedCompanyName, value, nameof(EditApplicationDerivedCompanyName));
+        }
+
+        private string _editApplicationNetAmountText = "";
+        public string EditApplicationNetAmountText
+        {
+            get => _editApplicationNetAmountText;
+            set
+            {
+                if (SetField(ref _editApplicationNetAmountText, value, nameof(EditApplicationNetAmountText)))
+                {
+                    RecalculateEditApplicationTotals();
+                    UpdateEditApplicationValidation();
+                }
+            }
+        }
+
+        private string _editApplicationVatRateText = "20%";
+        public string EditApplicationVatRateText
+        {
+            get => _editApplicationVatRateText;
+            set
+            {
+                if (SetField(ref _editApplicationVatRateText, value, nameof(EditApplicationVatRateText)))
+                {
+                    RecalculateEditApplicationTotals();
+                    UpdateEditApplicationValidation();
+                }
+            }
+        }
+
+        private string _editApplicationVatAmountText = "";
+        public string EditApplicationVatAmountText
+        {
+            get => _editApplicationVatAmountText;
+            set => SetField(ref _editApplicationVatAmountText, value, nameof(EditApplicationVatAmountText));
+        }
+
+        private string _editApplicationGrossAmountText = "";
+        public string EditApplicationGrossAmountText
+        {
+            get => _editApplicationGrossAmountText;
+            set => SetField(ref _editApplicationGrossAmountText, value, nameof(EditApplicationGrossAmountText));
+        }
+
+        private string _editApplicationNotesText = "";
+        public string EditApplicationNotesText
+        {
+            get => _editApplicationNotesText;
+            set => SetField(ref _editApplicationNotesText, value, nameof(EditApplicationNotesText));
+        }
+
+        private string _editApplicationStatusBarText = "";
+        public string EditApplicationStatusBarText
+        {
+            get => _editApplicationStatusBarText;
+            set => SetField(ref _editApplicationStatusBarText, value, nameof(EditApplicationStatusBarText));
+        }
+
+        private string _editApplicationValidationText = "";
+        public string EditApplicationValidationText
+        {
+            get => _editApplicationValidationText;
+            set => SetField(ref _editApplicationValidationText, value, nameof(EditApplicationValidationText));
+        }
+
+        // Filter predicate (mirrors invoices pattern; can be used later when you clone toolbar)
+        private Func<ApplicationListEntryDto, bool>? _applicationFilterPredicate;
+
+        private string _newApplicationAgreedNetAmountText = "";
+        public string NewApplicationAgreedNetAmountText
+        {
+            get => _newApplicationAgreedNetAmountText;
+            set => SetField(ref _newApplicationAgreedNetAmountText, value, nameof(NewApplicationAgreedNetAmountText));
+        }
+
+        private DateTime? _newApplicationDateAgreed;
+        public DateTime? NewApplicationDateAgreed
+        {
+            get => _newApplicationDateAgreed;
+            set
+            {
+                if (_newApplicationDateAgreed != value)
+                {
+                    _newApplicationDateAgreed = value;
+                    OnPropertyChanged(nameof(NewApplicationDateAgreed));
+                }
+            }
+        }
+
+        private string _newApplicationExternalReferenceText = "";
+        public string NewApplicationExternalReferenceText
+        {
+            get => _newApplicationExternalReferenceText;
+            set => SetField(ref _newApplicationExternalReferenceText, value, nameof(NewApplicationExternalReferenceText));
+        }
+
+        private string _editApplicationAgreedNetAmountText = "";
+        public string EditApplicationAgreedNetAmountText
+        {
+            get => _editApplicationAgreedNetAmountText;
+            set => SetField(ref _editApplicationAgreedNetAmountText, value, nameof(EditApplicationAgreedNetAmountText));
+        }
+
+        private DateTime? _editApplicationDateAgreed;
+        public DateTime? EditApplicationDateAgreed
+        {
+            get => _editApplicationDateAgreed;
+            set
+            {
+                if (_editApplicationDateAgreed != value)
+                {
+                    _editApplicationDateAgreed = value;
+                    OnPropertyChanged(nameof(EditApplicationDateAgreed));
+                }
+            }
+        }
+
+        private string _editApplicationExternalReferenceText = "";
+        public string EditApplicationExternalReferenceText
+        {
+            get => _editApplicationExternalReferenceText;
+            set => SetField(ref _editApplicationExternalReferenceText, value, nameof(EditApplicationExternalReferenceText));
+        }
+
         // ---------------------------------------------
         // Invoice filtering
         // ---------------------------------------------
@@ -1804,6 +2149,7 @@ namespace Mep1.Erp.Desktop
                 }
 
                 InvoiceProjectPicklist = await _api.GetInvoiceProjectPicklistAsync();
+                ApplicationProjectPicklist = await _api.GetApplicationProjectPicklistAsync();
 
                 // quick debug:
                 System.Diagnostics.Debug.WriteLine(
@@ -1812,6 +2158,7 @@ namespace Mep1.Erp.Desktop
 
                 // Invoices comes from API now
                 Invoices = await _api.GetInvoicesAsync();
+                Applications = await _api.GetApplicationsAsync();
 
                 SuggestNextInvoiceNumberIfEmpty();
 
@@ -1840,6 +2187,7 @@ namespace Mep1.Erp.Desktop
 
                 EnsurePeopleView();
                 EnsureInvoiceView();
+                EnsureApplicationView();
                 EnsureProjectView();
                 LoadSuppliers();
                 await LoadCompaniesAsync();
@@ -1929,6 +2277,7 @@ namespace Mep1.Erp.Desktop
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
             InvoiceProjectPicklist = await _api.GetInvoiceProjectPicklistAsync();
+            ApplicationProjectPicklist = await _api.GetApplicationProjectPicklistAsync();
             sw.Stop();
             System.Diagnostics.Debug.WriteLine($"[PERF] GetInvoiceProjectPicklistAsync = {sw.ElapsedMilliseconds} ms");
 
@@ -5664,5 +6013,540 @@ namespace Mep1.Erp.Desktop
                 );
             }
         }
+
+        void EnsureApplicationView()
+        {
+            ApplicationView = CollectionViewSource.GetDefaultView(Applications);
+            ApplicationView.Filter = obj =>
+            {
+                if (obj is not ApplicationListEntryDto app)
+                    return false;
+
+                return _applicationFilterPredicate == null || _applicationFilterPredicate(app);
+            };
+        }
+
+        private void ApplyApplicationFilter()
+        {
+            EnsureApplicationView();
+            ApplicationView?.Refresh();
+        }
+
+        private void RecalculateAddApplicationTotals()
+        {
+            // Parse net
+            if (!TryParseDecimalMoney(NewApplicationNetAmountText, out var net) || net <= 0m)
+            {
+                NewApplicationVatAmountText = "";
+                NewApplicationGrossAmountText = "";
+                return;
+            }
+
+            // Parse VAT rate (e.g. "20%")
+            if (!TryParseVatRateText(NewApplicationVatRateText, out var vatRate))
+            {
+                // If vat not selected, treat as blank totals rather than guessing
+                NewApplicationVatAmountText = "";
+                NewApplicationGrossAmountText = "";
+                return;
+            }
+
+            var vat = Math.Round(net * vatRate, 2, MidpointRounding.AwayFromZero);
+            var gross = net + vat;
+
+            NewApplicationVatAmountText = vat.ToString("0.00");
+            NewApplicationGrossAmountText = gross.ToString("0.00");
+        }
+
+        private void RecalculateEditApplicationTotals()
+        {
+            if (!TryParseDecimalMoney(EditApplicationNetAmountText, out var net) || net <= 0m)
+            {
+                EditApplicationVatAmountText = "";
+                EditApplicationGrossAmountText = "";
+                return;
+            }
+
+            if (!TryParseVatRateText(EditApplicationVatRateText, out var vatRate))
+            {
+                EditApplicationVatAmountText = "";
+                EditApplicationGrossAmountText = "";
+                return;
+            }
+
+            var vat = Math.Round(net * vatRate, 2, MidpointRounding.AwayFromZero);
+            var gross = net + vat;
+
+            EditApplicationVatAmountText = vat.ToString("0.00");
+            EditApplicationGrossAmountText = gross.ToString("0.00");
+        }
+
+        private void UpdateAddApplicationValidation()
+        {
+            var problems = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(NewApplicationNumberText))
+                problems.Add("Application number required");
+
+            if (NewApplicationSelectedProject == null)
+                problems.Add("Project required");
+
+            if (!NewApplicationDate.HasValue)
+                problems.Add("Application date required");
+
+            if (!TryParseDecimalMoney(NewApplicationNetAmountText, out var net) || net <= 0m)
+                problems.Add("Net amount must be > 0");
+
+            if (!TryParseVatRateText(NewApplicationVatRateText, out _))
+                problems.Add("VAT rate required");
+
+            // Agreed rules: optional, but must be consistent
+            var hasDateAgreed = NewApplicationDateAgreed.HasValue;
+            var hasAgreedNet = TryParseDecimalMoney(NewApplicationAgreedNetAmountText, out var agreedNet) && agreedNet > 0m;
+
+            if (hasDateAgreed && !hasAgreedNet)
+                problems.Add("Agreed net must be > 0 if Date agreed is set");
+
+            // (Optional) allow agreed net without date agreed – no problem.
+
+            if (problems.Count == 0)
+            {
+                AddApplicationValidationText = "Ready to save.";
+                return;
+            }
+
+            AddApplicationValidationText = "Fix: " + string.Join("; ", problems) + ".";
+        }
+
+        private void UpdateEditApplicationValidation()
+        {
+            var problems = new List<string>();
+
+            // Invoice-style: number is usually read-only in Edit, so we don't require it here unless you want it
+            if (EditApplicationSelectedProject == null)
+                problems.Add("Project required");
+
+            if (!EditApplicationDate.HasValue)
+                problems.Add("Application date required");
+
+            if (!TryParseDecimalMoney(EditApplicationNetAmountText, out var net) || net <= 0m)
+                problems.Add("Net amount must be > 0");
+
+            if (!TryParseVatRateText(EditApplicationVatRateText, out _))
+                problems.Add("VAT rate required");
+
+            var hasDateAgreed = EditApplicationDateAgreed.HasValue;
+            var hasAgreedNet = TryParseDecimalMoney(EditApplicationAgreedNetAmountText, out var agreedNet) && agreedNet > 0m;
+
+            if (hasDateAgreed && !hasAgreedNet)
+                problems.Add("Agreed net must be > 0 if Date agreed is set");
+
+            if (problems.Count == 0)
+            {
+                EditApplicationValidationText = "Ready to save.";
+                return;
+            }
+
+            EditApplicationValidationText = "Fix: " + string.Join("; ", problems) + ".";
+        }
+
+        private static bool TryParseDecimalMoney(string? text, out decimal value)
+        {
+            value = 0m;
+
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            // accept "£1,234.56", "1234.56", "1,234.56"
+            var cleaned = text.Trim()
+                .Replace("£", "")
+                .Replace(",", "");
+
+            return decimal.TryParse(cleaned, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out value);
+        }
+
+        private static bool TryParseVatRateText(string? text, out decimal rate)
+        {
+            rate = 0m;
+
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            var s = text.Trim();
+
+            if (s.EndsWith("%", StringComparison.Ordinal))
+                s = s.Substring(0, s.Length - 1).Trim();
+
+            if (!decimal.TryParse(s, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out var percent))
+                return false;
+
+            // "20" -> 0.20
+            rate = percent / 100m;
+            return rate >= 0m && rate <= 1m;
+        }
+
+        private void UpdateEditApplicationSelectedSummary()
+        {
+            if (SelectedApplicationListItem == null)
+            {
+                EditApplicationSelectedSummaryText = "No application selected.";
+                return;
+            }
+
+            EditApplicationSelectedSummaryText =
+                $"{SelectedApplicationListItem.ApplicationNumber} - {SelectedApplicationListItem.JobName}";
+        }
+
+        // --- Event handlers (wired from XAML) ---
+
+        private void ShowAllApplications_Click(object sender, RoutedEventArgs e)
+        {
+            _applicationFilterPredicate = null;
+            ApplyApplicationFilter();
+        }
+
+        private void ShowApplicationsWithoutInvoice_Click(object sender, RoutedEventArgs e)
+        {
+            _applicationFilterPredicate = app => app.InvoiceId == null;
+            ApplyApplicationFilter();
+        }
+
+        private void ShowRecentApplicationsWithoutInvoice_Click(object sender, RoutedEventArgs e)
+        {
+            var cutoff = DateTime.UtcNow.Date.AddDays(-30);
+
+            _applicationFilterPredicate = app =>
+                app.InvoiceId == null &&
+                app.ApplicationDate >= cutoff;
+
+            ApplyApplicationFilter();
+        }
+
+        private void ShowOlderApplicationsWithoutInvoice_Click(object sender, RoutedEventArgs e)
+        {
+            var cutoff = DateTime.UtcNow.Date.AddDays(-30);
+
+            _applicationFilterPredicate = app =>
+                app.InvoiceId == null &&
+                app.ApplicationDate < cutoff;
+
+            ApplyApplicationFilter();
+        }
+
+        private async void AddApplication_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                AddApplicationStatusText = "";
+                UpdateAddApplicationValidation();
+
+                if (!string.Equals(AddApplicationValidationText, "Ready to save.", StringComparison.Ordinal))
+                {
+                    AddApplicationStatusText = "Fix the required fields before saving.";
+                    return;
+                }
+
+                if (NewApplicationSelectedProject == null)
+                {
+                    AddApplicationStatusText = "Project is required.";
+                    return;
+                }
+
+                if (!TryParseMoney(NewApplicationNetAmountText, out var net) || net <= 0m)
+                {
+                    AddApplicationStatusText = "Net amount must be > 0.";
+                    return;
+                }
+
+                var vatSelectionText = GetComboSelectionText(NewApplicationVatRateText);
+                if (!TryParseVatRate(vatSelectionText, out var vatRate))
+                {
+                    AddApplicationStatusText = "VAT rate must be selected.";
+                    return;
+                }
+
+                var statusText = GetComboSelectionText(NewApplicationStatusText);
+                if (string.IsNullOrWhiteSpace(statusText))
+                    statusText = "Submitted";
+
+                if (!NewApplicationDate.HasValue)
+                {
+                    AddApplicationStatusText = "Application date is required.";
+                    return;
+                }
+
+                var dto = new CreateApplicationRequestDto
+                {
+                    ProjectId = NewApplicationSelectedProject.ProjectId,
+                    ApplicationNumber = (NewApplicationNumberText ?? "").Trim(),
+                    ApplicationDate = NewApplicationDate.Value.Date,
+                    NetAmount = net,
+                    VatRate = vatRate,
+                    AgreedNetAmount = ParseNullableMoney(NewApplicationAgreedNetAmountText),
+                    DateAgreed = NewApplicationDateAgreed,
+                    ExternalReference = string.IsNullOrWhiteSpace(NewApplicationExternalReferenceText) ? null : NewApplicationExternalReferenceText.Trim(),
+                    Status = statusText.Trim(),
+                    Notes = string.IsNullOrWhiteSpace(NewApplicationNotesText) ? null : NewApplicationNotesText.Trim()
+                };
+
+                AddApplicationStatusText = "Saving application...";
+                var created = await _api.CreateApplicationAsync(dto);
+
+                AddApplicationStatusText = $"Saved: {created.ApplicationNumber} ({created.CompanyName}) - £{created.GrossAmount:0.00}";
+
+                // Refresh list + keep filter semantics
+                Applications = await _api.GetApplicationsAsync();
+                ApplyApplicationFilter();
+
+                // Clear form (if you already have this helper)
+                ClearAddApplicationForm(setStatusMessage: false);
+            }
+            catch (Exception ex)
+            {
+                AddApplicationStatusText = ex.Message;
+            }
+        }
+
+        private void ClearAddApplicationForm_Click(object sender, RoutedEventArgs e)
+        {
+            NewApplicationNumberText = "";
+            NewApplicationStatusText = "Draft";
+            NewApplicationDate = DateTime.Today;
+            NewApplicationSelectedProject = null;
+            NewApplicationDerivedCompanyName = "";
+            NewApplicationNetAmountText = "";
+            NewApplicationVatRateText = "20%";
+            NewApplicationAgreedNetAmountText = "";
+            NewApplicationDateAgreed = null;
+            NewApplicationExternalReferenceText = "";
+            NewApplicationNotesText = "";
+            AddApplicationStatusText = "";
+            AddApplicationValidationText = "";
+        }
+
+        private void ClearAddApplicationForm(bool setStatusMessage)
+        {
+            // Reset fields
+            NewApplicationNumberText = "";
+            NewApplicationDate = DateTime.Today;
+
+            NewApplicationSelectedProject = null;
+
+            NewApplicationDerivedCompanyName = "";
+            NewApplicationNetAmountText = "";
+            NewApplicationNotesText = "";
+
+            // Default selections
+            NewApplicationVatRateText = "20%";
+            NewApplicationStatusText = "Outstanding";
+
+            RecalculateAddApplicationTotals();
+            UpdateAddApplicationValidation();
+            SuggestNextApplicationNumberIfEmpty();
+
+            if (setStatusMessage)
+                AddApplicationStatusText = "Cleared.";
+        }
+
+        private void SuggestNextApplicationNumberIfEmpty()
+        {
+            if (!string.IsNullOrWhiteSpace(NewApplicationNumberText))
+                return;
+
+            if (Applications == null || Applications.Count == 0)
+                return;
+
+            var max = -1;
+
+            foreach (var app in Applications)
+            {
+                var s = app.ApplicationNumber?.Trim();
+                if (string.IsNullOrWhiteSpace(s))
+                    continue;
+
+                // Take leading digits only (handles 0507a, 0507b, etc.)
+                int i = 0;
+                while (i < s.Length && char.IsDigit(s[i])) i++;
+
+                if (i == 0)
+                    continue;
+
+                var prefix = s.Substring(0, i);
+
+                if (int.TryParse(prefix, out var n))
+                {
+                    if (n > max) max = n;
+                }
+            }
+
+            if (max < 0)
+                return;
+
+            var next = max + 1;
+
+            // Keep your desired leading zeros (0500 style)
+            NewApplicationNumberText = next.ToString("D4");
+
+            UpdateAddApplicationValidation();
+        }
+
+        private async void LoadSelectedApplication_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (SelectedApplicationListItem == null)
+                {
+                    EditApplicationStatusBarText = "Select an application in the list first.";
+                    return;
+                }
+
+                EditApplicationStatusBarText = "Loading...";
+
+                var dto = await _api.GetApplicationByIdAsync(SelectedApplicationListItem.Id);
+
+                EditApplicationNumberText = dto.ApplicationNumber;
+                EditApplicationStatusText = dto.Status ?? "";
+                EditApplicationDate = dto.ApplicationDate;
+
+                EditApplicationNetAmountText = dto.NetAmount.ToString("0.00");
+                EditApplicationVatRateText = (dto.VatRate * 100m).ToString("0") + "%";
+                EditApplicationNotesText = dto.Notes ?? "";
+
+                EditApplicationAgreedNetAmountText = dto.AgreedNetAmount?.ToString("0.00") ?? "";
+                EditApplicationDateAgreed = dto.DateAgreed;
+                EditApplicationExternalReferenceText = dto.ExternalReference ?? "";
+
+                // select project in picklist
+                if (dto.ProjectId.HasValue)
+                {
+                    EditApplicationSelectedProject = ApplicationProjectPicklist
+                        .FirstOrDefault(p => p.ProjectId == dto.ProjectId.Value);
+                }
+                else
+                {
+                    EditApplicationSelectedProject = null;
+                }
+
+                EditApplicationDerivedCompanyName = dto.CompanyName ?? "";
+
+                UpdateEditApplicationValidation();
+                EditApplicationStatusBarText = "Loaded.";
+            }
+            catch (Exception ex)
+            {
+                EditApplicationStatusBarText = ex.Message;
+            }
+        }
+
+        private async void SaveApplicationEdits_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (SelectedApplicationListItem == null)
+                {
+                    EditApplicationStatusBarText = "Select an application first.";
+                    return;
+                }
+
+                EditApplicationStatusBarText = "";
+                UpdateEditApplicationValidation();
+
+                if (!string.Equals(EditApplicationValidationText, "Ready to save.", StringComparison.Ordinal))
+                {
+                    EditApplicationStatusBarText = "Fix the required fields before saving.";
+                    return;
+                }
+
+                if (!TryParseMoney(EditApplicationNetAmountText, out var net) || net <= 0m)
+                {
+                    EditApplicationStatusBarText = "Net amount must be > 0.";
+                    return;
+                }
+
+                var vatSelectionText = GetComboSelectionText(EditApplicationVatRateText);
+                if (!TryParseVatRate(vatSelectionText, out var vatRate))
+                {
+                    EditApplicationStatusBarText = "VAT rate must be selected.";
+                    return;
+                }
+
+                var statusText = GetComboSelectionText(EditApplicationStatusText);
+                if (string.IsNullOrWhiteSpace(statusText))
+                    statusText = "Submitted";
+
+                if (!EditApplicationDate.HasValue)
+                {
+                    EditApplicationStatusBarText = "Application date is required.";
+                    return;
+                }
+
+                var dto = new UpdateApplicationRequestDto
+                {
+                    ProjectId = EditApplicationSelectedProject?.ProjectId,
+                    ApplicationDate = EditApplicationDate.Value.Date,
+                    NetAmount = net,
+                    VatRate = vatRate,
+                    AgreedNetAmount = ParseNullableMoney(EditApplicationAgreedNetAmountText),
+                    DateAgreed = EditApplicationDateAgreed,
+                    ExternalReference = string.IsNullOrWhiteSpace(EditApplicationExternalReferenceText) ? null : EditApplicationExternalReferenceText.Trim(),
+                    Status = statusText.Trim(),
+                    Notes = string.IsNullOrWhiteSpace(EditApplicationNotesText) ? null : EditApplicationNotesText.Trim()
+                };
+
+                EditApplicationStatusBarText = "Saving changes...";
+                await _api.UpdateApplicationAsync(SelectedApplicationListItem.Id, dto);
+
+                EditApplicationStatusBarText = "Saved.";
+
+                // Refresh list + view
+                Applications = await _api.GetApplicationsAsync();
+                ApplyApplicationFilter();
+            }
+            catch (Exception ex)
+            {
+                EditApplicationStatusBarText = ex.Message;
+            }
+        }
+
+        private void ClearEditApplicationForm_Click(object sender, RoutedEventArgs e)
+        {
+            EditApplicationNumberText = "";
+            EditApplicationStatusText = "Draft";
+            EditApplicationDate = DateTime.Today;
+            EditApplicationSelectedProject = null;
+            EditApplicationDerivedCompanyName = "";
+            EditApplicationNetAmountText = "";
+            EditApplicationVatRateText = "20%";
+            EditApplicationAgreedNetAmountText = "";
+            EditApplicationDateAgreed = null;
+            EditApplicationExternalReferenceText = "";
+            EditApplicationNotesText = "";
+            EditApplicationStatusBarText = "";
+            EditApplicationValidationText = "";
+        }
+
+        private void MarkApplicationAsSubmitted_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedApplicationListItem == null)
+            {
+                WpfMessageBox.Show(
+                    "Select an application first.",
+                    "Applications",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+                return;
+            }
+
+            WpfMessageBox.Show(
+                "Not wired yet (staging-safe stub).",
+                "Applications",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+        }
+
     }
 }
