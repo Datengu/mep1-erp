@@ -11,7 +11,6 @@ public sealed class UpdateApplicationRequestDto
 
     public decimal? AgreedNetAmount { get; set; }
     public DateTime? DateAgreed { get; set; }
-    public string? ExternalReference { get; set; }
 
     public string Status { get; set; } = "Submitted";
     public string? Notes { get; set; }

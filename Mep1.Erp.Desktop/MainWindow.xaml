@@ -3451,11 +3451,6 @@
                                                 <DatePicker Grid.Row="0" Grid.Column="3"
                                                             SelectedDate="{Binding NewApplicationDateAgreed}"
                                                             Margin="0,0,0,6"/>
-
-                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="External Ref (optional)"
-                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                                <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
-                                                         Text="{Binding NewApplicationExternalReferenceText, UpdateSourceTrigger=PropertyChanged}"/>
                                             </Grid>
                                         </Border>
 
@@ -3745,11 +3740,6 @@
                                                 <DatePicker Grid.Row="0" Grid.Column="3"
                                                             SelectedDate="{Binding EditApplicationDateAgreed}"
                                                             Margin="0,0,0,6"/>
-
-                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="External Ref (optional)"
-                                                           Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                                <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
-                                                         Text="{Binding EditApplicationExternalReferenceText, UpdateSourceTrigger=PropertyChanged}"/>
                                             </Grid>
                                         </Border>
 

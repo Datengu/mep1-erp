@@ -10,9 +10,8 @@ public sealed class ApplicationListEntryDto
     public DateTime? ApplicationDate { get; set; }
     public decimal? NetAmount { get; set; }
     public decimal? GrossAmount { get; set; }
-    public decimal? AgereedNetAmount { get; set; }
+    public decimal? AgreedNetAmount { get; set; }
     public DateTime? DateAgreed { get; set; }
-    public string? ExternalReference { get; set; }
     public string Notes { get; set; } = "";
     public int? InvoiceId { get; set; }
 }

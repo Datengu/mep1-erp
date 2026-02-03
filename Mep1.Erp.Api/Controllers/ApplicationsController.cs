@@ -69,9 +69,8 @@ namespace Mep1.Erp.Api.Controllers
                     ApplicationDate = a.DateApplied,
                     NetAmount = a.SubmittedNetAmount,
                     GrossAmount = grossAmount,
-                    AgereedNetAmount = a.AgreedNetAmount,
+                    AgreedNetAmount = a.AgreedNetAmount,
                     DateAgreed = a.DateAgreed,
-                    ExternalReference = a.ExternalReference,
                     Notes = a.Notes ?? "",
                     InvoiceId = _db.Invoices
                         .Where(i => i.ApplicationId == a.Id)
@@ -151,7 +150,6 @@ namespace Mep1.Erp.Api.Controllers
 
                 AgreedNetAmount = dto.AgreedNetAmount,
                 DateAgreed = dto.DateAgreed == null ? null : AsUtcDate(dto.DateAgreed.Value),
-                ExternalReference = string.IsNullOrWhiteSpace(dto.ExternalReference) ? null : dto.ExternalReference.Trim(),
 
                 Status = status,
                 Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim()
@@ -193,7 +191,6 @@ namespace Mep1.Erp.Api.Controllers
 
                 AgreedNetAmount = entity.AgreedNetAmount,
                 DateAgreed = entity.DateAgreed,
-                ExternalReference = entity.ExternalReference,
 
                 Status = entity.Status,
                 Notes = entity.Notes
@@ -240,7 +237,6 @@ namespace Mep1.Erp.Api.Controllers
 
                 AgreedNetAmount = a.AgreedNetAmount,
                 DateAgreed = a.DateAgreed,
-                ExternalReference = a.ExternalReference
             };
 
             return Ok(resp);
@@ -292,7 +288,6 @@ namespace Mep1.Erp.Api.Controllers
             // Future-safe fields
             entity.AgreedNetAmount = dto.AgreedNetAmount;
             entity.DateAgreed = dto.DateAgreed == null ? null : AsUtcDate(dto.DateAgreed.Value);
-            entity.ExternalReference = string.IsNullOrWhiteSpace(dto.ExternalReference) ? null : dto.ExternalReference.Trim();
 
             await _db.SaveChangesAsync();
 
@@ -342,7 +337,6 @@ namespace Mep1.Erp.Api.Controllers
 
                 AgreedNetAmount = entity.AgreedNetAmount,
                 DateAgreed = entity.DateAgreed,
-                ExternalReference = entity.ExternalReference
             };
 
             return Ok(resp);

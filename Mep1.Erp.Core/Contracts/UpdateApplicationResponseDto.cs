@@ -20,7 +20,6 @@ public sealed class UpdateApplicationResponseDto
 
     public decimal? AgreedNetAmount { get; init; }
     public DateTime? DateAgreed { get; init; }
-    public string? ExternalReference { get; init; }
 
     public string? Status { get; init; }
     public string? Notes { get; init; }

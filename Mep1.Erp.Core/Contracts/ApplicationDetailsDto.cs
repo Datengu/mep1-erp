@@ -24,5 +24,4 @@ public sealed class ApplicationDetailsDto
     // Existing domain fields (kept for future UI without breaking contracts)
     public decimal? AgreedNetAmount { get; init; }
     public DateTime? DateAgreed { get; init; }
-    public string? ExternalReference { get; init; }
 }
