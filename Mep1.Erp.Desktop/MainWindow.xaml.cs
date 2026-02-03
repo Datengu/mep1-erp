@@ -1751,10 +1751,17 @@ namespace Mep1.Erp.Desktop
             {
                 if (SetField(ref _newApplicationNumberText, value, nameof(NewApplicationNumberText)))
                 {
+                    // If the user is typing, stop treating the value as auto-suggested.
+                    if (!_isSettingNewApplicationNumberProgrammatically)
+                        _newApplicationNumberWasAutoSuggested = false;
+
                     UpdateAddApplicationValidation();
                 }
             }
         }
+
+        private bool _isSettingNewApplicationNumberProgrammatically;
+        private bool _newApplicationNumberWasAutoSuggested;
 
         private string _newApplicationStatusText = "Draft";
         public string NewApplicationStatusText
@@ -6419,6 +6426,8 @@ namespace Mep1.Erp.Desktop
             NewApplicationNotesText = "";
             AddApplicationStatusText = "";
             AddApplicationValidationText = "";
+
+            _newApplicationNumberWasAutoSuggested = false;
         }
 
         private void ClearAddApplicationForm(bool setStatusMessage)
@@ -6442,6 +6451,8 @@ namespace Mep1.Erp.Desktop
             NewApplicationVatRateText = "20%";
             NewApplicationStatusText = "Draft";
 
+            _newApplicationNumberWasAutoSuggested = false;
+
             RecalculateAddApplicationTotals();
             UpdateAddApplicationValidation();
             SuggestNextApplicationNumberIfEmpty();
@@ -6452,7 +6463,9 @@ namespace Mep1.Erp.Desktop
 
         private void SuggestNextApplicationNumberIfEmpty()
         {
-            if (!string.IsNullOrWhiteSpace(NewApplicationNumberText))
+            // If the user typed something, don't overwrite.
+            // If the system auto-suggested, we *can* overwrite when the project changes.
+            if (!string.IsNullOrWhiteSpace(NewApplicationNumberText) && !_newApplicationNumberWasAutoSuggested)
                 return;
 
             if (NewApplicationSelectedProject == null)
@@ -6485,7 +6498,16 @@ namespace Mep1.Erp.Desktop
             }
 
             var next = max + 1;
-            NewApplicationNumberText = $"APP{next.ToString("D3", System.Globalization.CultureInfo.InvariantCulture)}";
+            _isSettingNewApplicationNumberProgrammatically = true;
+            try
+            {
+                NewApplicationNumberText = $"APP{next.ToString("D3", System.Globalization.CultureInfo.InvariantCulture)}";
+                _newApplicationNumberWasAutoSuggested = true;
+            }
+            finally
+            {
+                _isSettingNewApplicationNumberProgrammatically = false;
+            }
         }
 
         private static string GetBaseProjectCodeFromJobNameOrNumber(string? jobNameOrNumber)
