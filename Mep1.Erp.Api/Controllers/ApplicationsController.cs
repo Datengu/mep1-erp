@@ -343,6 +343,70 @@ namespace Mep1.Erp.Api.Controllers
             return Ok(resp);
         }
 
+        // POST api/applications/{id}/link-invoice
+        [HttpPost("{id:int}/link-invoice")]
+        public async Task<ActionResult> LinkInvoice([FromRoute] int id, [FromBody] LinkInvoiceRequestDto dto)
+        {
+            var app = await _db.Applications.FirstOrDefaultAsync(a => a.Id == id);
+            if (app == null)
+                return NotFound("Application not found.");
+
+            var invNo = NormalizeInvoiceNumber(dto.InvoiceNumber);
+            if (string.IsNullOrWhiteSpace(invNo))
+                return BadRequest("Invoice number is required.");
+
+            var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.InvoiceNumber == invNo);
+            if (invoice == null)
+                return BadRequest("Invoice not found.");
+
+            // Safety: ensure it’s the same project
+            if (!string.Equals(invoice.ProjectCode?.Trim(), app.ProjectCode?.Trim(), StringComparison.OrdinalIgnoreCase))
+                return BadRequest($"Invoice project '{invoice.ProjectCode}' does not match application project '{app.ProjectCode}'.");
+
+            // Enforce 1:1 – if this application already has a linked invoice, unlink it first.
+            var existingForApp = await _db.Invoices.FirstOrDefaultAsync(i => i.ApplicationId == app.Id);
+            if (existingForApp != null && existingForApp.Id != invoice.Id)
+                existingForApp.ApplicationId = null;
+
+            // Enforce 1:1 – if this invoice is linked to another application, block.
+            if (invoice.ApplicationId != null && invoice.ApplicationId.Value != app.Id)
+                return Conflict("This invoice is already linked to a different application.");
+
+            invoice.ApplicationId = app.Id;
+
+            await _db.SaveChangesAsync();
+
+            var actor = GetActorForAudit();
+            await _audit.LogAsync(
+                actorWorkerId: actor.WorkerId,
+                subjectWorkerId: actor.WorkerId,
+                actorRole: actor.Role,
+                actorSource: actor.Source,
+                action: "Application.LinkInvoice",
+                entityType: "Application",
+                entityId: app.Id.ToString(),
+                summary: $"{app.ProjectCode} App {app.ApplicationNumber} linked to invoice {invoice.InvoiceNumber}"
+            );
+
+            return NoContent();
+        }
+
+        private static string NormalizeInvoiceNumber(string? input)
+        {
+            var s = (input ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(s))
+                return "";
+
+            s = s.Replace(" ", "");
+
+            // If user types 1 / 01 / 001 etc, normalize to 4-digit invoice format like "0001"
+            if (int.TryParse(s, out var n) && n > 0)
+                return n.ToString("D4", System.Globalization.CultureInfo.InvariantCulture);
+
+            // Otherwise accept as-is (covers already-normalized values)
+            return s;
+        }
+
         private static int ParseApplicationNumber(string? s)
         {
             s = (s ?? "").Trim();

@@ -6672,7 +6672,7 @@ namespace Mep1.Erp.Desktop
             EditApplicationValidationText = "";
         }
 
-        private void MarkApplicationAsSubmitted_Click(object sender, RoutedEventArgs e)
+        private async void LinkApplicationToInvoice_Click(object sender, RoutedEventArgs e)
         {
             if (SelectedApplicationListItem == null)
             {
@@ -6685,12 +6685,41 @@ namespace Mep1.Erp.Desktop
                 return;
             }
 
-            WpfMessageBox.Show(
-                "Not wired yet (staging-safe stub).",
-                "Applications",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information
-            );
+            // Quick+simple input prompt.
+            // If you don’t like this later, we can replace with a proper WPF dialog.
+            var invoiceNo = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter invoice number to link (e.g. 1, 01, 0001).",
+                "Link to invoice",
+                ""
+            )?.Trim();
+
+            if (string.IsNullOrWhiteSpace(invoiceNo))
+                return;
+
+            try
+            {
+                await _api.LinkInvoiceToApplicationAsync(SelectedApplicationListItem.Id, invoiceNo);
+
+                // Refresh list + view
+                Applications = await _api.GetApplicationsAsync();
+                ApplyApplicationFilter();
+
+                WpfMessageBox.Show(
+                    "Linked successfully.",
+                    "Applications",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    ex.Message,
+                    "Applications",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+            }
         }
 
         private static bool TryNormalizeApplicationRef(string? input, out string normalized)

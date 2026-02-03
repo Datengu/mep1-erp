@@ -3049,12 +3049,12 @@
                                     </StackPanel>
 
                                     <!-- RIGHT: Action -->
-                                    <!--<Button Grid.Column="1"
-                                            Content="Mark as submitted"
+                                    <Button Grid.Column="1"
+                                            Content="Link to invoice"
                                             Padding="12,4"
                                             MinWidth="130"
                                             HorizontalAlignment="Right"
-                                            Click="MarkApplicationAsSubmitted_Click"/>-->
+                                            Click="LinkApplicationToInvoice_Click"/>
                                 </Grid>
 
                                 <!-- Applications grid -->

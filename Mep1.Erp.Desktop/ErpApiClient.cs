@@ -811,5 +811,23 @@ namespace Mep1.Erp.Desktop
             return result;
         }
 
+        public async Task LinkInvoiceToApplicationAsync(int applicationId, string invoiceNumber)
+        {
+            var url = $"api/applications/{applicationId}/link-invoice";
+
+            var resp = await _http.PostAsJsonAsync(url, new { invoiceNumber });
+
+            if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                var msg = await resp.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(msg) ? "Invoice is already linked." : msg);
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"API failed ({(int)resp.StatusCode}): {body}");
+            }
+        }
     }
 }
