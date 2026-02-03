@@ -90,6 +90,7 @@ namespace Mep1.Erp.Api.Controllers
             var projects = await _db.Projects
                 .AsNoTracking()
                 .Include(p => p.CompanyEntity)
+                .Where(p => p.IsRealProject && p.IsActive)
                 .OrderBy(p => p.JobNameOrNumber)
                 .ToListAsync();
 
