@@ -7053,7 +7053,7 @@ namespace Mep1.Erp.Desktop
                     InvoiceNumber: a.InvoiceNumber,
                     InvoiceNet: a.InvoiceNet,
                     InvoiceDate: a.InvoiceDate,
-                    PaymentValue: a.PaymentAmount,
+                    PaymentValue: a.PaymentNet,
                     PaymentDate: a.PaidDate
                 ));
             }

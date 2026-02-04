@@ -24,8 +24,9 @@ public record ProjectApplicationRowDto(
     DateTime? InvoiceDate,
     decimal? InvoiceNet,
 
-    // payment lives on invoice (optional)
+    // payment lives on invoice (stored as gross today)
     decimal? PaymentAmount,
+    decimal? PaymentNet,
     DateTime? PaidDate
 );
 
