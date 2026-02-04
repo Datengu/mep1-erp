@@ -92,10 +92,12 @@ namespace Mep1.Erp.Desktop
             // Compare against agreed net if present, otherwise net
             _compareNet = application.AgreedNetAmount ?? application.NetAmount ?? 0m;
 
+            var compareNetFormatted = "£" + _compareNet.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+
             CompareNetText =
                 application.AgreedNetAmount.HasValue
-                    ? $"Agreed net: {_compareNet.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)}"
-                    : $"Applied net: {_compareNet.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)}";
+                    ? $"Agreed net: {compareNetFormatted}"
+                    : $"Applied net: {compareNetFormatted}";
 
             // Date agreed (if present)
             CompareDateText =
