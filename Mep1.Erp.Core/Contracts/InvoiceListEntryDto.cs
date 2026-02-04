@@ -28,5 +28,7 @@ namespace Mep1.Erp.Core.Contracts
 
         public string? FilePath { get; init; }
         public string? Notes { get; init; }
+        public int? ApplicationId { get; init; }
+        public string? ApplicationNumber { get; init; }
     }
 }

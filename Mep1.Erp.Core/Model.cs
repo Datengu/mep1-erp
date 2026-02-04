@@ -239,6 +239,11 @@ namespace Mep1.Erp.Core
         // Optional link to Project later if/when we normalise project codes
         public int? ProjectId { get; set; }
         public Project? Project { get; set; }
+
+        // Optional link to an Application (real submission/certification record)
+        // Nullable so existing invoices remain valid until you back-fill applications.
+        public int? ApplicationId { get; set; }
+        public Application? Application { get; set; }
     }
 
     public class ApplicationSchedule
@@ -265,5 +270,43 @@ namespace Mep1.Erp.Core
         public int? RuleValue { get; set; } // e.g. 23 for SpecificDay = 23rd
 
         public string? Notes { get; set; }
+    }
+
+    public class Application
+    {
+        public int Id { get; set; }
+
+        // Project code (e.g. PN0049). Mirrors Invoice.ProjectCode pattern.
+        public string ProjectCode { get; set; } = null!;
+
+        // Per-project sequence number (1, 2, 3...).
+        public int ApplicationNumber { get; set; }
+
+        // When you submitted the application.
+        public DateTime DateApplied { get; set; }
+
+        // Money requested at submission (net).
+        public decimal SubmittedNetAmount { get; set; }
+
+        // Money agreed/certified (net). Nullable until agreed.
+        public decimal? AgreedNetAmount { get; set; }
+
+        // When it was agreed/certified (if applicable).
+        public DateTime? DateAgreed { get; set; }
+
+        // Client / contract admin reference, certificate number etc.
+        public string? ExternalReference { get; set; }
+
+        // Draft / Submitted / Agreed / Invoiced / Cancelled etc (keep string like your other models).
+        public string Status { get; set; } = "Submitted";
+
+        public string? Notes { get; set; }
+
+        // Optional link to Project later if/when you normalise project codes
+        public int? ProjectId { get; set; }
+        public Project? Project { get; set; }
+
+        // Navigation back to invoice (1:1 optional)
+        public Invoice? Invoice { get; set; }
     }
 }

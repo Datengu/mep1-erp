@@ -223,9 +223,42 @@ public class ProjectsController : ControllerBase
             .Select(x => new ProjectRecentEntryRowDto(x.Date, x.WorkerInitials, x.Hours, x.Cost, x.TaskDescription))
             .ToList();
 
-        var invoices = Reporting.GetProjectInvoiceRows(_db, baseCode)
-            .Select(x => new ProjectInvoiceRowDto(x.InvoiceNumber, x.InvoiceDate, x.DueDate, x.NetAmount, x.OutstandingNet, x.Status))
+        var invoices = Reporting.GetInvoiceList(_db)
+            .Where(x => x.ProjectCode == baseCode)
+            .OrderByDescending(x => x.InvoiceDate)
+            .ThenByDescending(x => x.InvoiceNumber)
+            .Select(x => new ProjectInvoiceRowDto(
+                x.InvoiceNumber,
+                x.InvoiceDate,
+                x.DueDate,
+                x.NetAmount,
+                x.OutstandingNet,
+                x.Status,
+                x.PaymentAmount,
+                x.PaidDate))
             .ToList();
+
+        var applications = await _db.Applications
+            .AsNoTracking()
+            .Where(a => a.ProjectCode == baseCode)
+            .OrderByDescending(a => a.DateApplied)
+            .ThenByDescending(a => a.ApplicationNumber)
+            .Select(a => new ProjectApplicationRowDto(
+                a.ProjectCode,
+                a.ApplicationNumber,
+                a.DateApplied,
+                a.SubmittedNetAmount,
+
+                // linked invoice (optional)
+                a.Invoice != null ? a.Invoice.InvoiceNumber : null,
+                a.Invoice != null ? a.Invoice.InvoiceDate : null,
+                a.Invoice != null ? a.Invoice.NetAmount : null,
+
+                // payment lives on invoice (optional)
+                a.Invoice != null ? a.Invoice.PaymentAmount : null,
+                a.Invoice != null ? a.Invoice.PaidDate : null
+            ))
+            .ToListAsync();
 
         var supplierCosts = await _db.SupplierCosts
             .AsNoTracking()
@@ -248,6 +281,7 @@ public class ProjectsController : ControllerBase
             LabourThisMonth: labourThisMonth,
             LabourAllTime: labourAllTime,
             RecentEntries: recentEntries,
+            Applications: applications,
             Invoices: invoices,
             SupplierCosts: supplierCosts);
 

@@ -67,10 +67,40 @@ namespace Mep1.Erp.Desktop
         {
             try
             {
-                WriteCrashLog("TaskScheduler.UnobservedTaskException", e.Exception);
-                // Usually don't need to pop UI for this, but it can be useful during live test.
-                // Comment out next line if it becomes noisy.
-                ShowCrashMessage(e.Exception);
+                // Unobserved task exceptions can be raised on the finalizer thread.
+                // They should be logged, observed, and NOT treated as a fatal app crash.
+
+                var ex = e.Exception;
+                var text = ex?.ToString() ?? "";
+
+                // Visual Studio WPF XAML tooling (Live Visual Tree / Hot Reload) can throw these.
+                // Don't spam logs or show UI for them.
+                if (text.Contains("Microsoft.VisualStudio.DesignTools.WpfTap", StringComparison.Ordinal) ||
+                    text.Contains("TapLivePreviewService", StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                WriteCrashLog("TaskScheduler.UnobservedTaskException", ex);
+
+#if DEBUG
+        // Optional: in DEBUG you might want visibility without killing the session.
+        // Keep it non-fatal and on the UI dispatcher.
+        Dispatcher.BeginInvoke(() =>
+        {
+            try
+            {
+                WpfMessageBox.Show(
+                    "A background task faulted (non-fatal). Details were logged to:\n" +
+                    GetCrashLogDirectory() + "\n\n" +
+                    ex.Message,
+                    "MEP1BIM ERP - Background Task Warning",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            catch { }
+        });
+#endif
             }
             catch
             {
@@ -78,6 +108,7 @@ namespace Mep1.Erp.Desktop
             }
             finally
             {
+                // Critical: prevents finalizer-thread escalation
                 e.SetObserved();
             }
         }

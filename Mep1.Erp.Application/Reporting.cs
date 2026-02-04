@@ -55,7 +55,9 @@ namespace Mep1.Erp.Application
         DateTime? DueDate,
         decimal NetAmount,
         decimal OutstandingNet,
-        string? Status);
+        string? Status,
+        decimal? PaymentAmount,
+        DateTime? PaidDate);
 
     public record SupplierCostRow(
         int Id,
@@ -71,6 +73,8 @@ namespace Mep1.Erp.Application
         string ProjectCode,
         string? JobName,
         string? ClientName,
+        int? ApplicationId,
+        string? ApplicationNumber,
         DateTime InvoiceDate,
         DateTime? DueDate,
         decimal NetAmount,
@@ -129,7 +133,11 @@ namespace Mep1.Erp.Application
             // (Trimming inside SQL is awkward/slow; do it once in-memory)
             var invoiceSumsByCode = db.Invoices
                 .AsNoTracking()
-                .Where(i => i.ProjectCode != null && i.ProjectCode != "")
+                .Where(i =>
+                    i.ProjectCode != null &&
+                    i.ProjectCode != "" &&
+                    i.Status != "VOID"
+                )
                 .Select(i => new { i.ProjectCode, i.NetAmount, i.GrossAmount })
                 .ToList()
                 .GroupBy(i => (i.ProjectCode ?? string.Empty).Trim())
@@ -1021,7 +1029,9 @@ namespace Mep1.Erp.Application
                 DueDate: i.DueDate,
                 NetAmount: i.NetAmount,
                 OutstandingNet: i.GetOutstandingNet(),
-                Status: i.Status
+                Status: i.Status,
+                PaymentAmount: i.PaymentAmount,
+                PaidDate: i.PaidDate
             )).ToList();
         }
 
@@ -1034,25 +1044,56 @@ namespace Mep1.Erp.Application
                 .ThenByDescending(i => i.Id)
                 .ToList();
 
-            return invoices.Select(i => new InvoiceListEntry(
-                Id: i.Id,
-                InvoiceNumber: i.InvoiceNumber,
-                ProjectCode: i.ProjectCode,
-                JobName: i.JobName,
-                ClientName: i.ClientName,
-                InvoiceDate: i.InvoiceDate,
-                DueDate: i.DueDate,
-                NetAmount: i.NetAmount,
-                GrossAmount: i.GrossAmount,
-                PaymentAmount: i.PaymentAmount,
-                PaidDate: i.PaidDate,
-                Status: i.Status,
-                IsPaid: i.IsPaid,
-                OutstandingNet: i.GetOutstandingNet(),
-                OutstandingGross: i.GetOutstandingGross(),
-                FilePath: i.FilePath,
-                Notes: i.Notes
-            )).ToList();
+            // Pull linked application numbers in one go (avoid N+1)
+            var appIds = invoices
+                .Where(i => i.ApplicationId.HasValue)
+                .Select(i => i.ApplicationId!.Value)
+                .Distinct()
+                .ToList();
+
+            var appNoById = appIds.Count == 0
+                ? new Dictionary<int, int>()
+                : db.Applications
+                    .Where(a => appIds.Contains(a.Id))
+                    .Select(a => new { a.Id, a.ApplicationNumber })
+                    .ToDictionary(x => x.Id, x => x.ApplicationNumber);
+
+            static string? FormatAppRef(int? appNo)
+            {
+                if (!appNo.HasValue) return null;
+                return "APP" + appNo.Value.ToString("D3", System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            return invoices.Select(i =>
+            {
+                int? appNo = null;
+                if (i.ApplicationId.HasValue && appNoById.TryGetValue(i.ApplicationId.Value, out var n))
+                    appNo = n;
+
+                return new InvoiceListEntry(
+                    Id: i.Id,
+                    InvoiceNumber: i.InvoiceNumber,
+                    ProjectCode: i.ProjectCode,
+                    JobName: i.JobName,
+                    ClientName: i.ClientName,
+
+                    ApplicationId: i.ApplicationId,
+                    ApplicationNumber: FormatAppRef(appNo),
+
+                    InvoiceDate: i.InvoiceDate,
+                    DueDate: i.DueDate,
+                    NetAmount: i.NetAmount,
+                    GrossAmount: i.GrossAmount,
+                    PaymentAmount: i.PaymentAmount,
+                    PaidDate: i.PaidDate,
+                    Status: i.Status,
+                    IsPaid: i.IsPaid,
+                    OutstandingNet: i.GetOutstandingNet(),
+                    OutstandingGross: i.GetOutstandingGross(),
+                    FilePath: i.FilePath,
+                    Notes: i.Notes
+                );
+            }).ToList();
         }
 
         public static List<SupplierCostRow> GetProjectSupplierCostRows(AppDbContext db, int projectId)
@@ -1071,5 +1112,17 @@ namespace Mep1.Erp.Application
                     sc.Note))
                 .ToList();
         }
+
+        public record ProjectIncomingRow(
+            int ApplicationNumber,
+            decimal? ApplicationNet,
+            DateTime? ApplicationDate,
+            string? InvoiceNumber,
+            decimal? InvoiceNet,
+            DateTime? InvoiceDate,
+            decimal? PaymentValue,
+            DateTime? PaymentDate
+        );
+
     }
 }

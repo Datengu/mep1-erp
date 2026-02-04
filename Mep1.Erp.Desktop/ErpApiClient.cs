@@ -748,5 +748,86 @@ namespace Mep1.Erp.Desktop
                 "A new version of the desktop app is available. Please close and re-open the app to update.\n\n" +
                 "Details: " + body);
         }
+
+        // -------------------------------
+        // Applications
+        // -------------------------------
+
+        public async Task<List<ApplicationListEntryDto>> GetApplicationsAsync()
+        {
+            var result = await _http.GetFromJsonAsync<List<ApplicationListEntryDto>>("api/applications");
+            return result ?? new List<ApplicationListEntryDto>();
+        }
+
+        public async Task<List<ApplicationProjectPicklistItemDto>> GetApplicationProjectPicklistAsync()
+        {
+            var result = await _http.GetFromJsonAsync<List<ApplicationProjectPicklistItemDto>>("api/applications/project-picklist");
+            return result ?? new List<ApplicationProjectPicklistItemDto>();
+        }
+
+        public async Task<CreateApplicationResponseDto> CreateApplicationAsync(CreateApplicationRequestDto dto)
+        {
+            var resp = await _http.PostAsJsonAsync("api/applications", dto);
+
+            if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                var msg = await resp.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(msg)
+                    ? "An application with that number already exists."
+                    : msg);
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"API failed ({(int)resp.StatusCode}): {body}");
+            }
+
+            var created = await resp.Content.ReadFromJsonAsync<CreateApplicationResponseDto>();
+            if (created == null) throw new InvalidOperationException("Create application response was empty.");
+
+            return created;
+        }
+
+        public async Task<ApplicationDetailsDto> GetApplicationByIdAsync(int id)
+        {
+            var resp = await _http.GetAsync($"api/applications/{id}");
+            resp.EnsureSuccessStatusCode();
+
+            var dto = await resp.Content.ReadFromJsonAsync<ApplicationDetailsDto>();
+            if (dto == null) throw new Exception("Failed to deserialize ApplicationDetailsDto.");
+
+            return dto;
+        }
+
+        public async Task<UpdateApplicationResponseDto> UpdateApplicationAsync(int id, UpdateApplicationRequestDto dto)
+        {
+            var resp = await _http.PutAsJsonAsync($"api/applications/{id}", dto);
+            resp.EnsureSuccessStatusCode();
+
+            var result = await resp.Content.ReadFromJsonAsync<UpdateApplicationResponseDto>();
+            if (result == null) throw new Exception("Failed to deserialize UpdateApplicationResponseDto.");
+
+            return result;
+        }
+
+        public async Task LinkInvoiceToApplicationAsync(int applicationId, string invoiceNumber)
+        {
+            var url = $"api/applications/{applicationId}/link-invoice";
+
+            var resp = await _http.PostAsJsonAsync(url, new { invoiceNumber });
+
+            if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                var msg = await resp.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(msg) ? "Invoice is already linked." : msg);
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"API failed ({(int)resp.StatusCode}): {body}");
+            }
+        }
     }
 }
