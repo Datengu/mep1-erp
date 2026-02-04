@@ -51,6 +51,14 @@ public sealed class EnterHoursModel : PageModel
         "Pantries",
     ];
 
+    private static readonly HashSet<string> WorkDetailsCodes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "P", "IC", "EC", "RD", "QA", "VO"
+    };
+
+    private static bool AllowsWorkDetails(string? code)
+        => !string.IsNullOrWhiteSpace(code) && WorkDetailsCodes.Contains(code.Trim());
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
@@ -93,7 +101,8 @@ public sealed class EnterHoursModel : PageModel
 
         // Initial state for first render: hidden until a valid project is selected
         var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
-        ShowWorkDetails = selected?.Category == "Project";
+        var isProjectJob = selected?.Category == "Project";
+        ShowWorkDetails = isProjectJob && AllowsWorkDetails(Input.Code);
 
         // If redirected back with a TempData message
         if (TempData.TryGetValue("Message", out var msgObj))
@@ -117,7 +126,8 @@ public sealed class EnterHoursModel : PageModel
         // ---- Enforce Job <-> Code rules based on selected "job" ----
         var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
 
-        ShowWorkDetails = selected?.Category == "Project";
+        var isProjectJob = selected?.Category == "Project";
+        ShowWorkDetails = isProjectJob && AllowsWorkDetails(Input.Code);
 
         if (selected is null)
         {
@@ -155,6 +165,9 @@ public sealed class EnterHoursModel : PageModel
                 Input.Code = "TP";
             }
         }
+
+        // Re-evaluate after any forced-code rules above
+        ShowWorkDetails = (selected?.Category == "Project") && AllowsWorkDetails(Input.Code);
 
         // ---- Validation ----
         var today = DateTime.Today;
