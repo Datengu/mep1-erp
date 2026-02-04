@@ -1122,6 +1122,9 @@ namespace Mep1.Erp.Desktop
 
                 // New: SI/HOL UX (hours/task lock + 0 hours), etc.
                 ApplyTimesheetAllRules();
+
+                OnPropertyChanged(nameof(IsTimesheetWorkTypeEnabled));
+                OnPropertyChanged(nameof(IsTimesheetWorkDetailsVisible));
             }
         }
 
@@ -1267,7 +1270,21 @@ namespace Mep1.Erp.Desktop
             return cat.Equals("Project", StringComparison.OrdinalIgnoreCase);
         }
 
-        public bool IsTimesheetWorkTypeEnabled => IsSelectedTimesheetJobProjectCategory();
+        private static readonly HashSet<string> TimesheetWorkDetailsCodes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "P", "IC", "EC", "RD", "QA", "VO"
+        };
+
+        private bool IsTimesheetWorkDetailsAllowed()
+        {
+            if (!IsSelectedTimesheetJobProjectCategory())
+                return false;
+
+            var code = NormalizeCode(TimesheetCodeText);
+            return TimesheetWorkDetailsCodes.Contains(code);
+        }
+
+        public bool IsTimesheetWorkTypeEnabled => IsTimesheetWorkDetailsAllowed();
 
         public List<string> TimesheetLevelOptions { get; } = new()
         {
@@ -1313,7 +1330,7 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _timesheetSelectedAreas, value, nameof(TimesheetSelectedAreas));
         }
 
-        public bool IsTimesheetWorkDetailsVisible => IsSelectedTimesheetJobProjectCategory();
+        public bool IsTimesheetWorkDetailsVisible => IsTimesheetWorkDetailsAllowed();
 
         private TimesheetEntrySummaryDto? _selectedTimesheetEntry;
         public TimesheetEntrySummaryDto? SelectedTimesheetEntry
@@ -4879,8 +4896,9 @@ namespace Mep1.Erp.Desktop
             var task = string.IsNullOrWhiteSpace(TimesheetTaskDescriptionText) ? null : TimesheetTaskDescriptionText.Trim();
 
             var isProjectJob = IsSelectedTimesheetJobProjectCategory();
+            var allowWorkDetails = isProjectJob && IsTimesheetWorkDetailsAllowed();
 
-            if (isProjectJob)
+            if (allowWorkDetails)
             {
                 validatedLevels = TimesheetSelectedLevels
                     .Where(l => TimesheetLevelOptions.Contains(l, StringComparer.OrdinalIgnoreCase))
@@ -4900,7 +4918,7 @@ namespace Mep1.Erp.Desktop
 
             string? workType = null;
 
-            if (isProjectJob)
+            if (allowWorkDetails)
             {
                 var wt = (TimesheetWorkTypeText ?? "").Trim().ToUpperInvariant();
 
@@ -4949,7 +4967,7 @@ namespace Mep1.Erp.Desktop
             cleanedWorkType = workType;
 
             // If modelling, require levels (recommended)
-            if (isProjectJob && workType == "M" && validatedLevels.Count == 0)
+            if (allowWorkDetails && workType == "M" && validatedLevels.Count == 0)
             {
                 errorMessage = "At least one level is required for Modelling work.";
                 return false;
@@ -5019,11 +5037,20 @@ namespace Mep1.Erp.Desktop
             bool isFeeProposal = jobName.Equals("Fee Proposal", StringComparison.OrdinalIgnoreCase);
             bool isTender = jobName.Equals("Tender Presentation", StringComparison.OrdinalIgnoreCase);
 
-            // WorkType is only applicable to "Project" category jobs
-            if (!IsSelectedTimesheetJobProjectCategory())
+            // Work details only apply when: Project-category job AND Code is one of the allowed set
+            if (!IsTimesheetWorkDetailsAllowed())
             {
                 if (!string.IsNullOrWhiteSpace(TimesheetWorkTypeText))
                     TimesheetWorkTypeText = "";
+
+                if (TimesheetSelectedLevels.Count > 0)
+                    TimesheetSelectedLevels = new List<string>();
+
+                if (TimesheetSelectedAreas.Count > 0)
+                    TimesheetSelectedAreas = new List<string>();
+
+                // Also clear the UI selection (ListBox SelectedItems isn't bound)
+                ClearTimesheetWorkDetailsUiSelection();
             }
 
             if (isHoliday)
@@ -5202,6 +5229,23 @@ namespace Mep1.Erp.Desktop
             {
                 ApplyMultiSelectListBoxSelection(TimesheetLevelsListBox, TimesheetSelectedLevels);
                 ApplyMultiSelectListBoxSelection(TimesheetAreasListBox, TimesheetSelectedAreas);
+            }
+            finally
+            {
+                _suppressTimesheetWorkDetailsSelectionChanged = false;
+            }
+        }
+
+        private void ClearTimesheetWorkDetailsUiSelection()
+        {
+            if (TimesheetLevelsListBox == null || TimesheetAreasListBox == null)
+                return;
+
+            _suppressTimesheetWorkDetailsSelectionChanged = true;
+            try
+            {
+                TimesheetLevelsListBox.SelectedItems.Clear();
+                TimesheetAreasListBox.SelectedItems.Clear();
             }
             finally
             {
