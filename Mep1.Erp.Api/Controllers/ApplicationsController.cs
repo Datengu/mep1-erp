@@ -38,6 +38,20 @@ namespace Mep1.Erp.Api.Controllers
             return string.Equals(kind, "Admin", StringComparison.Ordinal) ? "Desktop" : "Portal";
         }
 
+        private static string GetJobNameDisplay(string? jobNameOrNumber)
+        {
+            var s = (jobNameOrNumber ?? "").Trim();
+            if (s.Length == 0) return "";
+
+            // Common format: "1234 - Job Name"
+            // In list grids we already have ProjectCode separately, so show just "Job Name".
+            var dashIndex = s.IndexOf('-');
+            if (dashIndex < 0) return s;
+
+            var after = s.Substring(dashIndex + 1).Trim();
+            return after.Length == 0 ? s : after;
+        }
+
         // GET api/applications
         [HttpGet]
         public async Task<ActionResult<List<ApplicationListEntryDto>>> GetApplications()
@@ -84,7 +98,7 @@ namespace Mep1.Erp.Api.Controllers
                     Id = a.Id,
                     ApplicationNumber = FormatApplicationRef(a.ApplicationNumber),
                     ProjectCode = a.ProjectCode,
-                    JobName = a.Project?.JobNameOrNumber ?? "",
+                    JobName = GetJobNameDisplay(a.Project?.JobNameOrNumber),
                     ClientName = a.Project?.CompanyEntity?.Name ?? "",
                     Status = a.Status ?? "",
                     ApplicationDate = a.DateApplied,
