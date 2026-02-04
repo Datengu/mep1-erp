@@ -1114,6 +1114,7 @@ namespace Mep1.Erp.Application
         }
 
         public record ProjectIncomingRow(
+            int ApplicationNumber,
             decimal? ApplicationNet,
             DateTime? ApplicationDate,
             string? InvoiceNumber,

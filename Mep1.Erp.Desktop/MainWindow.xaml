@@ -544,11 +544,31 @@
                                                     <Grid.RowDefinitions>
                                                         <RowDefinition Height="*"/>
                                                         <RowDefinition Height="*"/>
-                                                        <!--<RowDefinition Height="*"/>-->
                                                     </Grid.RowDefinitions>
 
+                                                    <!-- “Application -> Invoice -> Payment” grid (future link) -->
+                                                    <GroupBox Grid.Row="0" Header="Applications / Invoices / Payments (to be linked)" Foreground="White" Margin="0,0,0,8">
+                                                        <DataGrid ItemsSource="{Binding SelectedProjectIncomingRows}"
+                                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                                  AutoGenerateColumns="False"
+                                                                  IsReadOnly="True">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="App No." Binding="{Binding ApplicationNumber, StringFormat=APP{0}}" Width="70"/>
+                                                                <DataGridTextColumn Header="App Net" Binding="{Binding ApplicationNet, StringFormat=£{0:N2}}" Width="90"/>
+                                                                <DataGridTextColumn Header="App Date" Binding="{Binding ApplicationDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+
+                                                                <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="110"/>
+                                                                <DataGridTextColumn Header="Inv Net" Binding="{Binding InvoiceNet, StringFormat=£{0:N2}}" Width="90"/>
+                                                                <DataGridTextColumn Header="Inv Date" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+
+                                                                <DataGridTextColumn Header="Payment" Binding="{Binding PaymentValue, StringFormat=£{0:N2}}" Width="90"/>
+                                                                <DataGridTextColumn Header="Pay Date" Binding="{Binding PaymentDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                    </GroupBox>
+
                                                     <!-- CCFs -->
-                                                    <GroupBox Grid.Row="0" Header="CCFs (this project)" Foreground="White" Margin="0,0,0,8">
+                                                    <GroupBox Grid.Row="1" Header="CCFs (this project)" Foreground="White" Margin="0,0,0,8">
                                                         <DataGrid ItemsSource="{Binding SelectedProjectCcfRefsView}"
                                                                   Style="{StaticResource DarkDataGridStyle}"
                                                                   AutoGenerateColumns="False"
@@ -563,42 +583,6 @@
                                                         </DataGrid>
                                                     </GroupBox>
 
-                                                    <!-- “Application -> Invoice -> Payment” grid (future link) -->
-                                                    <GroupBox Grid.Row="1" Header="Applications / Invoices / Payments (to be linked)" Foreground="White" Margin="0,0,0,8">
-                                                        <DataGrid ItemsSource="{Binding SelectedProjectIncomingRows}"
-                                                                  Style="{StaticResource DarkDataGridStyle}"
-                                                                  AutoGenerateColumns="False"
-                                                                  IsReadOnly="True">
-                                                            <DataGrid.Columns>
-                                                                <DataGridTextColumn Header="App Net" Binding="{Binding ApplicationNet, StringFormat=£{0:N2}}" Width="90"/>
-                                                                <DataGridTextColumn Header="App Date" Binding="{Binding ApplicationDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-
-                                                                <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="110"/>
-                                                                <DataGridTextColumn Header="Inv Net" Binding="{Binding InvoiceNet, StringFormat=£{0:N2}}" Width="90"/>
-                                                                <DataGridTextColumn Header="Inv Date" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-
-                                                                <DataGridTextColumn Header="Payment" Binding="{Binding PaymentValue, StringFormat=£{0:N2}}" Width="90"/>
-                                                                <DataGridTextColumn Header="Pay Date" Binding="{Binding PaymentDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                                            </DataGrid.Columns>
-                                                        </DataGrid>
-                                                    </GroupBox>
-
-                                                    <!-- Existing “Invoices” (quick win + already working) -->
-                                                    <!--<GroupBox Grid.Row="2" Header="Invoices (this project)" Foreground="White">
-                                                        <DataGrid ItemsSource="{Binding SelectedProjectInvoices}"
-                                                                  Style="{StaticResource DarkDataGridStyle}"
-                                                                  AutoGenerateColumns="False"
-                                                                  IsReadOnly="True">
-                                                            <DataGrid.Columns>
-                                                                <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="110"/>
-                                                                <DataGridTextColumn Header="Date" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                                                <DataGridTextColumn Header="Due" Binding="{Binding DueDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                                                <DataGridTextColumn Header="Net" Binding="{Binding NetAmount, StringFormat=£{0:N2}}" Width="110"/>
-                                                                <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingNet, StringFormat=£{0:N2}}" Width="120"/>
-                                                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
-                                                            </DataGrid.Columns>
-                                                        </DataGrid>
-                                                    </GroupBox>-->
                                                 </Grid>
                                             </TabItem>
 
@@ -610,8 +594,23 @@
                                                         <RowDefinition Height="*"/>
                                                     </Grid.RowDefinitions>
 
+                                                    <!-- Labour -->
+                                                    <GroupBox Grid.Row="0" Header="Labour costs (all time)" Foreground="White">
+                                                        <DataGrid ItemsSource="{Binding SelectedProjectLabourAllTime}"
+                                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                                  AutoGenerateColumns="False"
+                                                                  IsReadOnly="True">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
+                                                                <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
+                                                                <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
+                                                                <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                    </GroupBox>
+
                                                     <!-- Sub-contractor costs -->
-                                                    <GroupBox Grid.Row="0" Header="Sub-Contractor costs (this project)" Foreground="White" Margin="0,0,0,8">
+                                                    <GroupBox Grid.Row="1" Header="Sub-Contractor costs (this project)" Foreground="White" Margin="0,0,0,8">
                                                         <!-- NOTE: this is a trimmed version; we keep your existing add/edit UI + grid intact below -->
                                                         <Grid>
                                                             <Grid.RowDefinitions>
@@ -672,20 +671,6 @@
                                                         </Grid>
                                                     </GroupBox>
 
-                                                    <!-- Labour -->
-                                                    <GroupBox Grid.Row="1" Header="Labour costs (all time)" Foreground="White">
-                                                        <DataGrid ItemsSource="{Binding SelectedProjectLabourAllTime}"
-                                                                  Style="{StaticResource DarkDataGridStyle}"
-                                                                  AutoGenerateColumns="False"
-                                                                  IsReadOnly="True">
-                                                            <DataGrid.Columns>
-                                                                <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
-                                                                <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
-                                                                <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
-                                                                <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
-                                                            </DataGrid.Columns>
-                                                        </DataGrid>
-                                                    </GroupBox>
                                                 </Grid>
                                             </TabItem>
 

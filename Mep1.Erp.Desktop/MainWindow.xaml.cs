@@ -7003,6 +7003,7 @@ namespace Mep1.Erp.Desktop
             foreach (var a in SelectedProjectApplications)
             {
                 SelectedProjectIncomingRows.Add(new ProjectIncomingRow(
+                    ApplicationNumber: a.ApplicationNumber,
                     ApplicationNet: a.NetAmount,
                     ApplicationDate: a.ApplicationDate,
                     InvoiceNumber: a.InvoiceNumber,
