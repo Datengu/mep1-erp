@@ -166,18 +166,26 @@ public sealed class TimesheetController : ControllerBase
 
         var isProjectWork = string.Equals(project.Category, "Project", StringComparison.OrdinalIgnoreCase);
 
+        var workDetailsCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "P", "IC", "EC", "RD", "QA", "VO"
+        };
+
+        var allowWorkDetails = isProjectWork && workDetailsCodes.Contains(dto.Code);
+
         string? workTypeToStore;
 
-        if (isProjectWork)
+        if (allowWorkDetails)
         {
             if (dto.WorkType is not ("S" or "M"))
-                return BadRequest("WorkType must be S (Sheet) or M (Modelling) for Project jobs.");
+                return BadRequest("WorkType must be S (Sheet) or M (Modelling) when using this Code on a Project job.");
 
             workTypeToStore = dto.WorkType;
         }
         else
         {
-            // Non-project: ignore any submitted work details
+            // If not allowed (either not a Project job OR code not in the allowed list),
+            // ignore any submitted work details.
             workTypeToStore = null;
             dto = dto with
             {
@@ -400,17 +408,26 @@ public sealed class TimesheetController : ControllerBase
 
         var isProjectWork = string.Equals(project.Category, "Project", StringComparison.OrdinalIgnoreCase);
 
+        var workDetailsCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "P", "IC", "EC", "RD", "QA", "VO"
+        };
+
+        var allowWorkDetails = isProjectWork && workDetailsCodes.Contains(dto.Code);
+
         string? workTypeToStore;
 
-        if (isProjectWork)
+        if (allowWorkDetails)
         {
             if (dto.WorkType is not ("S" or "M"))
-                return BadRequest("WorkType must be S (Sheet) or M (Modelling) for Project jobs.");
+                return BadRequest("WorkType must be S (Sheet) or M (Modelling) when using this Code on a Project job.");
 
             workTypeToStore = dto.WorkType;
         }
         else
         {
+            // If not allowed (either not a Project job OR code not in the allowed list),
+            // ignore any submitted work details.
             workTypeToStore = null;
             dto = dto with
             {

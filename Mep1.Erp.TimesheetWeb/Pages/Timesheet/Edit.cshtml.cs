@@ -54,6 +54,14 @@ public sealed class EditModel : PageModel
         "Pantries",
     ];
 
+    private static readonly HashSet<string> WorkDetailsCodes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "P", "IC", "EC", "RD", "QA", "VO"
+    };
+
+    private static bool AllowsWorkDetails(string? code)
+        => !string.IsNullOrWhiteSpace(code) && WorkDetailsCodes.Contains(code.Trim());
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
@@ -108,7 +116,8 @@ public sealed class EditModel : PageModel
         };
 
         var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
-        ShowWorkDetails = selected?.Category == "Project";
+        var isProjectJob = selected?.Category == "Project";
+        ShowWorkDetails = isProjectJob && AllowsWorkDetails(Input.Code);
 
         return Page();
     }
@@ -131,7 +140,8 @@ public sealed class EditModel : PageModel
         // ---- Enforce Job <-> Code rules based on selected "job" ----
         var selected = _projectsCache.FirstOrDefault(p => p.JobKey == Input.JobKey);
 
-        ShowWorkDetails = selected?.Category == "Project";
+        var isProjectJob = selected?.Category == "Project";
+        ShowWorkDetails = isProjectJob && AllowsWorkDetails(Input.Code);
 
         if (selected is null)
         {
@@ -169,6 +179,8 @@ public sealed class EditModel : PageModel
                 Input.Code = "TP";
             }
         }
+
+        ShowWorkDetails = (selected?.Category == "Project") && AllowsWorkDetails(Input.Code);
 
         // ---- Validation ----
         var today = DateTime.Today;

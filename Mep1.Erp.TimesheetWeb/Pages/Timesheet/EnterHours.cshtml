@@ -276,53 +276,50 @@
     </script>
 
     <script>
-        // Hide/show Sheet/Modelling, Level, Area based on selected job category (Project vs non-project)
+        // Hide/show Sheet/Modelling, Level, Area based on:
+        // - selected job category (Project vs non-project)
+        // - selected Code (only certain codes allow these extra fields)
         (function () {
             const jobSel = document.querySelector('[name="Input.JobKey"]');
+            const codeSel = document.querySelector('[name="Input.Code"]');
             const wrapper = document.getElementById('workDetailsWrapper');
-            if (!jobSel || !wrapper) return;
+            if (!jobSel || !codeSel || !wrapper) return;
 
             // This is emitted from the PageModel (JobKey -> true if Category == Project)
             const jobKeyShowsWorkDetails = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.JobKeyShowsWorkDetails));
 
-            // Inputs to clear when hidden
-            const workType = document.querySelector('[name="Input.WorkType"]'); // might be radios or select
-            const areas = document.querySelector('[name="Input.AreasRaw"]');
+            // Only these codes should allow Sheet/Modelling + Levels + Areas
+            const workDetailsTriggerCodes = new Set(['P', 'IC', 'EC', 'RD', 'QA', 'VO']);
 
             function clearWorkDetails() {
-                // WorkType: handle common cases (select or radio buttons)
-                if (workType) {
-                    if (workType.tagName === 'SELECT') {
-                        workType.value = '';
-                    } else {
-                        // if WorkType is a radio group, clear checked
-                        const radios = document.querySelectorAll('[name="Input.WorkType"]');
-                        radios.forEach(r => r.checked = false);
-                    }
-                }
+                // WorkType: radio group
+                const radios = document.querySelectorAll('[name="Input.WorkType"]');
+                radios.forEach(r => r.checked = false);
 
-                // Levels: multi-select or checkboxes
-                const levelsSel = document.querySelector('[name="Input.Levels"]');
-                if (levelsSel && levelsSel.tagName === 'SELECT') {
-                    for (const opt of levelsSel.options) opt.selected = false;
-                } else {
-                    // if you render levels as checkboxes:
-                    const levelChecks = document.querySelectorAll('[name="Input.Levels"]');
-                    levelChecks.forEach(c => c.checked = false);
-                }
+                // Levels: checkboxes
+                const levelChecks = document.querySelectorAll('[name="Input.Levels"]');
+                levelChecks.forEach(c => c.checked = false);
 
-                if (areas) areas.value = '';
+                // Areas: checkboxes
+                const areaChecks = document.querySelectorAll('[name="Input.Areas"]');
+                areaChecks.forEach(c => c.checked = false);
             }
 
             function refresh() {
-                const key = jobSel.value || '';
-                const show = jobKeyShowsWorkDetails[key] === true;
+                const key = (jobSel.value || '').trim();
+                const code = (codeSel.value || '').trim().toUpperCase();
+
+                const isProjectJob = jobKeyShowsWorkDetails[key] === true;
+                const isAllowedCode = workDetailsTriggerCodes.has(code);
+
+                const show = isProjectJob && isAllowedCode;
 
                 wrapper.style.display = show ? '' : 'none';
                 if (!show) clearWorkDetails();
             }
 
             jobSel.addEventListener('change', refresh);
+            codeSel.addEventListener('change', refresh);
             refresh();
         })();
     </script>
