@@ -88,6 +88,38 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _selectedProjectInvoices, value, nameof(SelectedProjectInvoices));
         }
 
+        private decimal _selectedProjectIncomingNetTotal;
+        public decimal SelectedProjectIncomingNetTotal
+        {
+            get => _selectedProjectIncomingNetTotal;
+            set => SetField(ref _selectedProjectIncomingNetTotal, value, nameof(SelectedProjectIncomingNetTotal));
+        }
+
+        private decimal _selectedProjectOutgoingNetTotal;
+        public decimal SelectedProjectOutgoingNetTotal
+        {
+            get => _selectedProjectOutgoingNetTotal;
+            set => SetField(ref _selectedProjectOutgoingNetTotal, value, nameof(SelectedProjectOutgoingNetTotal));
+        }
+
+        public decimal SelectedProjectBalanceNetTotal => SelectedProjectIncomingNetTotal - SelectedProjectOutgoingNetTotal;
+
+        // Filtered CCF refs for the currently selected project
+        private ObservableCollection<ProjectCcfRefDetailsDto> _selectedProjectCcfRefsView = new();
+        public ObservableCollection<ProjectCcfRefDetailsDto> SelectedProjectCcfRefsView
+        {
+            get => _selectedProjectCcfRefsView;
+            set => SetField(ref _selectedProjectCcfRefsView, value, nameof(SelectedProjectCcfRefsView));
+        }
+
+        // Rows for the “Applications / Invoices / Payments” grid (future linking)
+        private ObservableCollection<ProjectIncomingRow> _selectedProjectIncomingRows = new();
+        public ObservableCollection<ProjectIncomingRow> SelectedProjectIncomingRows
+        {
+            get => _selectedProjectIncomingRows;
+            set => SetField(ref _selectedProjectIncomingRows, value, nameof(SelectedProjectIncomingRows));
+        }
+
         private ICollectionView _projectView = null!;
         public ICollectionView ProjectView
         {
@@ -957,6 +989,8 @@ namespace Mep1.Erp.Desktop
 
         private int _projectDrilldownLoadVersion = 0;
 
+        private int _selectedProjectCcfRefsLoadVersion = 0;
+
         private List<AuditLogRowDto> _auditLogs = new();
 
         public List<AuditLogRowDto> AuditLogs 
@@ -1324,7 +1358,11 @@ namespace Mep1.Erp.Desktop
         public ObservableCollection<ProjectCcfRefDetailsDto> ProjectCcfRefs
         {
             get => _projectCcfRefs;
-            set { _projectCcfRefs = value; OnPropertyChanged(nameof(ProjectCcfRefs)); }
+            set
+            {
+                _projectCcfRefs = value;
+                OnPropertyChanged(nameof(ProjectCcfRefs));
+            }
         }
 
         private string _newProjectCcfRefCode = "";
@@ -2780,6 +2818,7 @@ namespace Mep1.Erp.Desktop
             SelectedProjectLabourAllTime = new();
             SelectedProjectRecentEntries = new();
             SelectedProjectInvoices = new();
+            SelectedProjectIncomingRows.Clear();
             SelectedProjectSupplierCosts.Clear();
 
             try
@@ -2816,12 +2855,15 @@ namespace Mep1.Erp.Desktop
                     .ToList();
 
                 SelectedProjectInvoices = drill.Invoices
-                    .Select(x => new ProjectInvoiceRow(x.InvoiceNumber, x.InvoiceDate, x.DueDate, x.NetAmount, x.OutstandingNet, x.Status))
+                    .Select(x => new ProjectInvoiceRow(x.InvoiceNumber, x.InvoiceDate, x.DueDate, x.NetAmount, x.OutstandingNet, x.Status, x.PaidAmount, x.PaidDate))
                     .ToList();
 
                 SelectedProjectSupplierCosts.Clear();
                 foreach (var sc in drill.SupplierCosts)
                     SelectedProjectSupplierCosts.Add(new SupplierCostRow(sc.Id, sc.Date, sc.SupplierId, sc.SupplierName, sc.Amount, sc.Note));
+
+                RecalculateSelectedProjectFinancials();
+                RebuildSelectedProjectIncomingRows();
             }
             catch (Exception ex)
             {
@@ -2838,6 +2880,7 @@ namespace Mep1.Erp.Desktop
                 SelectedProjectLabourAllTime = new();
                 SelectedProjectRecentEntries = new();
                 SelectedProjectInvoices = new();
+                SelectedProjectIncomingRows.Clear();
                 SelectedProjectSupplierCosts.Clear();
             }
         }
@@ -2894,6 +2937,8 @@ namespace Mep1.Erp.Desktop
 
             // 2) CCF refs (separate call)
             _ = LoadProjectCcfRefsAsync();
+
+            _ = LoadSelectedProjectCcfRefsViewAsync(proj.JobNameOrNumber);
 
             // IMPORTANT: do NOT preload Edit Project here.
             // Only load edit data when user actually clicks the Edit button / opens the tab.
@@ -6911,6 +6956,89 @@ namespace Mep1.Erp.Desktop
             // Fallback: format as percentage with up to 2dp
             var pct = vatRate * 100m;
             return pct.ToString("0.##") + "%";
+        }
+
+        void RecalculateSelectedProjectFinancials()
+        {
+            // Incoming (net) - for now driven by invoices net.
+            // Later we can switch to "applications" as the primary driver once linked properly.
+            var incoming = SelectedProjectInvoices?.Sum(x => x.NetAmount) ?? 0m;
+
+            // Outgoing - labour + supplier costs (net)
+            var labour = SelectedProjectLabourAllTime?.Sum(x => x.Cost) ?? 0m;
+            var supplier = SelectedProjectSupplierCosts?.Sum(x => x.Amount) ?? 0m;
+
+            SelectedProjectIncomingNetTotal = incoming;
+            SelectedProjectOutgoingNetTotal = labour + supplier;
+
+            OnPropertyChanged(nameof(SelectedProjectBalanceNetTotal));
+        }
+
+        void RebuildSelectedProjectCcfRefsView()
+        {
+            SelectedProjectCcfRefsView.Clear();
+
+            if (SelectedProject == null)
+                return;
+
+            // fire-and-forget load by JobNameOrNumber (your API already supports this)
+            _ = LoadSelectedProjectCcfRefsViewAsync(SelectedProject.JobNameOrNumber);
+        }
+
+        void RebuildSelectedProjectIncomingRows()
+        {
+            SelectedProjectIncomingRows.Clear();
+
+            foreach (var inv in SelectedProjectInvoices)
+            {
+                SelectedProjectIncomingRows.Add(new ProjectIncomingRow(
+                    ApplicationNet: null,
+                    ApplicationDate: null,
+                    InvoiceNumber: inv.InvoiceNumber,
+                    InvoiceNet: inv.NetAmount,
+                    InvoiceDate: inv.InvoiceDate,
+                    PaymentValue: inv.PaymentAmount,
+                    PaymentDate: inv.PaidDate
+                ));
+            }
+        }
+
+        void OpenEditProjectTab_Click(object sender, RoutedEventArgs e)
+        {
+            // Switch to Edit Project tab if it exists
+            // This assumes the tab order is: Overview, Project, Add Project, Edit Project
+            // If your order differs, adjust the index.
+            ProjectsTabControl.SelectedIndex = 3;
+        }
+
+        private async Task LoadSelectedProjectCcfRefsViewAsync(string jobKey)
+        {
+            var myVersion = ++_selectedProjectCcfRefsLoadVersion;
+
+            SelectedProjectCcfRefsView.Clear();
+
+            try
+            {
+                // Keep this consistent with the CCF refs tab behaviour.
+                // If you want the Project tab to show inactive too, change to true.
+                var rows = await _api.GetProjectCcfRefsByJobKeyAsync(
+                    jobKey,
+                    includeInactive: ShowInactiveProjectCcfRefs);
+
+                if (myVersion != _selectedProjectCcfRefsLoadVersion)
+                    return;
+
+                SelectedProjectCcfRefsView.Clear();
+                foreach (var r in rows)
+                    SelectedProjectCcfRefsView.Add(r);
+            }
+            catch
+            {
+                if (myVersion != _selectedProjectCcfRefsLoadVersion)
+                    return;
+
+                SelectedProjectCcfRefsView.Clear();
+            }
         }
     }
 }

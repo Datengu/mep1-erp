@@ -19,7 +19,9 @@ public record ProjectInvoiceRowDto(
     DateTime? DueDate,
     decimal NetAmount,
     decimal OutstandingNet,
-    string? Status);
+    string? Status,
+    decimal? PaidAmount,
+    DateTime? PaidDate);
 
 public record SupplierCostRowDto(
     int Id,

@@ -55,7 +55,9 @@ namespace Mep1.Erp.Application
         DateTime? DueDate,
         decimal NetAmount,
         decimal OutstandingNet,
-        string? Status);
+        string? Status,
+        decimal? PaymentAmount,
+        DateTime? PaidDate);
 
     public record SupplierCostRow(
         int Id,
@@ -1027,7 +1029,9 @@ namespace Mep1.Erp.Application
                 DueDate: i.DueDate,
                 NetAmount: i.NetAmount,
                 OutstandingNet: i.GetOutstandingNet(),
-                Status: i.Status
+                Status: i.Status,
+                PaymentAmount: i.PaymentAmount,
+                PaidDate: i.PaidDate
             )).ToList();
         }
 
@@ -1108,5 +1112,16 @@ namespace Mep1.Erp.Application
                     sc.Note))
                 .ToList();
         }
+
+        public record ProjectIncomingRow(
+            decimal? ApplicationNet,
+            DateTime? ApplicationDate,
+            string? InvoiceNumber,
+            decimal? InvoiceNet,
+            DateTime? InvoiceDate,
+            decimal? PaymentValue,
+            DateTime? PaymentDate
+        );
+
     }
 }

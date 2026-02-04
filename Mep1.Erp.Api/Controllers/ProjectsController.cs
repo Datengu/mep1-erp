@@ -223,8 +223,19 @@ public class ProjectsController : ControllerBase
             .Select(x => new ProjectRecentEntryRowDto(x.Date, x.WorkerInitials, x.Hours, x.Cost, x.TaskDescription))
             .ToList();
 
-        var invoices = Reporting.GetProjectInvoiceRows(_db, baseCode)
-            .Select(x => new ProjectInvoiceRowDto(x.InvoiceNumber, x.InvoiceDate, x.DueDate, x.NetAmount, x.OutstandingNet, x.Status))
+        var invoices = Reporting.GetInvoiceList(_db)
+            .Where(x => x.ProjectCode == baseCode)
+            .OrderByDescending(x => x.InvoiceDate)
+            .ThenByDescending(x => x.InvoiceNumber)
+            .Select(x => new ProjectInvoiceRowDto(
+                x.InvoiceNumber,
+                x.InvoiceDate,
+                x.DueDate,
+                x.NetAmount,
+                x.OutstandingNet,
+                x.Status,
+                x.PaymentAmount,
+                x.PaidDate))
             .ToList();
 
         var supplierCosts = await _db.SupplierCosts

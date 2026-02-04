@@ -375,28 +375,23 @@
                                         BorderThickness="0"
                                         Margin="0">
 
-                                <!-- PROJECTS -->
-                                <TabItem Header="Projects">
+                                <!-- OVERVIEW -->
+                                <TabItem Header="Overview">
                                     <Grid Background="#FF1E1E1E" Margin="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="2*"/>
-                                            <ColumnDefinition Width="3*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- LEFT: Project list -->
-                                        <Grid Grid.Column="0">
+                                        <!-- Project list only (old LEFT side) -->
+                                        <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="*"/>
                                             </Grid.RowDefinitions>
 
-                                            <!-- Filter toolbar -->
+                                            <!-- Filter toolbar (unchanged) -->
                                             <StackPanel Orientation="Horizontal"
                                                         Margin="0,0,0,6"
                                                         VerticalAlignment="Center">
                                                 <TextBlock Text="Filter:"
-                                                            VerticalAlignment="Center"
-                                                            Margin="0,0,8,0"/>
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,8,0"/>
 
                                                 <Button Content="All"
                                                         Margin="0,0,4,0"
@@ -414,14 +409,14 @@
                                                         Click="ShowInactiveProjects_Click"/>
                                             </StackPanel>
 
-                                            <!-- Projects grid -->
+                                            <!-- Projects grid (unchanged) -->
                                             <DataGrid x:Name="ProjectsGrid"
-                                                        Grid.Row="1"
-                                                        ItemsSource="{Binding ProjectView}"
-                                                        Style="{StaticResource DarkDataGridStyle}"
-                                                        AutoGenerateColumns="False"
-                                                        SelectionMode="Single"
-                                                        SelectionChanged="ProjectsGrid_SelectionChanged">
+                                                      Grid.Row="1"
+                                                      ItemsSource="{Binding ProjectView}"
+                                                      Style="{StaticResource DarkDataGridStyle}"
+                                                      AutoGenerateColumns="False"
+                                                      SelectionMode="Single"
+                                                      SelectionChanged="ProjectsGrid_SelectionChanged">
                                                 <DataGrid.Columns>
                                                     <DataGridTextColumn Header="Job" Binding="{Binding JobNameOrNumber}" Width="*"/>
                                                     <DataGridTextColumn Header="Code" Binding="{Binding BaseCode}" Width="50"/>
@@ -434,207 +429,267 @@
                                                 </DataGrid.Columns>
                                             </DataGrid>
                                         </Grid>
+                                    </Grid>
+                                </TabItem>
 
-                                        <!-- RIGHT: Selected project details -->
-                                        <Grid Grid.Column="1" Margin="12,0,0,0">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="*"/>
-                                                <RowDefinition Height="*"/>
-                                                <RowDefinition Height="*"/>
-                                                <RowDefinition Height="*"/>
-                                                <RowDefinition Height="*"/>
-                                            </Grid.RowDefinitions>
+                                <TabItem Header="Project">
+                                    <Grid Background="#FF1E1E1E" Margin="8">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
 
-                                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                        <!-- Header / selected project meta -->
+                                        <Border Grid.Row="0"
+                                                Background="#FF232323"
+                                                BorderBrush="#FF333333"
+                                                BorderThickness="1"
+                                                CornerRadius="6"
+                                                Padding="10"
+                                                Margin="0,0,0,8">
+                                            <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
 
-                                                <!-- Left: title + meta -->
-                                                <StackPanel Grid.Column="0">
+                                                <StackPanel>
                                                     <TextBlock FontSize="18"
-                                                                FontWeight="SemiBold"
-                                                                Foreground="White"
-                                                                Text="{Binding SelectedProject.JobNameOrNumber}"/>
+                                                               FontWeight="SemiBold"
+                                                               Foreground="White"
+                                                               Text="{Binding SelectedProject.JobNameOrNumber, TargetNullValue=Select a project in Overview}"/>
 
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Foreground="#FFBFBFBF"
-                                                                    Text="{Binding SelectedProject.BaseCode, StringFormat=Code: {0}}"
-                                                                    Margin="0,0,12,0"/>
+                                                                   Text="{Binding SelectedProject.BaseCode, StringFormat=Code: {0}, TargetNullValue=Code: -}"
+                                                                   Margin="0,0,12,0"/>
+                                                        <TextBlock Foreground="#FFBFBFBF"
+                                                                   Text="{Binding SelectedProject.Category, StringFormat=Category: {0}, TargetNullValue=Category: -}"/>
                                                     </StackPanel>
-
-                                                    <TextBlock Foreground="#FFBFBFBF"
-                                                                Text="{Binding SelectedProject.ProfitNet, StringFormat=Profit (Net): £{0:N2}}"/>
                                                 </StackPanel>
 
-                                                <!-- Right: edit + activate/deactivate -->
-                                                <StackPanel Grid.Column="1"
-                                                            Orientation="Horizontal"
-                                                            Margin="12,0,0,0"
-                                                            VerticalAlignment="Top">
-
-                                                    <Button Padding="12,6"
-                                                            Margin="0,0,8,0"
-                                                            Content="Edit"
-                                                            Click="EditProjectFromDrilldown_Click">
-                                                        <Button.Style>
-                                                            <Style TargetType="Button">
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding SelectedProject}" Value="{x:Null}">
-                                                                        <Setter Property="IsEnabled" Value="False"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Button.Style>
-                                                    </Button>
-
-                                                    <Button Padding="12,6"
-                                                            Click="ToggleProjectActive_Click">
-                                                        <Button.Style>
-                                                            <Style TargetType="Button">
-                                                                <Setter Property="Content" Value="Deactivate"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding SelectedProject.IsActive}" Value="False">
-                                                                        <Setter Property="Content" Value="Activate"/>
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding SelectedProject}" Value="{x:Null}">
-                                                                        <Setter Property="IsEnabled" Value="False"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Button.Style>
-                                                    </Button>
+                                                <!-- Nice-to-have: jump to edit tab (optional wiring later) -->
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Button Content="Edit Project"
+                                                            Padding="12,6"
+                                                            Click="OpenEditProjectTab_Click"/>
                                                 </StackPanel>
                                             </Grid>
+                                        </Border>
 
-                                            <GroupBox Grid.Row="1" Header="Labour (this month)" Foreground="White">
-                                                <DataGrid ItemsSource="{Binding SelectedProjectLabourThisMonth}"
-                                                            Style="{StaticResource DarkDataGridStyle}"
-                                                            AutoGenerateColumns="False"
-                                                            IsReadOnly="True">
-                                                    <DataGrid.Columns>
-                                                        <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
-                                                        <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
-                                                        <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
-                                                        <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
-                                                    </DataGrid.Columns>
-                                                </DataGrid>
-                                            </GroupBox>
+                                        <!-- Sub-tabs -->
+                                        <TabControl Grid.Row="1"
+                                                    Background="#FF1E1E1E"
+                                                    BorderThickness="0">
 
-                                            <GroupBox Grid.Row="2" Header="Labour (all time)" Foreground="White" Margin="0,8,0,0">
-                                                <DataGrid ItemsSource="{Binding SelectedProjectLabourAllTime}"
-                                                            Style="{StaticResource DarkDataGridStyle}"
-                                                            AutoGenerateColumns="False"
-                                                            IsReadOnly="True">
-                                                    <DataGrid.Columns>
-                                                        <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
-                                                        <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
-                                                        <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
-                                                        <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
-                                                    </DataGrid.Columns>
-                                                </DataGrid>
-                                            </GroupBox>
-
-                                            <GroupBox Grid.Row="3" Header="Invoices (this project)" Foreground="White" Margin="0,8,0,0">
-                                                <DataGrid ItemsSource="{Binding SelectedProjectInvoices}"
-                                                            Style="{StaticResource DarkDataGridStyle}"
-                                                            AutoGenerateColumns="False"
-                                                            IsReadOnly="True">
-                                                    <DataGrid.Columns>
-                                                        <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="110"/>
-                                                        <DataGridTextColumn Header="Date" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                                        <DataGridTextColumn Header="Due" Binding="{Binding DueDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                                        <DataGridTextColumn Header="Net" Binding="{Binding NetAmount, StringFormat=£{0:N2}}" Width="110"/>
-                                                        <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingNet, StringFormat=£{0:N2}}" Width="120"/>
-                                                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
-                                                    </DataGrid.Columns>
-                                                </DataGrid>
-                                            </GroupBox>
-
-                                            <GroupBox Grid.Row="4" Header="Sub-Contractor costs (this project)" Foreground="White" Margin="0,8,0,0">
-                                                <Grid>
+                                            <!-- BALANCE -->
+                                            <TabItem Header="Balance">
+                                                <Grid Margin="0">
                                                     <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
                                                         <RowDefinition Height="Auto"/>
                                                         <RowDefinition Height="*"/>
                                                     </Grid.RowDefinitions>
 
-                                                    <!-- Input row -->
-                                                    <WrapPanel Grid.Row="0" Margin="8" VerticalAlignment="Top">
-                                                        <ComboBox Width="220"
-                                                                    Margin="0,0,8,8"
-                                                                    ItemsSource="{Binding Suppliers}"
-                                                                    SelectedItem="{Binding NewSupplierCostSupplier}"
-                                                                    DisplayMemberPath="Name"/>
+                                                    <Border Background="#FF232323" BorderBrush="#FF333333" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
 
-                                                        <DatePicker Width="140"
-                                                                    Margin="0,0,8,8"
-                                                                    SelectedDate="{Binding NewSupplierCostDate}"
-                                                                    IsEnabled="{Binding IsSupplierCostDateEnabled}"/>
+                                                            <TextBlock Foreground="White" FontWeight="SemiBold" Text="Incoming total (net)"/>
+                                                            <TextBlock Grid.Column="1" Foreground="White" FontWeight="SemiBold"
+                                                                       Text="{Binding SelectedProjectIncomingNetTotal, StringFormat=£{0:N2}}"/>
+                                                        </Grid>
+                                                    </Border>
 
-                                                        <CheckBox Content="Unknown date"
-                                                                    Margin="0,0,8,8"
-                                                                    VerticalAlignment="Center"
-                                                                    IsChecked="{Binding NewSupplierCostDateUnknown}"/>
+                                                    <Border Grid.Row="1" Background="#FF232323" BorderBrush="#FF333333" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
 
-                                                        <TextBox Width="120"
-                                                                    Margin="0,0,8,8"
-                                                                    Text="{Binding NewSupplierCostAmountText, UpdateSourceTrigger=PropertyChanged}"
-                                                                    ToolTip="Amount (net)"/>
+                                                            <TextBlock Foreground="White" FontWeight="SemiBold" Text="Outgoing total (net)"/>
+                                                            <TextBlock Grid.Column="1" Foreground="White" FontWeight="SemiBold"
+                                                                       Text="{Binding SelectedProjectOutgoingNetTotal, StringFormat=£{0:N2}}"/>
+                                                        </Grid>
+                                                    </Border>
 
-                                                        <TextBox Width="260"
-                                                                    Margin="0,0,8,8"
-                                                                    Text="{Binding NewSupplierCostNote, UpdateSourceTrigger=PropertyChanged}"
-                                                                    ToolTip="Note (optional)"/>
+                                                    <Border Grid.Row="2" Background="#FF232323" BorderBrush="#FF333333" BorderThickness="1" CornerRadius="6" Padding="12">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
 
-                                                        <!--<Button Content="Add"
-                                                                Padding="14,6"
-                                                                Margin="0,0,8,8"
-                                                                Click="AddSupplierCost_Click"/>-->
+                                                            <TextBlock Foreground="White" FontWeight="SemiBold" Text="Balance (incoming - outgoing)"/>
+                                                            <TextBlock Grid.Column="1" Foreground="White" FontWeight="SemiBold"
+                                                                       Text="{Binding SelectedProjectBalanceNetTotal, StringFormat=£{0:N2}}"/>
+                                                        </Grid>
+                                                    </Border>
 
-                                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                                            <Button Content="Add Cost" Margin="0,0,8,0" Click="AddSupplierCost_Click"/>
-                                                            <Button Content="Edit Selected" Margin="0,0,8,0" Click="EditSelectedSupplierCost_Click"/>
-                                                            <Button Content="Save Edit" Margin="0,0,8,0" Click="SaveSupplierCostEdit_Click"/>
-                                                            <Button Content="Cancel" Margin="0,0,8,0" Click="CancelSupplierCostEdit_Click"/>
-                                                            <Button Content="Delete Selected" Click="DeleteSelectedSupplierCost_Click"/>
-                                                        </StackPanel>
-                                                    </WrapPanel>
-
-                                                    <!-- Costs grid -->
-                                                    <DataGrid Grid.Row="1"
-                                                                ItemsSource="{Binding SelectedProjectSupplierCosts}"
-                                                                SelectionMode="Single"
-                                                                SelectionChanged="SupplierCostsGrid_SelectionChanged"
-                                                                Style="{StaticResource DarkDataGridStyle}"
-                                                                AutoGenerateColumns="False"
-                                                                IsReadOnly="True">
-                                                        <DataGrid.Columns>
-                                                            <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/>
-                                                            <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                                            <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=£{0:N2}}" Width="120"/>
-                                                            <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="2*"/>
-                                                        </DataGrid.Columns>
-                                                    </DataGrid>
+                                                    <TextBlock Grid.Row="3"
+                                                               Foreground="#FFBFBFBF"
+                                                               Margin="0,10,0,0"
+                                                               Text="Note: outgoing is currently labour + sub-contractor costs. If/when you add ‘actual outgoing’, we can split projected vs actual here."/>
                                                 </Grid>
-                                            </GroupBox>
+                                            </TabItem>
 
-                                            <GroupBox Grid.Row="5" Header="Recent labour entries" Foreground="White" Margin="0,8,0,0">
-                                                <DataGrid ItemsSource="{Binding SelectedProjectRecentEntries}"
-                                                            Style="{StaticResource DarkDataGridStyle}"
-                                                            AutoGenerateColumns="False"
-                                                            IsReadOnly="True">
-                                                    <DataGrid.Columns>
-                                                        <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
-                                                        <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
-                                                        <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
-                                                        <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
-                                                        <DataGridTextColumn Header="Task" Binding="{Binding TaskDescription}" Width="*"/>
-                                                    </DataGrid.Columns>
-                                                </DataGrid>
-                                            </GroupBox>
-                                        </Grid>
+                                            <!-- INCOMING -->
+                                            <TabItem Header="Incoming">
+                                                <Grid Margin="0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="*"/>
+                                                        <RowDefinition Height="*"/>
+                                                        <!--<RowDefinition Height="*"/>-->
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- CCFs -->
+                                                    <GroupBox Grid.Row="0" Header="CCFs (this project)" Foreground="White" Margin="0,0,0,8">
+                                                        <DataGrid ItemsSource="{Binding SelectedProjectCcfRefsView}"
+                                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                                  AutoGenerateColumns="False"
+                                                                  IsReadOnly="True">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="80"/>
+                                                                <DataGridTextColumn Header="Applied" Binding="{Binding QuotedValue, StringFormat=£{0:N2}}" Width="95"/>
+                                                                <DataGridTextColumn Header="Agreed" Binding="{Binding AgreedValue, StringFormat=£{0:N2}}" Width="95"/>
+                                                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110"/>
+                                                                <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                    </GroupBox>
+
+                                                    <!-- “Application -> Invoice -> Payment” grid (future link) -->
+                                                    <GroupBox Grid.Row="1" Header="Applications / Invoices / Payments (to be linked)" Foreground="White" Margin="0,0,0,8">
+                                                        <DataGrid ItemsSource="{Binding SelectedProjectIncomingRows}"
+                                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                                  AutoGenerateColumns="False"
+                                                                  IsReadOnly="True">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="App Net" Binding="{Binding ApplicationNet, StringFormat=£{0:N2}}" Width="90"/>
+                                                                <DataGridTextColumn Header="App Date" Binding="{Binding ApplicationDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+
+                                                                <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="110"/>
+                                                                <DataGridTextColumn Header="Inv Net" Binding="{Binding InvoiceNet, StringFormat=£{0:N2}}" Width="90"/>
+                                                                <DataGridTextColumn Header="Inv Date" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+
+                                                                <DataGridTextColumn Header="Payment" Binding="{Binding PaymentValue, StringFormat=£{0:N2}}" Width="90"/>
+                                                                <DataGridTextColumn Header="Pay Date" Binding="{Binding PaymentDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                    </GroupBox>
+
+                                                    <!-- Existing “Invoices” (quick win + already working) -->
+                                                    <!--<GroupBox Grid.Row="2" Header="Invoices (this project)" Foreground="White">
+                                                        <DataGrid ItemsSource="{Binding SelectedProjectInvoices}"
+                                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                                  AutoGenerateColumns="False"
+                                                                  IsReadOnly="True">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="Invoice" Binding="{Binding InvoiceNumber}" Width="110"/>
+                                                                <DataGridTextColumn Header="Date" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                                                <DataGridTextColumn Header="Due" Binding="{Binding DueDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                                                <DataGridTextColumn Header="Net" Binding="{Binding NetAmount, StringFormat=£{0:N2}}" Width="110"/>
+                                                                <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingNet, StringFormat=£{0:N2}}" Width="120"/>
+                                                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                    </GroupBox>-->
+                                                </Grid>
+                                            </TabItem>
+
+                                            <!-- OUTGOING -->
+                                            <TabItem Header="Outgoing">
+                                                <Grid Margin="0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="*"/>
+                                                        <RowDefinition Height="*"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- Sub-contractor costs -->
+                                                    <GroupBox Grid.Row="0" Header="Sub-Contractor costs (this project)" Foreground="White" Margin="0,0,0,8">
+                                                        <!-- NOTE: this is a trimmed version; we keep your existing add/edit UI + grid intact below -->
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="*"/>
+                                                            </Grid.RowDefinitions>
+
+                                                            <WrapPanel Grid.Row="0" Margin="8" VerticalAlignment="Top">
+                                                                <ComboBox Width="220"
+                                                                          Margin="0,0,8,8"
+                                                                          ItemsSource="{Binding Suppliers}"
+                                                                          SelectedItem="{Binding NewSupplierCostSupplier}"
+                                                                          DisplayMemberPath="Name"/>
+
+                                                                <DatePicker Width="140"
+                                                                            Margin="0,0,8,8"
+                                                                            SelectedDate="{Binding NewSupplierCostDate}"
+                                                                            IsEnabled="{Binding IsSupplierCostDateEnabled}"/>
+
+                                                                <CheckBox Content="Unknown date"
+                                                                          Margin="0,0,8,8"
+                                                                          VerticalAlignment="Center"
+                                                                          IsChecked="{Binding NewSupplierCostDateUnknown}"/>
+
+                                                                <TextBox Width="120"
+                                                                         Margin="0,0,8,8"
+                                                                         Text="{Binding NewSupplierCostAmountText, UpdateSourceTrigger=PropertyChanged}"
+                                                                         ToolTip="Amount (net)"/>
+
+                                                                <TextBox Width="260"
+                                                                         Margin="0,0,8,8"
+                                                                         Text="{Binding NewSupplierCostNote, UpdateSourceTrigger=PropertyChanged}"
+                                                                         ToolTip="Note (optional)"/>
+
+                                                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                                    <Button Content="Add Cost" Margin="0,0,8,0" Click="AddSupplierCost_Click"/>
+                                                                    <Button Content="Edit Selected" Margin="0,0,8,0" Click="EditSelectedSupplierCost_Click"/>
+                                                                    <Button Content="Delete Selected" Click="DeleteSelectedSupplierCost_Click"/>
+                                                                </StackPanel>
+                                                            </WrapPanel>
+
+                                                            <DataGrid x:Name="SupplierCostsGrid"
+                                                                      Grid.Row="1"
+                                                                      Margin="8"
+                                                                      ItemsSource="{Binding SelectedProjectSupplierCosts}"
+                                                                      SelectionMode="Single"
+                                                                      SelectionChanged="SupplierCostsGrid_SelectionChanged"
+                                                                      Style="{StaticResource DarkDataGridStyle}"
+                                                                      AutoGenerateColumns="False"
+                                                                      IsReadOnly="True">
+                                                                <DataGrid.Columns>
+                                                                    <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/>
+                                                                    <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=yyyy-MM-dd}" Width="110"/>
+                                                                    <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=£{0:N2}}" Width="120"/>
+                                                                    <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="*"/>
+                                                                </DataGrid.Columns>
+                                                            </DataGrid>
+                                                        </Grid>
+                                                    </GroupBox>
+
+                                                    <!-- Labour -->
+                                                    <GroupBox Grid.Row="1" Header="Labour costs (all time)" Foreground="White">
+                                                        <DataGrid ItemsSource="{Binding SelectedProjectLabourAllTime}"
+                                                                  Style="{StaticResource DarkDataGridStyle}"
+                                                                  AutoGenerateColumns="False"
+                                                                  IsReadOnly="True">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="Init" Binding="{Binding WorkerInitials}" Width="70"/>
+                                                                <DataGridTextColumn Header="Name" Binding="{Binding WorkerName}" Width="*"/>
+                                                                <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N2}}" Width="90"/>
+                                                                <DataGridTextColumn Header="Cost" Binding="{Binding Cost, StringFormat=£{0:N2}}" Width="110"/>
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                    </GroupBox>
+                                                </Grid>
+                                            </TabItem>
+
+                                        </TabControl>
                                     </Grid>
                                 </TabItem>
 
