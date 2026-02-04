@@ -406,6 +406,7 @@ namespace Mep1.Erp.Api.Controllers
                 return Conflict("This invoice is already linked to a different application.");
 
             invoice.ApplicationId = app.Id;
+            invoice.Application = app;
 
             await _db.SaveChangesAsync();
 

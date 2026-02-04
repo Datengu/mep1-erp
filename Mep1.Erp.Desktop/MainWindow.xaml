@@ -2161,6 +2161,10 @@
                                                             Binding="{Binding InvoiceNumber}"
                                                             Width="70"/>
 
+                                        <DataGridTextColumn Header="App"
+                                                            Binding="{Binding ApplicationNumber}"
+                                                            Width="70"/>
+
                                         <DataGridTextColumn Header="Client"
                                                             Binding="{Binding ClientName}"
                                                             Width="170"/>

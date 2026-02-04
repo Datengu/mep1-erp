@@ -52,6 +52,8 @@ namespace Mep1.Erp.Api.Controllers
                 ProjectCode = r.ProjectCode,
                 JobName = r.JobName,
                 ClientName = r.ClientName,
+                ApplicationId = r.ApplicationId,
+                ApplicationNumber = r.ApplicationNumber,
                 InvoiceDate = r.InvoiceDate,
                 DueDate = r.DueDate,
                 NetAmount = r.NetAmount,
