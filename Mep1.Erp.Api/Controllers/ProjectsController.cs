@@ -238,6 +238,28 @@ public class ProjectsController : ControllerBase
                 x.PaidDate))
             .ToList();
 
+        var applications = await _db.Applications
+            .AsNoTracking()
+            .Where(a => a.ProjectCode == baseCode)
+            .OrderByDescending(a => a.DateApplied)
+            .ThenByDescending(a => a.ApplicationNumber)
+            .Select(a => new ProjectApplicationRowDto(
+                a.ProjectCode,
+                a.ApplicationNumber,
+                a.DateApplied,
+                a.SubmittedNetAmount,
+
+                // linked invoice (optional)
+                a.Invoice != null ? a.Invoice.InvoiceNumber : null,
+                a.Invoice != null ? a.Invoice.InvoiceDate : null,
+                a.Invoice != null ? a.Invoice.NetAmount : null,
+
+                // payment lives on invoice (optional)
+                a.Invoice != null ? a.Invoice.PaymentAmount : null,
+                a.Invoice != null ? a.Invoice.PaidDate : null
+            ))
+            .ToListAsync();
+
         var supplierCosts = await _db.SupplierCosts
             .AsNoTracking()
             .Where(sc => sc.ProjectId == project.Id)
@@ -259,6 +281,7 @@ public class ProjectsController : ControllerBase
             LabourThisMonth: labourThisMonth,
             LabourAllTime: labourAllTime,
             RecentEntries: recentEntries,
+            Applications: applications,
             Invoices: invoices,
             SupplierCosts: supplierCosts);
 

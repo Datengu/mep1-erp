@@ -13,6 +13,22 @@ public record ProjectRecentEntryRowDto(
     decimal Cost,
     string TaskDescription);
 
+public record ProjectApplicationRowDto(
+    string ProjectCode,
+    int ApplicationNumber,
+    DateTime? ApplicationDate,
+    decimal NetAmount,
+
+    // linked invoice (optional)
+    string? InvoiceNumber,
+    DateTime? InvoiceDate,
+    decimal? InvoiceNet,
+
+    // payment lives on invoice (optional)
+    decimal? PaymentAmount,
+    DateTime? PaidDate
+);
+
 public record ProjectInvoiceRowDto(
     string InvoiceNumber,
     DateTime InvoiceDate,
@@ -37,5 +53,7 @@ public record ProjectDrilldownDto(
     List<ProjectLabourByPersonRowDto> LabourThisMonth,
     List<ProjectLabourByPersonRowDto> LabourAllTime,
     List<ProjectRecentEntryRowDto> RecentEntries,
+    List<ProjectApplicationRowDto> Applications,
     List<ProjectInvoiceRowDto> Invoices,
     List<SupplierCostRowDto> SupplierCosts);
+

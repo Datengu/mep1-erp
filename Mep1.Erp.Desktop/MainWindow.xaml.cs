@@ -88,6 +88,13 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _selectedProjectInvoices, value, nameof(SelectedProjectInvoices));
         }
 
+        private List<ProjectApplicationRowDto> _selectedProjectApplications = new();
+        public List<ProjectApplicationRowDto> SelectedProjectApplications
+        {
+            get => _selectedProjectApplications;
+            set => SetField(ref _selectedProjectApplications, value, nameof(SelectedProjectApplications));
+        }
+
         private decimal _selectedProjectIncomingNetTotal;
         public decimal SelectedProjectIncomingNetTotal
         {
@@ -2818,6 +2825,7 @@ namespace Mep1.Erp.Desktop
             SelectedProjectLabourAllTime = new();
             SelectedProjectRecentEntries = new();
             SelectedProjectInvoices = new();
+            SelectedProjectApplications = new();
             SelectedProjectIncomingRows.Clear();
             SelectedProjectSupplierCosts.Clear();
 
@@ -2858,6 +2866,8 @@ namespace Mep1.Erp.Desktop
                     .Select(x => new ProjectInvoiceRow(x.InvoiceNumber, x.InvoiceDate, x.DueDate, x.NetAmount, x.OutstandingNet, x.Status, x.PaidAmount, x.PaidDate))
                     .ToList();
 
+                SelectedProjectApplications = drill.Applications.ToList();
+
                 SelectedProjectSupplierCosts.Clear();
                 foreach (var sc in drill.SupplierCosts)
                     SelectedProjectSupplierCosts.Add(new SupplierCostRow(sc.Id, sc.Date, sc.SupplierId, sc.SupplierName, sc.Amount, sc.Note));
@@ -2880,6 +2890,7 @@ namespace Mep1.Erp.Desktop
                 SelectedProjectLabourAllTime = new();
                 SelectedProjectRecentEntries = new();
                 SelectedProjectInvoices = new();
+                SelectedProjectApplications = new();
                 SelectedProjectIncomingRows.Clear();
                 SelectedProjectSupplierCosts.Clear();
             }
@@ -6989,16 +7000,16 @@ namespace Mep1.Erp.Desktop
         {
             SelectedProjectIncomingRows.Clear();
 
-            foreach (var inv in SelectedProjectInvoices)
+            foreach (var a in SelectedProjectApplications)
             {
                 SelectedProjectIncomingRows.Add(new ProjectIncomingRow(
-                    ApplicationNet: null,
-                    ApplicationDate: null,
-                    InvoiceNumber: inv.InvoiceNumber,
-                    InvoiceNet: inv.NetAmount,
-                    InvoiceDate: inv.InvoiceDate,
-                    PaymentValue: inv.PaymentAmount,
-                    PaymentDate: inv.PaidDate
+                    ApplicationNet: a.NetAmount,
+                    ApplicationDate: a.ApplicationDate,
+                    InvoiceNumber: a.InvoiceNumber,
+                    InvoiceNet: a.InvoiceNet,
+                    InvoiceDate: a.InvoiceDate,
+                    PaymentValue: a.PaymentAmount,
+                    PaymentDate: a.PaidDate
                 ));
             }
         }
