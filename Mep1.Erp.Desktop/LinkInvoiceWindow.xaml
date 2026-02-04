@@ -215,6 +215,7 @@
                         <DataGridTextColumn Header="Net" Binding="{Binding NetAmount, StringFormat=£{0:N2}}" Width="95"/>
                         <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingNet, StringFormat=£{0:N2}}" Width="105"/>
                         <DataGridTextColumn Header="Δ Net" Binding="{Binding DeltaNet, StringFormat=N2}" Width="95"/>
+                        <DataGridTextColumn Header="Δ Days" Binding="{Binding DeltaDays}" Width="70"/>
 
                         <DataGridTextColumn Header="Job" Binding="{Binding JobName}" Width="*"/>
                         <DataGridTextColumn Header="Linked?" Binding="{Binding IsLinkedText}" Width="75"/>

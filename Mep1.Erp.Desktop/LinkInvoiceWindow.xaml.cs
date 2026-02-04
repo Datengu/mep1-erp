@@ -17,6 +17,7 @@ namespace Mep1.Erp.Desktop
 
         private readonly List<InvoicePickRow> _rows;
         private readonly decimal _compareNet;
+        private readonly DateTime? _agreedDate;
 
         public string ProjectCode { get; }
         public string ClientName { get; }
@@ -91,6 +92,7 @@ namespace Mep1.Erp.Desktop
 
             // Compare against agreed net if present, otherwise net
             _compareNet = application.AgreedNetAmount ?? application.NetAmount ?? 0m;
+            _agreedDate = application.DateAgreed?.Date;
 
             var compareNetFormatted = "£" + _compareNet.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -109,7 +111,7 @@ namespace Mep1.Erp.Desktop
 
             _rows = invoices
                 .Where(i => string.Equals((i.ProjectCode ?? "").Trim(), ProjectCode, StringComparison.OrdinalIgnoreCase))
-                .Select(i => new InvoicePickRow(i, linkedSet.Contains(i.Id), _compareNet))
+                .Select(i => new InvoicePickRow(i, linkedSet.Contains(i.Id), _compareNet, _agreedDate))
                 .OrderByDescending(r => r.InvoiceDate)
                 .ThenByDescending(r => r.InvoiceNumber)
                 .ToList();
@@ -182,11 +184,14 @@ namespace Mep1.Erp.Desktop
         {
             private readonly InvoiceListEntryDto _i;
 
-            public InvoicePickRow(InvoiceListEntryDto invoice, bool isLinked, decimal compareNet)
+            public InvoicePickRow(InvoiceListEntryDto invoice, bool isLinked, decimal compareNet, DateTime? agreedDate)
             {
                 _i = invoice;
                 IsLinked = isLinked;
                 DeltaNet = invoice.NetAmount - compareNet;
+                DeltaDays = agreedDate.HasValue
+                    ? (invoice.InvoiceDate.Date - agreedDate.Value).Days
+                    : (int?)null;
             }
 
             public int Id => _i.Id;
@@ -201,6 +206,7 @@ namespace Mep1.Erp.Desktop
             public string IsLinkedText => IsLinked ? "Yes" : "";
 
             public decimal DeltaNet { get; }
+            public int? DeltaDays { get; }
         }
 
         private sealed class AbsDeltaNetComparer : IComparer
