@@ -2091,6 +2091,8 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _editApplicationAgreedGrossAmountText, value, nameof(EditApplicationAgreedGrossAmountText));
         }
 
+        private int? _pendingLinkApplicationId;
+
         // ---------------------------------------------
         // Invoice filtering
         // ---------------------------------------------
@@ -4220,7 +4222,35 @@ namespace Mep1.Erp.Desktop
                 AddInvoiceStatusText = "Saving invoice...";
                 var created = await _api.CreateInvoiceAsync(dto);
 
-                AddInvoiceStatusText = $"Saved: {created.InvoiceNumber} ({created.CompanyName}) - £{created.GrossAmount:0.00}";
+                // If we arrived here via "Create invoice from application", auto-link now.
+                if (_pendingLinkApplicationId.HasValue)
+                {
+                    var appIdToLink = _pendingLinkApplicationId.Value;
+
+                    try
+                    {
+                        await _api.LinkInvoiceToApplicationAsync(appIdToLink, created.InvoiceNumber);
+
+                        // Refresh applications list + view so the linked invoice shows immediately
+                        Applications = await _api.GetApplicationsAsync();
+                        ApplyApplicationFilter();
+
+                        AddInvoiceStatusText = $"Saved + linked: {created.InvoiceNumber} - £{created.GrossAmount:0.00}";
+                    }
+                    catch (Exception linkEx)
+                    {
+                        // Invoice is created; linking failed. Keep message clear and actionable.
+                        AddInvoiceStatusText = $"Saved: {created.InvoiceNumber} - linking to application failed: {linkEx.Message}";
+                    }
+                    finally
+                    {
+                        _pendingLinkApplicationId = null;
+                    }
+                }
+                else
+                {
+                    AddInvoiceStatusText = $"Saved: {created.InvoiceNumber} ({created.CompanyName}) - £{created.GrossAmount:0.00}";
+                }
 
                 // Refresh invoices list + view without touching your filter logic:
                 Invoices = await _api.GetInvoicesAsync();
@@ -6757,5 +6787,130 @@ namespace Mep1.Erp.Desktop
             return true;
         }
 
+        private async void CreateInvoiceFromApplication_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedApplicationListItem == null)
+            {
+                WpfMessageBox.Show(
+                    "Select an application first.",
+                    "Applications",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+                return;
+            }
+
+            // Must have an agreed amount (certified/notice value)
+            if (!SelectedApplicationListItem.AgreedNetAmount.HasValue || SelectedApplicationListItem.AgreedNetAmount.Value <= 0m)
+            {
+                WpfMessageBox.Show(
+                    "This application does not have an agreed amount yet.",
+                    "Applications",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+                return;
+            }
+
+            // If already linked, just take user to invoices (optionally you could open the invoice)
+            if (SelectedApplicationListItem.InvoiceId.HasValue)
+            {
+                NavigateToInvoicesTab();
+
+                // If you want, you can also set your invoice filter to show that invoice number.
+                // For now: just navigate.
+                WpfMessageBox.Show(
+                    "This application is already linked to an invoice.",
+                    "Applications",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+                return;
+            }
+
+            try
+            {
+                var appId = SelectedApplicationListItem.Id;
+
+                // Pull details so we have ProjectId + VatRate
+                var details = await _api.GetApplicationByIdAsync(appId);
+
+                if (!details.ProjectId.HasValue || details.ProjectId.Value <= 0)
+                    throw new InvalidOperationException("This application is missing a ProjectId.");
+
+                // Ensure picklist exists (normally loaded at startup, but just in case)
+                if (InvoiceProjectPicklist == null || InvoiceProjectPicklist.Count == 0)
+                    InvoiceProjectPicklist = await _api.GetInvoiceProjectPicklistAsync();
+
+                var projectPick = InvoiceProjectPicklist.FirstOrDefault(p => p.ProjectId == details.ProjectId.Value);
+                if (projectPick == null)
+                    throw new InvalidOperationException("Could not find the project in the invoice project picklist.");
+
+                // ---- Prefill Add Invoice form ----
+
+                // Navigate to Invoices tab + Add Invoice sub-tab
+                NavigateToInvoicesTab();
+                if (InvoicesSubTabControl != null && AddInvoiceTabItem != null)
+                    InvoicesSubTabControl.SelectedItem = AddInvoiceTabItem;
+
+                // Select project
+                NewInvoiceSelectedProject = projectPick;
+
+                // Net = agreed
+                NewInvoiceNetAmountText = SelectedApplicationListItem.AgreedNetAmount.Value.ToString("0.00");
+
+                // VAT rate from application details (convert to the ComboBox string format)
+                NewInvoiceVatRateText = VatRateToUiText(details.VatRate);
+
+                // Reasonable defaults
+                NewInvoiceDate = DateTime.Today;
+                NewInvoiceDueDate = DateTime.Today.AddDays(30);
+
+                // Helpful notes (optional)
+                var appRef = (SelectedApplicationListItem.ApplicationNumber ?? "").Trim();
+                if (!string.IsNullOrWhiteSpace(appRef))
+                    NewInvoiceNotesText = $"Created from application {appRef}";
+                else
+                    NewInvoiceNotesText = "Created from application";
+
+                // Leave invoice number empty so user enters it (keeps your numbering rules intact)
+                // NewInvoiceNumberText = "";
+
+                // Status default (keep your current behaviour)
+                // NewInvoiceStatusText = "Unpaid";
+
+                // Set pending link so AddInvoice_Click auto-links after save
+                _pendingLinkApplicationId = appId;
+
+                AddInvoiceStatusText = "Invoice form pre-filled from application. Enter invoice number and save to link.";
+                UpdateAddInvoiceValidation();
+            }
+            catch (Exception ex)
+            {
+                _pendingLinkApplicationId = null;
+
+                WpfMessageBox.Show(
+                    ex.Message,
+                    "Applications",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+            }
+        }
+
+        private static string VatRateToUiText(decimal vatRate)
+        {
+            // Your UI uses strings like "20%", "0%", etc.
+            // Keep it simple and deterministic.
+            if (vatRate <= 0m) return "0%";
+
+            // Common UK rates
+            if (vatRate == 0.20m) return "20%";
+            if (vatRate == 0.05m) return "5%";
+
+            // Fallback: format as percentage with up to 2dp
+            var pct = vatRate * 100m;
+            return pct.ToString("0.##") + "%";
+        }
     }
 }

@@ -2068,7 +2068,8 @@
                         BorderThickness="1"
                         Padding="6">
 
-                    <TabControl Background="#FF1E1E1E"
+                    <TabControl x:Name="InvoicesSubTabControl"
+                                Background="#FF1E1E1E"
                                 BorderThickness="0"
                                 Margin="0">
 
@@ -2433,14 +2434,14 @@
                                         </DataGridTemplateColumn>
 
                                         <!-- Optional: File path (wrapped) -->
-                                        <DataGridTemplateColumn Header="File" Width="220">
+                                        <!--<DataGridTemplateColumn Header="File" Width="220">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding FilePath}"
                                                                Style="{StaticResource WrappedCellTextBlock}"/>
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
+                                        </DataGridTemplateColumn>-->
 
                                     </DataGrid.Columns>
                                 </DataGrid>
@@ -2449,7 +2450,7 @@
                         </TabItem>
 
                         <!-- ADD INVOICE -->
-                        <TabItem Header="Add Invoice">
+                        <TabItem Header="Add Invoice" x:Name="AddInvoiceTabItem">
                             <Grid Background="#FF1E1E1E" Margin="10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="2*"/>
@@ -3052,13 +3053,22 @@
                                                 Click="ShowOlderApplicationsWithoutInvoice_Click"/>
                                     </StackPanel>
 
-                                    <!-- RIGHT: Action -->
-                                    <Button Grid.Column="1"
-                                            Content="Link to invoice"
-                                            Padding="12,4"
-                                            MinWidth="130"
-                                            HorizontalAlignment="Right"
-                                            Click="LinkApplicationToInvoice_Click"/>
+                                    <!-- RIGHT: Actions -->
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                HorizontalAlignment="Right">
+
+                                        <Button Content="Create invoice"
+                                                Padding="12,4"
+                                                MinWidth="130"
+                                                Margin="0,0,6,0"
+                                                Click="CreateInvoiceFromApplication_Click"/>
+
+                                        <Button Content="Link to invoice"
+                                                Padding="12,4"
+                                                MinWidth="130"
+                                                Click="LinkApplicationToInvoice_Click"/>
+                                    </StackPanel>
                                 </Grid>
 
                                 <!-- Applications grid -->
