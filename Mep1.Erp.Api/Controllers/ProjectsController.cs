@@ -238,27 +238,46 @@ public class ProjectsController : ControllerBase
                 x.PaidDate))
             .ToList();
 
-        var applications = await _db.Applications
+        var appsRaw = await _db.Applications
             .AsNoTracking()
             .Where(a => a.ProjectCode == baseCode)
             .OrderByDescending(a => a.DateApplied)
             .ThenByDescending(a => a.ApplicationNumber)
+            .Select(a => new
+            {
+                a.ProjectCode,
+                a.ApplicationNumber,
+                a.DateApplied,
+                a.SubmittedNetAmount,
+
+                InvoiceNumber = a.Invoice != null ? a.Invoice.InvoiceNumber : null,
+                InvoiceDate = a.Invoice != null ? (DateTime?)a.Invoice.InvoiceDate : null,
+                InvoiceNet = a.Invoice != null ? (decimal?)a.Invoice.NetAmount : null,
+
+                PaymentGross = a.Invoice != null ? a.Invoice.PaymentAmount : null,
+                PaidDate = a.Invoice != null ? a.Invoice.PaidDate : null,
+
+                VatRate = a.Invoice != null ? a.Invoice.VatRate : null,
+                InvoiceGross = a.Invoice != null ? a.Invoice.GrossAmount : null
+            })
+            .ToListAsync();
+
+        var applications = appsRaw
             .Select(a => new ProjectApplicationRowDto(
                 a.ProjectCode,
                 a.ApplicationNumber,
                 a.DateApplied,
                 a.SubmittedNetAmount,
 
-                // linked invoice (optional)
-                a.Invoice != null ? a.Invoice.InvoiceNumber : null,
-                a.Invoice != null ? a.Invoice.InvoiceDate : null,
-                a.Invoice != null ? a.Invoice.NetAmount : null,
+                a.InvoiceNumber,
+                a.InvoiceDate,
+                a.InvoiceNet,
 
-                // payment lives on invoice (optional)
-                a.Invoice != null ? a.Invoice.PaymentAmount : null,
-                a.Invoice != null ? a.Invoice.PaidDate : null
+                a.PaymentGross,
+                DerivePaymentNet(a.PaymentGross, a.VatRate, a.InvoiceNet, a.InvoiceGross),
+                a.PaidDate
             ))
-            .ToListAsync();
+            .ToList();
 
         var supplierCosts = await _db.SupplierCosts
             .AsNoTracking()
@@ -940,6 +959,34 @@ public class ProjectsController : ControllerBase
             summary: $"Updated project {p.JobNameOrNumber}: CompanyId={p.CompanyId}, IsActive={p.IsActive}");
 
         return NoContent();
+    }
+
+    private static decimal? DerivePaymentNet(
+    decimal? paymentGross,
+    decimal? vatRate,
+    decimal? invoiceNet,
+    decimal? invoiceGross)
+    {
+        if (!paymentGross.HasValue)
+            return null;
+
+        // Prefer VAT rate if present (0.20m etc.)
+        if (vatRate.HasValue)
+        {
+            var divisor = 1m + vatRate.Value;
+            if (divisor <= 0m) return paymentGross; // safety
+            return Math.Round(paymentGross.Value / divisor, 2, MidpointRounding.AwayFromZero);
+        }
+
+        // Fallback: derive multiplier from gross/net if available
+        if (invoiceNet.HasValue && invoiceGross.HasValue && invoiceGross.Value != 0m)
+        {
+            var ratio = invoiceNet.Value / invoiceGross.Value; // net = gross * ratio
+            return Math.Round(paymentGross.Value * ratio, 2, MidpointRounding.AwayFromZero);
+        }
+
+        // Final fallback: assume no VAT
+        return Math.Round(paymentGross.Value, 2, MidpointRounding.AwayFromZero);
     }
 
 }

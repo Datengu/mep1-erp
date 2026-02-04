@@ -561,7 +561,7 @@
                                                                 <DataGridTextColumn Header="Inv Net" Binding="{Binding InvoiceNet, StringFormat=£{0:N2}}" Width="90"/>
                                                                 <DataGridTextColumn Header="Inv Date" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110"/>
 
-                                                                <DataGridTextColumn Header="Payment" Binding="{Binding PaymentValue, StringFormat=£{0:N2}}" Width="90"/>
+                                                                <DataGridTextColumn Header="Pay Net" Binding="{Binding PaymentValue, StringFormat=£{0:N2}}" Width="90"/>
                                                                 <DataGridTextColumn Header="Pay Date" Binding="{Binding PaymentDate, StringFormat=yyyy-MM-dd}" Width="110"/>
                                                             </DataGrid.Columns>
                                                         </DataGrid>
