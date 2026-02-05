@@ -157,7 +157,8 @@ namespace Mep1.Erp.Api.Controllers
                 InvoiceNumber = invoiceNo,
 
                 ProjectId = project.Id,
-                ProjectCode = projectCode,
+                //ProjectCode = projectCode,
+                ProjectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber),
                 JobName = jobName,
                 ClientName = clientName,
 

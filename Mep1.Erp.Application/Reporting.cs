@@ -70,6 +70,7 @@ namespace Mep1.Erp.Application
     public record InvoiceListEntry(
         int Id,
         string InvoiceNumber,
+        int? ProjectId,
         string ProjectCode,
         string? JobName,
         string? ClientName,
@@ -131,9 +132,30 @@ namespace Mep1.Erp.Application
 
             // 3) Invoices: load only what we need, then aggregate by trimmed ProjectCode
             // (Trimming inside SQL is awkward/slow; do it once in-memory)
+            // A) ProjectId-based sums (preferred)
+            var invoiceSumsByProjectId = db.Invoices
+                .AsNoTracking()
+                .Where(i =>
+                    i.ProjectId.HasValue &&
+                    i.Status != "VOID"
+                )
+                .Select(i => new { ProjectId = i.ProjectId!.Value, i.NetAmount, i.GrossAmount })
+                .ToList()
+                .GroupBy(x => x.ProjectId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
+                    {
+                        Net = g.Sum(x => x.NetAmount),
+                        Gross = g.Sum(x => x.GrossAmount ?? 0m)
+                    }
+                );
+
+            // B) Legacy fallback: still allow null-ProjectId invoices to contribute by base code
             var invoiceSumsByCode = db.Invoices
                 .AsNoTracking()
                 .Where(i =>
+                    !i.ProjectId.HasValue &&
                     i.ProjectCode != null &&
                     i.ProjectCode != "" &&
                     i.Status != "VOID"
@@ -147,7 +169,8 @@ namespace Mep1.Erp.Application
                     {
                         Net = g.Sum(x => x.NetAmount),
                         Gross = g.Sum(x => x.GrossAmount ?? 0m)
-                    });
+                    }
+                );
 
             // 4) Supplier costs: SQLite provider can't translate SUM(decimal) reliably.
             // Pull minimal data and aggregate client-side (works on SQLite + Postgres).
@@ -235,10 +258,17 @@ namespace Mep1.Erp.Application
                 decimal invoicedNet = 0m;
                 decimal invoicedGross = 0m;
 
-                if (hasProjectCode && baseCode != null && invoiceSumsByCode.TryGetValue(baseCode, out var inv))
+                // Prefer ProjectId-based totals
+                if (invoiceSumsByProjectId.TryGetValue(p.Id, out var byId))
                 {
-                    invoicedNet = inv.Net;
-                    invoicedGross = inv.Gross;
+                    invoicedNet = byId.Net;
+                    invoicedGross = byId.Gross;
+                }
+                else if (hasProjectCode && baseCode != null && invoiceSumsByCode.TryGetValue(baseCode, out var byCode))
+                {
+                    // fallback for any remaining legacy invoices
+                    invoicedNet = byCode.Net;
+                    invoicedGross = byCode.Gross;
                 }
 
                 var totalCost = labourCost + supplierCost;
@@ -751,18 +781,24 @@ namespace Mep1.Erp.Application
             }).ToList();
         }
 
-        public static List<Invoice> GetInvoicesForProjectCode(AppDbContext db, string? projectCode)
+        public static List<Invoice> GetInvoicesForProject(AppDbContext db, int projectId, string? baseProjectCodeFallback)
         {
-            if (string.IsNullOrWhiteSpace(projectCode))
-                return new List<Invoice>();
+            var baseCode = (baseProjectCodeFallback ?? string.Empty).Trim();
 
-            var code = projectCode.Trim();
-
-            return db.Invoices
-                .Where(i => i.ProjectCode != null && i.ProjectCode.Trim() == code)
+            var q = db.Invoices.AsNoTracking()
+                .Where(i =>
+                    (i.ProjectId.HasValue && i.ProjectId.Value == projectId)
+                    || (
+                        !i.ProjectId.HasValue
+                        && !string.IsNullOrWhiteSpace(baseCode)
+                        && i.ProjectCode != null
+                        && i.ProjectCode.Trim() == baseCode
+                    )
+                )
                 .OrderByDescending(i => i.InvoiceDate)
-                .ThenByDescending(i => i.Id)
-                .ToList();
+                .ThenByDescending(i => i.Id);
+
+            return q.ToList();
         }
 
 #if DEBUG
@@ -1019,9 +1055,9 @@ namespace Mep1.Erp.Application
                 .ToList();
         }
 
-        public static List<ProjectInvoiceRow> GetProjectInvoiceRows(AppDbContext db, string? projectCode)
+        public static List<ProjectInvoiceRow> GetProjectInvoiceRows(AppDbContext db, int projectId, string? baseProjectCodeFallback)
         {
-            var invoices = GetInvoicesForProjectCode(db, projectCode);
+            var invoices = GetInvoicesForProject(db, projectId, baseProjectCodeFallback);
 
             return invoices.Select(i => new ProjectInvoiceRow(
                 InvoiceNumber: i.InvoiceNumber,
@@ -1073,13 +1109,12 @@ namespace Mep1.Erp.Application
                 return new InvoiceListEntry(
                     Id: i.Id,
                     InvoiceNumber: i.InvoiceNumber,
+                    ProjectId: i.ProjectId,
                     ProjectCode: i.ProjectCode,
                     JobName: i.JobName,
                     ClientName: i.ClientName,
-
                     ApplicationId: i.ApplicationId,
                     ApplicationNumber: FormatAppRef(appNo),
-
                     InvoiceDate: i.InvoiceDate,
                     DueDate: i.DueDate,
                     NetAmount: i.NetAmount,
