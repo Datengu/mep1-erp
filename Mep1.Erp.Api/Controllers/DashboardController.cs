@@ -6,8 +6,10 @@ using Mep1.Erp.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 namespace Mep1.Erp.Api.Controllers
 {
@@ -51,6 +53,39 @@ namespace Mep1.Erp.Api.Controllers
 
                 var summary = Reporting.GetDashboardSummary(_db, settings);
 
+                
+                // Applications (cashflow pipeline)
+                // Rules:
+                // - Exclude Draft by only including Submitted/Applied/Agreed
+                // - Exclude anything already invoiced (Invoice.ApplicationId points to Application.Id)
+                // - Values are NET
+                var invoicedAppIds = _db.Invoices
+                    .AsNoTracking()
+                    .Where(i => i.ApplicationId != null)
+                    .Select(i => i.ApplicationId!.Value);
+                
+                var appsBase = _db.Applications
+                    .AsNoTracking()
+                    .Where(a => !invoicedAppIds.Contains(a.Id));
+                
+                // "Applied (Not Invoiced)" = Submitted/Applied statuses
+                var appliedQuery = appsBase.Where(a =>
+                a.Status != null &&
+                (a.Status.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                a.Status.Equals("Applied", StringComparison.OrdinalIgnoreCase)));
+                
+                var applicationsAppliedNotInvoicedNet = appliedQuery.Sum(a => (decimal?)a.SubmittedNetAmount) ?? 0m;
+                var applicationsAppliedNotInvoicedCount = appliedQuery.Count();
+                
+                                // "Agreed (Ready to Invoice)" = Agreed status, sum agreed amount (fallback to submitted)
+                var agreedQuery = appsBase.Where(a =>
+                a.Status != null &&
+                a.Status.Equals("Agreed", StringComparison.OrdinalIgnoreCase));
+                
+                var applicationsAgreedReadyToInvoiceNet = agreedQuery
+                                    .Sum(a => (decimal?)(a.AgreedNetAmount ?? a.SubmittedNetAmount)) ?? 0m;
+                var applicationsAgreedReadyToInvoiceCount = agreedQuery.Count();
+
                 return Ok(new DashboardSummaryDto
                 {
                     OutstandingNet = summary.OutstandingNet,
@@ -65,7 +100,11 @@ namespace Mep1.Erp.Api.Controllers
                     DueNext30DaysOutstandingNet = summary.DueNext30DaysOutstandingNet,
                     NextDueDate = summary.NextDueDate,
                     UpcomingApplicationCount = summary.UpcomingApplicationCount,
-                    NextApplicationDate = summary.NextApplicationDate
+                    NextApplicationDate = summary.NextApplicationDate,
+                    ApplicationsAppliedNotInvoicedNet = applicationsAppliedNotInvoicedNet,
+                    ApplicationsAppliedNotInvoicedCount = applicationsAppliedNotInvoicedCount,
+                    ApplicationsAgreedReadyToInvoiceNet = applicationsAgreedReadyToInvoiceNet,
+                    ApplicationsAgreedReadyToInvoiceCount = applicationsAgreedReadyToInvoiceCount
                 });
             }
             catch (Exception ex) 
