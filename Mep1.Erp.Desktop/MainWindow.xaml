@@ -86,11 +86,24 @@
 
         <!-- Top bar -->
         <Grid Grid.Row="0" Background="#FF262626">
-            <TextBlock Text="MEP1BIM ERP"
-                FontSize="16"
-                FontWeight="Bold"
-                Margin="10,0"
-                VerticalAlignment="Center"/>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+               Text="MEP1BIM ERP"
+               FontSize="16"
+               FontWeight="Bold"
+               Margin="10,0"
+               VerticalAlignment="Center"/>
+
+            <TextBlock Grid.Column="1"
+               Text="{Binding AppVersion}"
+               FontSize="12"
+               Foreground="#FFBFBFBF"
+               Margin="0,0,10,0"
+               VerticalAlignment="Center"/>
         </Grid>
 
         <!-- Tabs -->

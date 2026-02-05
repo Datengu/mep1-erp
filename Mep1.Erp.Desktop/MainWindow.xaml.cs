@@ -1,4 +1,5 @@
-﻿using Mep1.Erp.Application;
+﻿using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
+using Mep1.Erp.Application;
 using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
 using System;
@@ -6,14 +7,16 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
-using System.Globalization;
+using Windows.ApplicationModel;
 using static Mep1.Erp.Application.Reporting;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using Binding = System.Windows.Data.Binding;
@@ -27,6 +30,51 @@ namespace Mep1.Erp.Desktop
         public event PropertyChangedEventHandler? PropertyChanged;
 
         private static readonly CultureInfo UkCulture = CultureInfo.GetCultureInfo("en-GB");
+
+        public string AppVersion
+        {
+            get
+            {
+                // 1) Packaged/MSIX version (authoritative when installed)
+                try
+                {
+                    var v = Package.Current.Id.Version;
+                    return $"v{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
+                }
+                catch
+                {
+                    // ignored - unpackaged
+                }
+
+                // 2) Unpackaged fallback (VS run): read assembly version info
+                try
+                {
+                    var asm = Assembly.GetExecutingAssembly();
+
+                    // Prefer InformationalVersion if you ever add it (supports SemVer + metadata)
+                    var info = asm
+                        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                        ?.InformationalVersion;
+
+                    if (!string.IsNullOrWhiteSpace(info))
+                    {
+                        var clean = info.Split('+')[0]; // remove git hash
+                        return $"v{clean}";
+                    }
+
+                    // Otherwise use AssemblyVersion (matches your Directory.Build.props AssemblyVersion)
+                    var v = asm.GetName().Version;
+                    if (v != null)
+                        return $"v{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
+                }
+                catch
+                {
+                    // ignored
+                }
+
+                return "v-unknown";
+            }
+        }
 
         // ---------------------------------------------
         // Bound properties
