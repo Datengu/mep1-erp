@@ -2276,7 +2276,7 @@
                                 BorderThickness="0"
                                 Margin="0">
 
-                        <!-- INVOICES (existing view) -->
+                        <!-- INVOICES -->
                         <TabItem Header="Invoices">
                             <Grid Background="#FF1E1E1E">
                                 <Grid.RowDefinitions>
@@ -2399,7 +2399,7 @@
                                                             Width="80"/>
 
                                         <!-- Amounts -->
-                                        <DataGridTemplateColumn Header="Net" Width="90">
+                                        <DataGridTemplateColumn Header="Net" Width="90" SortMemberPath="NetAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -2446,7 +2446,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Gross" Width="90">
+                                        <DataGridTemplateColumn Header="Gross" Width="90" SortMemberPath="GrossAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -2491,7 +2491,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Payment (Gross)" Width="110">
+                                        <DataGridTemplateColumn Header="Payment (Gross)" Width="110" SortMemberPath="PaymentAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -2536,7 +2536,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Outstanding Net" Width="120">
+                                        <DataGridTemplateColumn Header="Outstanding Net" Width="120" SortMemberPath="OutstandingNet">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -2581,7 +2581,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Outstanding Gross" Width="130">
+                                        <DataGridTemplateColumn Header="Outstanding Gross" Width="130" SortMemberPath="OutstandingGross">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -3332,7 +3332,7 @@
                                                             Width="110"/>
 
                                         <!-- Amounts -->
-                                        <DataGridTemplateColumn Header="Net" Width="90">
+                                        <DataGridTemplateColumn Header="Net" Width="90" SortMemberPath="NetAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource ApplicationsGridHeaderBaseStyle}">
@@ -3377,7 +3377,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Gross" Width="90">
+                                        <DataGridTemplateColumn Header="Gross" Width="90" SortMemberPath="GrossAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource ApplicationsGridHeaderBaseStyle}">
@@ -3423,7 +3423,7 @@
                                         </DataGridTemplateColumn>
                                         
                                         <!-- Agreed -->
-                                        <DataGridTemplateColumn Header="Agreed Net" Width="110">
+                                        <DataGridTemplateColumn Header="Agreed Net" Width="110" SortMemberPath="AgreedNetAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource ApplicationsGridHeaderBaseStyle}">
