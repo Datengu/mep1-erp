@@ -4335,6 +4335,8 @@ namespace Mep1.Erp.Desktop
                     return;
                 }
 
+                var affectedJobKey = NewInvoiceSelectedProject?.JobNameOrNumber;
+
                 var dto = new CreateInvoiceRequestDto
                 {
                     ProjectId = NewInvoiceSelectedProject.ProjectId,
@@ -4384,7 +4386,10 @@ namespace Mep1.Erp.Desktop
                 Invoices = await _api.GetInvoicesAsync();
                 ApplyInvoiceFilter();
 
-                // Optional: clear form after save
+                // Refresh Projects -> Project breakdown if we're currently viewing the same project
+                await RefreshSelectedProjectBreakdownIfMatchesAsync(affectedJobKey);
+
+                // Clear form after save
                 ClearAddInvoiceForm(setStatusMessage: false);
 
                 SuggestNextInvoiceNumberIfEmpty();
@@ -4627,6 +4632,8 @@ namespace Mep1.Erp.Desktop
                 return;
             }
 
+            var affectedJobKey = EditInvoiceSelectedProject?.JobNameOrNumber;
+
             var vatRate = ParseVatRateText(EditInvoiceVatRateText);
 
             try
@@ -4666,6 +4673,8 @@ namespace Mep1.Erp.Desktop
 
                 // Refresh invoices list so grid reflects changes
                 await RefreshInvoicesAsync();
+
+                await RefreshSelectedProjectBreakdownIfMatchesAsync(affectedJobKey);
             }
             catch (Exception ex)
             {
@@ -6567,6 +6576,8 @@ namespace Mep1.Erp.Desktop
 
                 NewApplicationNumberText = normalizedRef;
 
+                var affectedJobKey = NewApplicationSelectedProject?.JobNameOrNumber;
+
                 var dto = new CreateApplicationRequestDto
                 {
                     ProjectId = NewApplicationSelectedProject.ProjectId,
@@ -6588,6 +6599,8 @@ namespace Mep1.Erp.Desktop
                 // Refresh list + keep filter semantics
                 Applications = await _api.GetApplicationsAsync();
                 ApplyApplicationFilter();
+
+                await RefreshSelectedProjectBreakdownIfMatchesAsync(affectedJobKey);
 
                 // Clear form (if you already have this helper)
                 ClearAddApplicationForm(setStatusMessage: false);
@@ -6783,6 +6796,19 @@ namespace Mep1.Erp.Desktop
                     return;
                 }
 
+                string? oldJobKey = null;
+
+                try
+                {
+                    var before = await _api.GetApplicationByIdAsync(SelectedApplicationListItem.Id);
+                    if (before.ProjectId.HasValue)
+                        oldJobKey = ApplicationProjectPicklist.FirstOrDefault(p => p.ProjectId == before.ProjectId.Value)?.JobNameOrNumber;
+                }
+                catch
+                {
+                    // ignore - we'll still refresh new side if we can
+                }
+
                 EditApplicationStatusBarText = "";
                 UpdateEditApplicationValidation();
 
@@ -6815,6 +6841,8 @@ namespace Mep1.Erp.Desktop
                     return;
                 }
 
+                var newJobKey = EditApplicationSelectedProject?.JobNameOrNumber;
+
                 var dto = new UpdateApplicationRequestDto
                 {
                     ProjectId = EditApplicationSelectedProject?.ProjectId,
@@ -6838,6 +6866,9 @@ namespace Mep1.Erp.Desktop
 
                 if (SelectedApplicationListItem.InvoiceId.HasValue)
                     await RefreshInvoicesAsync();
+
+                await RefreshSelectedProjectBreakdownIfMatchesAsync(oldJobKey);
+                await RefreshSelectedProjectBreakdownIfMatchesAsync(newJobKey);
             }
             catch (Exception ex)
             {
@@ -7254,6 +7285,24 @@ namespace Mep1.Erp.Desktop
             }
 
             return sb.ToString();
+        }
+
+        private async Task RefreshSelectedProjectBreakdownIfMatchesAsync(string? affectedJobKey)
+        {
+            if (string.IsNullOrWhiteSpace(affectedJobKey))
+                return;
+
+            var selected = SelectedProject;
+            if (selected == null)
+                return;
+
+            if (!string.Equals(selected.JobNameOrNumber, affectedJobKey, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            // IMPORTANT: invalidate cache so we don't show stale drilldown rows
+            _projectDrilldownCache.Remove(selected.JobNameOrNumber);
+
+            await LoadSelectedProjectDetailsAsync(selected);
         }
     }
 }
