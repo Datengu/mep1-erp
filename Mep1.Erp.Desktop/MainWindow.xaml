@@ -348,27 +348,6 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
-
-                    <!-- Bottom area: Run Import button -->
-                    <Grid Grid.Row="3" Margin="8">
-                        <StackPanel Orientation="Horizontal"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Top">
-                            <Button x:Name="RunImportButton"
-                                Content="Run Import (Refresh Data)"
-                                Padding="12,6"
-                                Background="#FF444444"
-                                Foreground="#FFE0E0E0"
-                                BorderBrush="#FF666666"
-                                BorderThickness="1"
-                        Click="RunImportButton_Click"
-                        />
-                            <TextBlock Text="  Updates all figures after pulling the latest data from Excel."
-                               VerticalAlignment="Center"
-                               FontSize="11"
-                               Opacity="0.6"/>
-                        </StackPanel>
-                    </Grid>
                 </Grid>
             </TabItem>
 
