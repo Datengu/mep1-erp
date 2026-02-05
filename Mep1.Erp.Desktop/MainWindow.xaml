@@ -323,10 +323,10 @@
                                     Padding="10"
                                     Margin="4">
                                 <StackPanel>
-                                    <TextBlock Text="Applied (Not Invoiced) (Net)"
+                                    <TextBlock Text="Applied (Not Invoiced) (Gross)"
                                                FontSize="12"
                                                Opacity="0.8"/>
-                                    <TextBlock Text="{Binding Dashboard.ApplicationsAppliedNotInvoicedNet, StringFormat='£{0:N2}'}"
+                                    <TextBlock Text="{Binding Dashboard.ApplicationsAppliedNotInvoicedGross, StringFormat='£{0:N2}'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Margin="0,2,0,0"/>
@@ -334,6 +334,10 @@
                                                FontSize="11"
                                                Opacity="0.7"
                                                Margin="0,2,0,0"/>
+                                    <TextBlock Text="Assumes 20% VAT"
+                                               FontSize="10"
+                                               Opacity="0.5"
+                                               Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 
@@ -343,10 +347,10 @@
                                     Padding="10"
                                     Margin="4">
                                 <StackPanel>
-                                    <TextBlock Text="Agreed (Ready to Invoice) (Net)"
+                                    <TextBlock Text="Agreed (Ready to Invoice) (Gross)"
                                                FontSize="12"
                                                Opacity="0.8"/>
-                                    <TextBlock Text="{Binding Dashboard.ApplicationsAgreedReadyToInvoiceNet, StringFormat='£{0:N2}'}"
+                                    <TextBlock Text="{Binding Dashboard.ApplicationsAgreedReadyToInvoiceGross, StringFormat='£{0:N2}'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Margin="0,2,0,0"/>
@@ -354,6 +358,10 @@
                                                FontSize="11"
                                                Opacity="0.7"
                                                Margin="0,2,0,0"/>
+                                    <TextBlock Text="Assumes 20% VAT"
+                                               FontSize="10"
+                                               Opacity="0.5"
+                                               Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 

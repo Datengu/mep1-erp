@@ -57,7 +57,16 @@ namespace Mep1.Erp.Api.Controllers
                 // Rules:
                 // - Exclude Draft by only including Submitted/Applied/Agreed
                 // - Exclude anything already invoiced (Invoice.ApplicationId points to Application.Id)
-                // - Values are NET
+                // - Values are NET + derived GROSS (default VAT rate = 20% like ApplicationsController)
+                const decimal defaultVatRate = 0.20m;
+
+                static decimal ToGross(decimal net)
+                {
+                    // Match ApplicationsController: VAT rounded to 2dp per line, then added to net.
+                    var vat = Math.Round(net * defaultVatRate, 2, MidpointRounding.AwayFromZero);
+                    return net + vat;
+                }
+
                 var invoicedAppIds = _db.Invoices
                     .AsNoTracking()
                     .Where(i => i.ApplicationId != null)
@@ -67,7 +76,7 @@ namespace Mep1.Erp.Api.Controllers
                     .AsNoTracking()
                     .Where(a => !invoicedAppIds.Contains(a.Id));
 
-                // Normalize status in a SQL-translatable way (EF can translate ToLower())
+                // "Applied (Not Invoiced)" = Submitted/Applied statuses
                 var appliedQuery = appsBase.Where(a =>
                     a.Status != null &&
                     (a.Status.ToLower() == "submitted" || a.Status.ToLower() == "applied"));
@@ -75,6 +84,13 @@ namespace Mep1.Erp.Api.Controllers
                 var applicationsAppliedNotInvoicedNet = appliedQuery.Sum(a => (decimal?)a.SubmittedNetAmount) ?? 0m;
                 var applicationsAppliedNotInvoicedCount = appliedQuery.Count();
 
+                // Compute gross using per-row VAT rounding (do this client-side to avoid EF translation issues)
+                var applicationsAppliedNotInvoicedGross = appliedQuery
+                    .Select(a => a.SubmittedNetAmount)
+                    .AsEnumerable()
+                    .Sum(net => ToGross(net));
+
+                // "Agreed (Ready to Invoice)" = Agreed status, sum agreed amount (fallback to submitted)
                 var agreedQuery = appsBase.Where(a =>
                     a.Status != null &&
                     a.Status.ToLower() == "agreed");
@@ -83,6 +99,11 @@ namespace Mep1.Erp.Api.Controllers
                     .Sum(a => (decimal?)(a.AgreedNetAmount ?? a.SubmittedNetAmount)) ?? 0m;
 
                 var applicationsAgreedReadyToInvoiceCount = agreedQuery.Count();
+
+                var applicationsAgreedReadyToInvoiceGross = agreedQuery
+                    .Select(a => (decimal)(a.AgreedNetAmount ?? a.SubmittedNetAmount))
+                    .AsEnumerable()
+                    .Sum(net => ToGross(net));
 
                 return Ok(new DashboardSummaryDto
                 {
@@ -104,7 +125,9 @@ namespace Mep1.Erp.Api.Controllers
                     ApplicationsAgreedReadyToInvoiceNet = applicationsAgreedReadyToInvoiceNet,
                     ApplicationsAgreedReadyToInvoiceCount = applicationsAgreedReadyToInvoiceCount,
                     OverdueOutstandingGross = summary.OverdueOutstandingGross,
-                    DueNext30DaysOutstandingGross = summary.DueNext30DaysOutstandingGross
+                    DueNext30DaysOutstandingGross = summary.DueNext30DaysOutstandingGross,
+                    ApplicationsAppliedNotInvoicedGross = applicationsAppliedNotInvoicedGross,
+                    ApplicationsAgreedReadyToInvoiceGross = applicationsAgreedReadyToInvoiceGross
                 });
             }
             catch (Exception ex) 
