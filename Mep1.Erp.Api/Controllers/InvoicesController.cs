@@ -146,7 +146,7 @@ namespace Mep1.Erp.Api.Controllers
 
             // Fill legacy/string fields for compatibility with your current invoice list/grid.
             var projectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
-            var jobName = project.JobNameOrNumber;
+            var jobName = ProjectCodeHelpers.GetJobName(project.JobNameOrNumber);
             var clientName = project.CompanyEntity!.Name;
 
             var status = string.IsNullOrWhiteSpace(dto.Status) ? "Outstanding" : dto.Status.Trim();
@@ -157,8 +157,7 @@ namespace Mep1.Erp.Api.Controllers
                 InvoiceNumber = invoiceNo,
 
                 ProjectId = project.Id,
-                //ProjectCode = projectCode,
-                ProjectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber),
+                ProjectCode = projectCode,
                 JobName = jobName,
                 ClientName = clientName,
 
@@ -225,25 +224,20 @@ namespace Mep1.Erp.Api.Controllers
             if (invoice == null)
                 return NotFound($"Invoice {id} not found.");
 
-            // If invoice has ProjectId, prefer canonical info from Projects/Companies.
-            string? companyName = invoice.ClientName;
-            string? jobName = invoice.JobName;
-            string projectCode = invoice.ProjectCode;
+            if (!invoice.ProjectId.HasValue)
+                return BadRequest($"Invoice {id} has no ProjectId link. Please link it to a project.");
 
-            if (invoice.ProjectId.HasValue)
-            {
-                var project = await _db.Projects
-                    .Include(p => p.CompanyEntity)
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.Id == invoice.ProjectId.Value);
+            var project = await _db.Projects
+                .Include(p => p.CompanyEntity)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == invoice.ProjectId.Value);
 
-                if (project != null)
-                {
-                    jobName = project.JobNameOrNumber;
-                    projectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
-                    companyName = project.CompanyEntity?.Name ?? companyName;
-                }
-            }
+            if (project == null)
+                return BadRequest($"Invoice {id} references ProjectId={invoice.ProjectId.Value} but that project no longer exists.");
+
+            var jobName = ProjectCodeHelpers.GetJobName(project.JobNameOrNumber);
+            var projectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber) ?? "";
+            var companyName = project.CompanyEntity?.Name ?? invoice.ClientName;
 
             var vatRate = invoice.VatRate ?? 0.20m;
             var (vatAmount, grossAmount) = ComputeVat(invoice.NetAmount, vatRate);
@@ -311,7 +305,7 @@ namespace Mep1.Erp.Api.Controllers
 
                 invoice.ProjectId = project.Id;
                 invoice.ProjectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
-                invoice.JobName = project.JobNameOrNumber;
+                invoice.JobName = ProjectCodeHelpers.GetJobName(project.JobNameOrNumber);
                 invoice.ClientName = project.CompanyEntity!.Name;
             }
 
