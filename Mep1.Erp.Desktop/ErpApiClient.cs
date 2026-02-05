@@ -811,11 +811,11 @@ namespace Mep1.Erp.Desktop
             return result;
         }
 
-        public async Task LinkInvoiceToApplicationAsync(int applicationId, string invoiceNumber)
+        public async Task LinkInvoiceToApplicationAsync(int applicationId, int invoiceId)
         {
             var url = $"api/applications/{applicationId}/link-invoice";
 
-            var resp = await _http.PostAsJsonAsync(url, new { invoiceNumber });
+            var resp = await _http.PostAsJsonAsync(url, new { invoiceId });
 
             if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
             {

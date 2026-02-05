@@ -384,13 +384,17 @@ namespace Mep1.Erp.Api.Controllers
             if (app == null)
                 return NotFound("Application not found.");
 
-            var invNo = NormalizeInvoiceNumber(dto.InvoiceNumber);
-            if (string.IsNullOrWhiteSpace(invNo))
-                return BadRequest("Invoice number is required.");
+            var invoice = await _db.Invoices
+                .FirstOrDefaultAsync(i => i.Id == dto.InvoiceId);
 
-            var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.InvoiceNumber == invNo);
             if (invoice == null)
                 return BadRequest("Invoice not found.");
+
+            // Safety check using ProjectId
+            if (invoice.ProjectId != app.ProjectId)
+                return BadRequest(
+                    $"Invoice project '{invoice.ProjectId}' does not match application project '{app.ProjectId}'."
+                );
 
             // Safety: ensure it’s the same project
             if (!string.Equals(invoice.ProjectCode?.Trim(), app.ProjectCode?.Trim(), StringComparison.OrdinalIgnoreCase))
@@ -419,7 +423,7 @@ namespace Mep1.Erp.Api.Controllers
                 action: "Application.LinkInvoice",
                 entityType: "Application",
                 entityId: app.Id.ToString(),
-                summary: $"{app.ProjectCode} App {app.ApplicationNumber} linked to invoice {invoice.InvoiceNumber}"
+                summary: $"{app.ProjectCode} App {app.ApplicationNumber} linked to invoice {invoice.InvoiceNumber} (Id {invoice.Id})"
             );
 
             return NoContent();

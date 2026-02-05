@@ -4309,18 +4309,18 @@ namespace Mep1.Erp.Desktop
 
                     try
                     {
-                        await _api.LinkInvoiceToApplicationAsync(appIdToLink, created.InvoiceNumber);
+                        await _api.LinkInvoiceToApplicationAsync(appIdToLink, created.Id);
 
                         // Refresh applications list + view so the linked invoice shows immediately
                         Applications = await _api.GetApplicationsAsync();
                         ApplyApplicationFilter();
 
-                        AddInvoiceStatusText = $"Saved + linked: {created.InvoiceNumber} - £{created.GrossAmount:0.00}";
+                        AddInvoiceStatusText = $"Saved + linked: {created.InvoiceNumber} (Id: {created.Id}) - £{created.GrossAmount:0.00}";
                     }
                     catch (Exception linkEx)
                     {
                         // Invoice is created; linking failed. Keep message clear and actionable.
-                        AddInvoiceStatusText = $"Saved: {created.InvoiceNumber} - linking to application failed: {linkEx.Message}";
+                        AddInvoiceStatusText = $"Saved: {created.InvoiceNumber} (Id: {created.Id}) - linking to application failed: {linkEx.Message}";
                     }
                     finally
                     {
@@ -4329,7 +4329,7 @@ namespace Mep1.Erp.Desktop
                 }
                 else
                 {
-                    AddInvoiceStatusText = $"Saved: {created.InvoiceNumber} ({created.CompanyName}) - £{created.GrossAmount:0.00}";
+                    AddInvoiceStatusText = $"Saved: {created.InvoiceNumber} (Id: {created.Id}) ({created.CompanyName}) - £{created.GrossAmount:0.00}";
                 }
 
                 // Refresh invoices list + view without touching your filter logic:
@@ -4478,6 +4478,9 @@ namespace Mep1.Erp.Desktop
 
             if (EditInvoiceSelectedProject == null)
                 issues.Add("Project is required.");
+
+            if (EditInvoiceSelectedProject != null && string.IsNullOrWhiteSpace(EditInvoiceDerivedCompanyName))
+                issues.Add("Company could not be derived from the selected project.");
 
             // Payment fields are optional, but must be consistent if provided.
             var paymentText = EditInvoicePaymentAmountText;
@@ -6846,11 +6849,23 @@ namespace Mep1.Erp.Desktop
                 if (ok != true)
                     return;
 
-                var invoiceNo = (win.SelectedInvoiceNumber ?? "").Trim();
-                if (string.IsNullOrWhiteSpace(invoiceNo))
-                    return;
+                var invoiceId = win.SelectedInvoiceId;
 
-                await _api.LinkInvoiceToApplicationAsync(SelectedApplicationListItem.Id, invoiceNo);
+                if (!invoiceId.HasValue)
+                {
+                    WpfMessageBox.Show(
+                        "Please select an invoice.",
+                        "Applications",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning
+                    );
+                    return;
+                }
+
+                await _api.LinkInvoiceToApplicationAsync(
+                    SelectedApplicationListItem.Id,
+                    invoiceId.Value
+                );
 
                 // Refresh list + view
                 Applications = await _api.GetApplicationsAsync();

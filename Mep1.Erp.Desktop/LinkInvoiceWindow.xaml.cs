@@ -14,6 +14,7 @@ namespace Mep1.Erp.Desktop
     public partial class LinkInvoiceWindow : Window, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         private readonly List<InvoicePickRow> _rows;
         private readonly decimal _compareNet;
@@ -77,6 +78,9 @@ namespace Mep1.Erp.Desktop
             }
         }
 
+        public string? SelectedInvoiceNumber => SelectedRow?.InvoiceNumber;
+        public int? SelectedInvoiceId => SelectedRow?.Id;
+
         public LinkInvoiceWindow(
             ApplicationListEntryDto application,
             List<InvoiceListEntryDto> invoices,
@@ -129,8 +133,6 @@ namespace Mep1.Erp.Desktop
             OnPropertyChanged(nameof(ResultsCountText));
         }
 
-        public string? SelectedInvoiceNumber => SelectedRow?.InvoiceNumber;
-
         private bool FilterRow(object obj)
         {
             if (obj is not InvoicePickRow row)
@@ -177,8 +179,6 @@ namespace Mep1.Erp.Desktop
             DialogResult = true;
             Close();
         }
-
-        private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         public sealed class InvoicePickRow
         {
