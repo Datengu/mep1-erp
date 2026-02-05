@@ -829,5 +829,16 @@ namespace Mep1.Erp.Desktop
                 throw new Exception($"API failed ({(int)resp.StatusCode}): {body}");
             }
         }
+
+        public async Task<BackfillInvoiceProjectLinksResultDto> BackfillInvoiceProjectLinksAsync(bool dryRun = true, int take = 5000)
+        {
+            var resp = await _http.PostAsync($"api/invoices/admin/backfill-project-links?dryRun={dryRun}&take={take}", content: null);
+            resp.EnsureSuccessStatusCode();
+
+            var dto = await resp.Content.ReadFromJsonAsync<BackfillInvoiceProjectLinksResultDto>();
+            if (dto == null) throw new Exception("Failed to deserialize BackfillInvoiceProjectLinksResultDto.");
+
+            return dto;
+        }
     }
 }

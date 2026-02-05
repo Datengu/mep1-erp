@@ -4362,12 +4362,16 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
@@ -4409,9 +4413,52 @@
                                    Opacity="0.6"
                                    FontSize="11"/>
 
+                        <!-- Backfill Dryrun -->
+                        <TextBlock Text="Backfill Dryrun:"
+                                   Grid.Row="2" Grid.Column="0"
+                                   Margin="0,4"
+                                   VerticalAlignment="Center"/>
+
+                        <TextBox Text="{Binding SettingsBackfillResultText}"
+                                 Grid.Row="2" Grid.Column="1"
+                                 Height="160"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 IsReadOnly="True"
+                                 Background="#FF262626"
+                                 Foreground="#FFE0E0E0"/>
+
+                        <Button Content="Apply Backfill"
+                                Grid.Row="2" Grid.Column="2"
+                                Margin="8,4"
+                                Padding="8,4"
+                                Click="BackfillInvoiceProjectLinks_DryRun_Click"/>
+
+                        <!-- Backfill -->
+                        <TextBlock Text="Backfill:"
+                                   Grid.Row="3" Grid.Column="0"
+                                   Margin="0,4"
+                                   VerticalAlignment="Center"/>
+
+                        <TextBox Text="{Binding SettingsBackfillResultText}"
+                                 Grid.Row="3" Grid.Column="1"
+                                 Height="160"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 IsReadOnly="True"
+                                 Background="#FF262626"
+                                 Foreground="#FFE0E0E0"/>
+
+                        <Button Content="Apply Backfill"
+                                Grid.Row="3" Grid.Column="2"
+                                Margin="8,4"
+                                Padding="8,4"
+                                Click="BackfillInvoiceProjectLinks_Apply_Click"/>
+
+
                         <!-- Save button -->
                         <Button Content="Save settings"
-                                Grid.Row="2" Grid.Column="0"
+                                Grid.Row="4" Grid.Column="0"
                                 Grid.ColumnSpan="3"
                                 Margin="0,16,0,0"
                                 Padding="10,5"
