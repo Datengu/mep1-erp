@@ -781,24 +781,13 @@ namespace Mep1.Erp.Application
             }).ToList();
         }
 
-        public static List<Invoice> GetInvoicesForProject(AppDbContext db, int projectId, string? baseProjectCodeFallback)
+        public static List<Invoice> GetInvoicesForProjectId(AppDbContext db, int projectId)
         {
-            var baseCode = (baseProjectCodeFallback ?? string.Empty).Trim();
-
-            var q = db.Invoices.AsNoTracking()
-                .Where(i =>
-                    (i.ProjectId.HasValue && i.ProjectId.Value == projectId)
-                    || (
-                        !i.ProjectId.HasValue
-                        && !string.IsNullOrWhiteSpace(baseCode)
-                        && i.ProjectCode != null
-                        && i.ProjectCode.Trim() == baseCode
-                    )
-                )
+            return db.Invoices
+                .Where(i => i.ProjectId == projectId)
                 .OrderByDescending(i => i.InvoiceDate)
-                .ThenByDescending(i => i.Id);
-
-            return q.ToList();
+                .ThenByDescending(i => i.Id)
+                .ToList();
         }
 
 #if DEBUG
@@ -1055,9 +1044,9 @@ namespace Mep1.Erp.Application
                 .ToList();
         }
 
-        public static List<ProjectInvoiceRow> GetProjectInvoiceRows(AppDbContext db, int projectId, string? baseProjectCodeFallback)
+        public static List<ProjectInvoiceRow> GetProjectInvoiceRows(AppDbContext db, int projectId)
         {
-            var invoices = GetInvoicesForProject(db, projectId, baseProjectCodeFallback);
+            var invoices = GetInvoicesForProjectId(db, projectId);
 
             return invoices.Select(i => new ProjectInvoiceRow(
                 InvoiceNumber: i.InvoiceNumber,
