@@ -224,7 +224,8 @@ public class ProjectsController : ControllerBase
             .ToList();
 
         var invoices = Reporting.GetInvoiceList(_db)
-            .Where(x => x.ProjectCode == baseCode)
+            .Where(x =>
+                x.ProjectId == project.Id)
             .OrderByDescending(x => x.InvoiceDate)
             .ThenByDescending(x => x.InvoiceNumber)
             .Select(x => new ProjectInvoiceRowDto(

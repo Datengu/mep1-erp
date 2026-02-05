@@ -29,6 +29,34 @@ namespace Mep1.Erp.Application
 
             return null;
         }
+
+        /// <summary>
+        /// Extracts the job name part from JobNameOrNumber.
+        /// "PN0051 - Biggin Hill" => "Biggin Hill"
+        /// "PN0051 Biggin Hill"   => "Biggin Hill"
+        /// "PN0051"               => null
+        /// </summary>
+        public static string? GetJobName(string? jobNameOrNumber)
+        {
+            if (string.IsNullOrWhiteSpace(jobNameOrNumber))
+                return null;
+
+            var text = jobNameOrNumber.Trim();
+
+            var baseCode = GetBaseProjectCode(text);
+            if (baseCode == null)
+                return null;
+
+            // Remove the base code from the start
+            var remainder = text.Substring(baseCode.Length).TrimStart();
+
+            // Trim common separators
+            remainder = remainder.TrimStart(' ', '-', '–');
+
+            return string.IsNullOrWhiteSpace(remainder)
+                ? null
+                : remainder;
+        }
     }
 
     public static class WorkerRateHelpers
