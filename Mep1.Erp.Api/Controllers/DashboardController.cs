@@ -53,7 +53,7 @@ namespace Mep1.Erp.Api.Controllers
 
                 var summary = Reporting.GetDashboardSummary(_db, settings);
 
-                
+
                 // Applications (cashflow pipeline)
                 // Rules:
                 // - Exclude Draft by only including Submitted/Applied/Agreed
@@ -63,27 +63,26 @@ namespace Mep1.Erp.Api.Controllers
                     .AsNoTracking()
                     .Where(i => i.ApplicationId != null)
                     .Select(i => i.ApplicationId!.Value);
-                
+
                 var appsBase = _db.Applications
                     .AsNoTracking()
                     .Where(a => !invoicedAppIds.Contains(a.Id));
-                
-                // "Applied (Not Invoiced)" = Submitted/Applied statuses
+
+                // Normalize status in a SQL-translatable way (EF can translate ToLower())
                 var appliedQuery = appsBase.Where(a =>
-                a.Status != null &&
-                (a.Status.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                a.Status.Equals("Applied", StringComparison.OrdinalIgnoreCase)));
-                
+                    a.Status != null &&
+                    (a.Status.ToLower() == "submitted" || a.Status.ToLower() == "applied"));
+
                 var applicationsAppliedNotInvoicedNet = appliedQuery.Sum(a => (decimal?)a.SubmittedNetAmount) ?? 0m;
                 var applicationsAppliedNotInvoicedCount = appliedQuery.Count();
-                
-                                // "Agreed (Ready to Invoice)" = Agreed status, sum agreed amount (fallback to submitted)
+
                 var agreedQuery = appsBase.Where(a =>
-                a.Status != null &&
-                a.Status.Equals("Agreed", StringComparison.OrdinalIgnoreCase));
-                
+                    a.Status != null &&
+                    a.Status.ToLower() == "agreed");
+
                 var applicationsAgreedReadyToInvoiceNet = agreedQuery
-                                    .Sum(a => (decimal?)(a.AgreedNetAmount ?? a.SubmittedNetAmount)) ?? 0m;
+                    .Sum(a => (decimal?)(a.AgreedNetAmount ?? a.SubmittedNetAmount)) ?? 0m;
+
                 var applicationsAgreedReadyToInvoiceCount = agreedQuery.Count();
 
                 return Ok(new DashboardSummaryDto
