@@ -6835,6 +6835,9 @@ namespace Mep1.Erp.Desktop
                 // Refresh list + view
                 Applications = await _api.GetApplicationsAsync();
                 ApplyApplicationFilter();
+
+                if (SelectedApplicationListItem.InvoiceId.HasValue)
+                    await RefreshInvoicesAsync();
             }
             catch (Exception ex)
             {
@@ -6918,6 +6921,9 @@ namespace Mep1.Erp.Desktop
                 // Refresh list + view
                 Applications = await _api.GetApplicationsAsync();
                 ApplyApplicationFilter();
+
+                // Refresh invoices too (so invoice grid shows updated linked APP ref etc.)
+                await RefreshInvoicesAsync();
 
                 WpfMessageBox.Show(
                     "Linked successfully.",
@@ -7054,6 +7060,7 @@ namespace Mep1.Erp.Desktop
 
                 AddInvoiceStatusText = "Invoice form pre-filled from application. Enter invoice number and save to link.";
                 UpdateAddInvoiceValidation();
+
             }
             catch (Exception ex)
             {
