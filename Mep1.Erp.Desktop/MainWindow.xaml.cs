@@ -7081,12 +7081,23 @@ namespace Mep1.Erp.Desktop
             }
         }
 
-        void OpenEditProjectTab_Click(object sender, RoutedEventArgs e)
+        private async void OpenEditProjectTab_Click(object sender, RoutedEventArgs e)
         {
-            // Switch to Edit Project tab if it exists
-            // This assumes the tab order is: Overview, Project, Add Project, Edit Project
-            // If your order differs, adjust the index.
-            ProjectsTabControl.SelectedIndex = 3;
+            try
+            {
+                if (SelectedProject == null)
+                {
+                    EditProjectStatusText = "Select a project first.";
+                    return;
+                }
+
+                await LoadEditProjectAsync(SelectedProject.JobNameOrNumber);
+                SelectProjectsTab("Edit Project");
+            }
+            catch (Exception ex)
+            {
+                EditProjectStatusText = "Failed to open edit: " + ex.Message;
+            }
         }
 
         private async Task LoadSelectedProjectCcfRefsViewAsync(string jobKey)
