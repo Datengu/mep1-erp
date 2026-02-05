@@ -408,7 +408,7 @@ namespace Mep1.Erp.Api.Controllers
             string? Note
         );
 
-        // Admin maintenance: backfill Invoice.ProjectId from Invoice.ProjectCode by matching Projects base codes.
+        // Admin maintenance: backfill Invoice.JobName from linked Project (via ProjectId).
         // Dry-run by default (safe). Use dryRun=false to apply.
         [HttpPost("admin/backfill-project-links")]
         public async Task<ActionResult<BackfillInvoiceProjectLinksResult>> BackfillInvoiceProjectLinks(
@@ -418,32 +418,18 @@ namespace Mep1.Erp.Api.Controllers
             if (take < 1) take = 1;
             if (take > 50000) take = 50000;
 
-            // Build lookup: BaseCode -> projects that share it (ambiguous codes are handled safely)
+            // Build lookup: ProjectId -> Project.JobNameOrNumber
             var projects = await _db.Projects
                 .AsNoTracking()
                 .Select(p => new { p.Id, p.JobNameOrNumber })
                 .ToListAsync();
 
-            var projectsByBaseCode = new Dictionary<string, List<(int Id, string Label)>>(StringComparer.OrdinalIgnoreCase);
+            var projectLabelById = projects.ToDictionary(p => p.Id, p => p.JobNameOrNumber);
 
-            foreach (var p in projects)
-            {
-                var baseCode = ProjectCodeHelpers.GetBaseProjectCode(p.JobNameOrNumber)?.Trim();
-                if (string.IsNullOrWhiteSpace(baseCode))
-                    continue;
-
-                if (!projectsByBaseCode.TryGetValue(baseCode, out var list))
-                {
-                    list = new List<(int, string)>();
-                    projectsByBaseCode[baseCode] = list;
-                }
-
-                list.Add((p.Id, p.JobNameOrNumber));
-            }
-
-            // Candidates: invoices with no ProjectId but with a project code
+            // Candidates: invoices that are linked to a project, but have missing/legacy JobName
+            // (You can tweak this predicate if you want to update ALL linked invoices.)
             var invoices = await _db.Invoices
-                .Where(i => i.ProjectId == null && i.ProjectCode != null && i.ProjectCode != "")
+                .Where(i => i.ProjectId != null)
                 .OrderBy(i => i.Id)
                 .Take(take)
                 .ToListAsync();
@@ -451,103 +437,93 @@ namespace Mep1.Erp.Api.Controllers
             var items = new List<BackfillInvoiceProjectLinksItem>(capacity: Math.Min(invoices.Count, 2000));
 
             int updated = 0;
-            int skippedAlreadyLinked = 0;
-            int skippedNoMatch = 0;
-            int skippedAmbiguous = 0;
+            int skippedAlreadyLinked = 0; // repurposed: "NoChange"
+            int skippedNoMatch = 0;       // repurposed: "NoProject"
+            int skippedAmbiguous = 0;     // always 0 now
 
             foreach (var inv in invoices)
             {
-                // Defensive trimming
-                var invCode = (inv.ProjectCode ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(invCode))
+                if (!inv.ProjectId.HasValue)
                 {
                     skippedNoMatch++;
+                    continue;
+                }
+
+                if (!projectLabelById.TryGetValue(inv.ProjectId.Value, out var projectLabel) ||
+                    string.IsNullOrWhiteSpace(projectLabel))
+                {
+                    skippedNoMatch++;
+
                     if (items.Count < 2000)
                     {
                         items.Add(new BackfillInvoiceProjectLinksItem(
                             InvoiceId: inv.Id,
                             InvoiceNumber: inv.InvoiceNumber,
-                            InvoiceProjectCode: invCode,
-                            Outcome: "Skipped",
-                            MatchedProjectId: null,
+                            InvoiceProjectCode: (inv.ProjectCode ?? "").Trim(),
+                            Outcome: "NoProject",
+                            MatchedProjectId: inv.ProjectId,
                             MatchedProjectLabel: null,
-                            Note: "Invoice.ProjectCode was empty after trimming."
+                            Note: $"ProjectId={inv.ProjectId.Value} not found (or blank JobNameOrNumber)."
                         ));
                     }
+
                     continue;
                 }
 
-                if (inv.ProjectId.HasValue)
+                var newJobName = ProjectCodeHelpers.GetJobName(projectLabel)?.Trim() ?? "";
+                var newProjectCode = ProjectCodeHelpers.GetBaseProjectCode(projectLabel)?.Trim() ?? "";
+
+                // Decide if there is anything to change
+                var curJobName = (inv.JobName ?? "").Trim();
+                var curProjectCode = (inv.ProjectCode ?? "").Trim();
+
+                bool jobNameDiffers = !string.Equals(curJobName, newJobName, StringComparison.Ordinal);
+                bool projectCodeDiffers = !string.IsNullOrWhiteSpace(newProjectCode) &&
+                                          !string.Equals(curProjectCode, newProjectCode, StringComparison.OrdinalIgnoreCase);
+
+                if (!jobNameDiffers && !projectCodeDiffers)
                 {
                     skippedAlreadyLinked++;
-                    continue;
-                }
 
-                if (!projectsByBaseCode.TryGetValue(invCode, out var matches) || matches.Count == 0)
-                {
-                    skippedNoMatch++;
                     if (items.Count < 2000)
                     {
                         items.Add(new BackfillInvoiceProjectLinksItem(
                             InvoiceId: inv.Id,
                             InvoiceNumber: inv.InvoiceNumber,
-                            InvoiceProjectCode: invCode,
-                            Outcome: "NoMatch",
-                            MatchedProjectId: null,
-                            MatchedProjectLabel: null,
-                            Note: "No Project matched this base code."
+                            InvoiceProjectCode: curProjectCode,
+                            Outcome: "NoChange",
+                            MatchedProjectId: inv.ProjectId,
+                            MatchedProjectLabel: projectLabel,
+                            Note: null
                         ));
                     }
+
                     continue;
                 }
-
-                if (matches.Count > 1)
-                {
-                    skippedAmbiguous++;
-                    if (items.Count < 2000)
-                    {
-                        var note = "Ambiguous base code. Matches: " + string.Join(" | ", matches.Select(m => $"{m.Id}:{m.Label}"));
-                        items.Add(new BackfillInvoiceProjectLinksItem(
-                            InvoiceId: inv.Id,
-                            InvoiceNumber: inv.InvoiceNumber,
-                            InvoiceProjectCode: invCode,
-                            Outcome: "Ambiguous",
-                            MatchedProjectId: null,
-                            MatchedProjectLabel: null,
-                            Note: note
-                        ));
-                    }
-                    continue;
-                }
-
-                // Exactly one match -> safe to link
-                var match = matches[0];
 
                 if (!dryRun)
                 {
-                    inv.ProjectId = match.Id;
+                    inv.JobName = newJobName;
 
-                    // Optional normalization: keep invoice strings aligned to the canonical Project
-                    inv.JobName = match.Label;
-
-                    // Ensure stored ProjectCode is the base code derived from the canonical Project label
-                    // (prevents drift if legacy data had weird spacing/dashes)
-                    var canonicalBase = ProjectCodeHelpers.GetBaseProjectCode(match.Label)?.Trim();
-                    if (!string.IsNullOrWhiteSpace(canonicalBase))
-                        inv.ProjectCode = canonicalBase;
+                    // Optional: keep ProjectCode aligned to the canonical base code from the Project label
+                    if (!string.IsNullOrWhiteSpace(newProjectCode))
+                        inv.ProjectCode = newProjectCode;
                 }
 
                 updated++;
+
                 if (items.Count < 2000)
                 {
                     items.Add(new BackfillInvoiceProjectLinksItem(
                         InvoiceId: inv.Id,
                         InvoiceNumber: inv.InvoiceNumber,
-                        InvoiceProjectCode: invCode,
+                        InvoiceProjectCode: curProjectCode,
                         Outcome: dryRun ? "WouldUpdate" : "Updated",
-                        MatchedProjectId: match.Id,
-                        MatchedProjectLabel: match.Label,
-                        Note: null
+                        MatchedProjectId: inv.ProjectId,
+                        MatchedProjectLabel: projectLabel,
+                        Note: jobNameDiffers
+                            ? $"JobName: '{curJobName}' -> '{newJobName}'"
+                            : $"ProjectCode: '{curProjectCode}' -> '{newProjectCode}'"
                     ));
                 }
             }
@@ -556,16 +532,16 @@ namespace Mep1.Erp.Api.Controllers
             {
                 await _db.SaveChangesAsync();
 
-                // One audit entry (not per invoice)
+                var a = GetActorForAudit();
                 await _audit.LogAsync(
-                    action: "Invoice.BackfillProjectLinks",
+                    actorWorkerId: a.WorkerId,
+                    subjectWorkerId: a.WorkerId,
+                    actorRole: a.Role,
+                    actorSource: a.Source,
+                    action: "Invoice.BackfillJobName",
                     entityType: "Invoice",
                     entityId: "(bulk)",
-                    summary: $"Backfilled ProjectId for {updated} invoices (take={take}).",
-                    actorWorkerId: GetActorForAudit().WorkerId,
-                    subjectWorkerId: GetActorForAudit().WorkerId,
-                    actorRole: GetActorForAudit().Role,
-                    actorSource: GetActorForAudit().Source
+                    summary: $"Backfilled JobName for {updated} invoices (take={take})."
                 );
             }
 
