@@ -2000,7 +2000,11 @@ namespace Mep1.Erp.Desktop
         public string EditApplicationNumberText
         {
             get => _editApplicationNumberText;
-            set => SetField(ref _editApplicationNumberText, value, nameof(EditApplicationNumberText));
+            set
+            {
+                if (SetField(ref _editApplicationNumberText, value, nameof(EditApplicationNumberText)))
+                    UpdateEditApplicationValidation();
+            }
         }
 
         private string _editApplicationStatusText = "Draft";
@@ -6845,6 +6849,7 @@ namespace Mep1.Erp.Desktop
 
                 var dto = new UpdateApplicationRequestDto
                 {
+                    ApplicationNumber = string.IsNullOrWhiteSpace(EditApplicationNumberText) ? null : EditApplicationNumberText.Trim(),
                     ProjectId = EditApplicationSelectedProject?.ProjectId,
                     ApplicationDate = EditApplicationDate.Value.Date,
                     NetAmount = net,

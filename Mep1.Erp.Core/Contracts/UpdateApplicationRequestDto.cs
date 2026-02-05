@@ -2,6 +2,7 @@
 
 public sealed class UpdateApplicationRequestDto
 {
+    public string? ApplicationNumber { get; set; }
     public int? ProjectId { get; set; }
 
     public DateTime ApplicationDate { get; set; }

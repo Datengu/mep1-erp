@@ -313,6 +313,33 @@ namespace Mep1.Erp.Api.Controllers
                 entity.ProjectCode = ProjectCodeHelpers.GetBaseProjectCode(project.JobNameOrNumber);
             }
 
+            // --- Allow editing Application Ref (safe: links use Application.Id) ---
+            var desiredNumber = entity.ApplicationNumber;
+
+            // If provided, parse like invoices: "1", "01", "001", "APP001"
+            if (!string.IsNullOrWhiteSpace(dto.ApplicationNumber))
+            {
+                var parsed = ParseApplicationNumber(dto.ApplicationNumber);
+                if (parsed <= 0)
+                    return BadRequest("Application ref must be like APP001 (or 1 / 01 / 001).");
+
+                desiredNumber = parsed;
+            }
+
+            // If project changed OR number provided, enforce uniqueness per project (matches unique index)
+            if (dto.ProjectId != null || !string.IsNullOrWhiteSpace(dto.ApplicationNumber))
+            {
+                var conflict = await _db.Applications.AnyAsync(a =>
+                    a.ProjectCode == entity.ProjectCode &&
+                    a.ApplicationNumber == desiredNumber &&
+                    a.Id != entity.Id);
+
+                if (conflict)
+                    return BadRequest($"Application ref {FormatApplicationRef(desiredNumber)} already exists for project {entity.ProjectCode}.");
+            }
+
+            entity.ApplicationNumber = desiredNumber;
+
             entity.DateApplied = AsUtcDate(dto.ApplicationDate);
 
             entity.SubmittedNetAmount = dto.NetAmount;
