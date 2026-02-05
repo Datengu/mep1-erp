@@ -9,7 +9,7 @@
   <Identity
     Name="d87b2c99-95f2-4536-a1b6-00562012d8f1"
     Publisher="CN=MEP1 BIM LTD"
-    Version="1.1.0.4" />
+    Version="1.1.0.5" />
 
   <Properties>
     <DisplayName>Mep1.Erp.Desktop.Package</DisplayName>
