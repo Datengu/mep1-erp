@@ -2483,7 +2483,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Payment" Width="90">
+                                        <DataGridTemplateColumn Header="Payment (Gross)" Width="110">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -2619,7 +2619,7 @@
                                         </DataGridTemplateColumn>
 
                                         <!-- Notes (wrapped) -->
-                                        <DataGridTemplateColumn Header="Notes" Width="300">
+                                        <DataGridTemplateColumn Header="Notes" Width="280">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding Notes}"
