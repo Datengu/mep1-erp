@@ -2000,7 +2000,11 @@ namespace Mep1.Erp.Desktop
         public string EditApplicationNumberText
         {
             get => _editApplicationNumberText;
-            set => SetField(ref _editApplicationNumberText, value, nameof(EditApplicationNumberText));
+            set
+            {
+                if (SetField(ref _editApplicationNumberText, value, nameof(EditApplicationNumberText)))
+                    UpdateEditApplicationValidation();
+            }
         }
 
         private string _editApplicationStatusText = "Draft";
@@ -2513,80 +2517,6 @@ namespace Mep1.Erp.Desktop
             var companies = await _api.GetCompaniesAsync();
             foreach (var c in companies)
                 Companies.Add(c);
-        }
-
-        // ---------------------------------------------
-        // Importer runner
-        // ---------------------------------------------
-
-        private string? FindImporterExe()
-        {
-            var baseDir = AppContext.BaseDirectory;
-
-            var rootDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", ".."));
-
-            var rootExe = Path.Combine(rootDir, "Mep1.Erp.Importer.exe");
-            if (File.Exists(rootExe))
-                return rootExe;
-
-            var importerBinRoot = Path.Combine(rootDir, "Mep1.Erp.Importer", "bin");
-            if (!Directory.Exists(importerBinRoot))
-                return null;
-
-            var exe = Directory
-                .GetFiles(importerBinRoot, "Mep1.Erp.Importer.exe", SearchOption.AllDirectories)
-                .OrderByDescending(f => f)
-                .FirstOrDefault();
-
-            return exe;
-        }
-
-        private async void RunImportButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                RunImportButton.IsEnabled = false;
-                RunImportButton.Content = "Running importer...";
-
-                var exePath = FindImporterExe();
-                if (exePath == null)
-                {
-                    WpfMessageBox.Show(
-                        "Could not find the importer executable.\nExpected Mep1.Erp.Importer.exe in the solution root or under Mep1.Erp.Importer\\bin.",
-                        "Importer not found",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-                    return;
-                }
-
-                await Task.Run(() =>
-                {
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName = exePath,
-                        WorkingDirectory = Path.GetDirectoryName(exePath),
-                        UseShellExecute = true
-                    };
-
-                    using var proc = Process.Start(psi);
-                    proc?.WaitForExit();
-                });
-
-                await LoadDataAsync();
-            }
-            catch (Exception ex)
-            {
-                WpfMessageBox.Show(
-                    "Error while running importer:\n\n" + ex.Message,
-                    "Import error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-            finally
-            {
-                RunImportButton.IsEnabled = true;
-                RunImportButton.Content = "Run Import (Refresh Data)";
-            }
         }
 
         // ---------------------------------------------
@@ -6845,6 +6775,7 @@ namespace Mep1.Erp.Desktop
 
                 var dto = new UpdateApplicationRequestDto
                 {
+                    ApplicationNumber = string.IsNullOrWhiteSpace(EditApplicationNumberText) ? null : EditApplicationNumberText.Trim(),
                     ProjectId = EditApplicationSelectedProject?.ProjectId,
                     ApplicationDate = EditApplicationDate.Value.Date,
                     NetAmount = net,
@@ -6855,8 +6786,12 @@ namespace Mep1.Erp.Desktop
                     Notes = string.IsNullOrWhiteSpace(EditApplicationNotesText) ? null : EditApplicationNotesText.Trim()
                 };
 
+                // Capture BEFORE refresh (refresh/filter can clear selection)
+                var appId = SelectedApplicationListItem.Id;
+                var linkedInvoiceId = SelectedApplicationListItem.InvoiceId;
+
                 EditApplicationStatusBarText = "Saving changes...";
-                await _api.UpdateApplicationAsync(SelectedApplicationListItem.Id, dto);
+                await _api.UpdateApplicationAsync(appId, dto);
 
                 EditApplicationStatusBarText = "Saved.";
 
@@ -6864,7 +6799,11 @@ namespace Mep1.Erp.Desktop
                 Applications = await _api.GetApplicationsAsync();
                 ApplyApplicationFilter();
 
-                if (SelectedApplicationListItem.InvoiceId.HasValue)
+                // Re-select the same application if it still exists
+                SelectedApplicationListItem = Applications.FirstOrDefault(a => a.Id == appId);
+
+                // Only refresh invoices based on what was linked before refresh
+                if (linkedInvoiceId.HasValue)
                     await RefreshInvoicesAsync();
 
                 await RefreshSelectedProjectBreakdownIfMatchesAsync(oldJobKey);
@@ -7214,77 +7153,6 @@ namespace Mep1.Erp.Desktop
 
                 SelectedProjectCcfRefsView.Clear();
             }
-        }
-
-        private async void BackfillInvoiceProjectLinks_DryRun_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                SettingsBackfillResultText = "Running dry run...";
-                var result = await _api.BackfillInvoiceProjectLinksAsync(dryRun: true, take: 5000);
-                SettingsBackfillResultText = FormatBackfillResult(result);
-            }
-            catch (Exception ex)
-            {
-                SettingsBackfillResultText = "Dry run failed:\n\n" + ex.Message;
-            }
-        }
-
-        private async void BackfillInvoiceProjectLinks_Apply_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var confirm = WpfMessageBox.Show(
-                    "This will WRITE changes to the database (set Invoice.ProjectId for matched invoices).\n\nAre you sure you want to apply?",
-                    "Confirm apply backfill",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-
-                if (confirm != MessageBoxResult.Yes)
-                    return;
-
-                SettingsBackfillResultText = "Applying backfill...";
-                var result = await _api.BackfillInvoiceProjectLinksAsync(dryRun: false, take: 5000);
-                SettingsBackfillResultText = FormatBackfillResult(result);
-            }
-            catch (Exception ex)
-            {
-                SettingsBackfillResultText = "Apply failed:\n\n" + ex.Message;
-            }
-        }
-
-        private static string FormatBackfillResult(BackfillInvoiceProjectLinksResultDto r)
-        {
-            var sb = new System.Text.StringBuilder();
-
-            sb.AppendLine($"DryRun: {r.DryRun}");
-            sb.AppendLine($"TotalCandidates: {r.TotalCandidates}");
-            sb.AppendLine($"Updated: {r.Updated}");
-            sb.AppendLine($"SkippedAlreadyLinked: {r.SkippedAlreadyLinked}");
-            sb.AppendLine($"SkippedNoMatch: {r.SkippedNoMatch}");
-            sb.AppendLine($"SkippedAmbiguous: {r.SkippedAmbiguous}");
-            sb.AppendLine();
-
-            // show up to first 50 items to keep it readable
-            var take = Math.Min(r.Items?.Count ?? 0, 50);
-            if (take == 0)
-            {
-                sb.AppendLine("No item details returned.");
-                return sb.ToString();
-            }
-
-            sb.AppendLine($"First {take} items:");
-            sb.AppendLine("------------------------------------------------------------");
-
-            for (int i = 0; i < take; i++)
-            {
-                var it = r.Items[i];
-                sb.AppendLine($"{it.Outcome} | InvId={it.InvoiceId} | {it.InvoiceNumber} | Code={it.InvoiceProjectCode} | ProjectId={it.MatchedProjectId} | {it.MatchedProjectLabel}");
-                if (!string.IsNullOrWhiteSpace(it.Note))
-                    sb.AppendLine("  Note: " + it.Note);
-            }
-
-            return sb.ToString();
         }
 
         private async Task RefreshSelectedProjectBreakdownIfMatchesAsync(string? affectedJobKey)

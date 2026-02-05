@@ -17,5 +17,9 @@ namespace Mep1.Erp.Core.Contracts
         public DateTime? NextDueDate { get; init; }
         public int UpcomingApplicationCount { get; init; }
         public DateTime? NextApplicationDate { get; init; }
+        public decimal ApplicationsAppliedNotInvoicedNet { get; init; }
+        public int ApplicationsAppliedNotInvoicedCount { get; init; }
+        public decimal ApplicationsAgreedReadyToInvoiceNet { get; init; }
+        public int ApplicationsAgreedReadyToInvoiceCount { get; init; }
     }
 }
