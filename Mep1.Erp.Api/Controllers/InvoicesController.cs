@@ -7,6 +7,7 @@ using Mep1.Erp.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
 
 namespace Mep1.Erp.Api.Controllers
 {
@@ -390,6 +391,200 @@ namespace Mep1.Erp.Api.Controllers
         {
             s = (s ?? "").Trim();
             return string.IsNullOrWhiteSpace(s) ? "Outstanding" : s;
+        }
+
+        public sealed record BackfillInvoiceProjectLinksResult(
+            bool DryRun,
+            int TotalCandidates,
+            int Updated,
+            int SkippedAlreadyLinked,
+            int SkippedNoMatch,
+            int SkippedAmbiguous,
+            List<BackfillInvoiceProjectLinksItem> Items
+        );
+
+        public sealed record BackfillInvoiceProjectLinksItem(
+            int InvoiceId,
+            string InvoiceNumber,
+            string InvoiceProjectCode,
+            string Outcome,
+            int? MatchedProjectId,
+            string? MatchedProjectLabel,
+            string? Note
+        );
+
+        // Admin maintenance: backfill Invoice.ProjectId from Invoice.ProjectCode by matching Projects base codes.
+        // Dry-run by default (safe). Use dryRun=false to apply.
+        [HttpPost("admin/backfill-project-links")]
+        public async Task<ActionResult<BackfillInvoiceProjectLinksResult>> BackfillInvoiceProjectLinks(
+            [FromQuery] bool dryRun = true,
+            [FromQuery] int take = 5000)
+        {
+            if (take < 1) take = 1;
+            if (take > 50000) take = 50000;
+
+            // Build lookup: BaseCode -> projects that share it (ambiguous codes are handled safely)
+            var projects = await _db.Projects
+                .AsNoTracking()
+                .Select(p => new { p.Id, p.JobNameOrNumber })
+                .ToListAsync();
+
+            var projectsByBaseCode = new Dictionary<string, List<(int Id, string Label)>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var p in projects)
+            {
+                var baseCode = ProjectCodeHelpers.GetBaseProjectCode(p.JobNameOrNumber)?.Trim();
+                if (string.IsNullOrWhiteSpace(baseCode))
+                    continue;
+
+                if (!projectsByBaseCode.TryGetValue(baseCode, out var list))
+                {
+                    list = new List<(int, string)>();
+                    projectsByBaseCode[baseCode] = list;
+                }
+
+                list.Add((p.Id, p.JobNameOrNumber));
+            }
+
+            // Candidates: invoices with no ProjectId but with a project code
+            var invoices = await _db.Invoices
+                .Where(i => i.ProjectId == null && i.ProjectCode != null && i.ProjectCode != "")
+                .OrderBy(i => i.Id)
+                .Take(take)
+                .ToListAsync();
+
+            var items = new List<BackfillInvoiceProjectLinksItem>(capacity: Math.Min(invoices.Count, 2000));
+
+            int updated = 0;
+            int skippedAlreadyLinked = 0;
+            int skippedNoMatch = 0;
+            int skippedAmbiguous = 0;
+
+            foreach (var inv in invoices)
+            {
+                // Defensive trimming
+                var invCode = (inv.ProjectCode ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(invCode))
+                {
+                    skippedNoMatch++;
+                    if (items.Count < 2000)
+                    {
+                        items.Add(new BackfillInvoiceProjectLinksItem(
+                            InvoiceId: inv.Id,
+                            InvoiceNumber: inv.InvoiceNumber,
+                            InvoiceProjectCode: invCode,
+                            Outcome: "Skipped",
+                            MatchedProjectId: null,
+                            MatchedProjectLabel: null,
+                            Note: "Invoice.ProjectCode was empty after trimming."
+                        ));
+                    }
+                    continue;
+                }
+
+                if (inv.ProjectId.HasValue)
+                {
+                    skippedAlreadyLinked++;
+                    continue;
+                }
+
+                if (!projectsByBaseCode.TryGetValue(invCode, out var matches) || matches.Count == 0)
+                {
+                    skippedNoMatch++;
+                    if (items.Count < 2000)
+                    {
+                        items.Add(new BackfillInvoiceProjectLinksItem(
+                            InvoiceId: inv.Id,
+                            InvoiceNumber: inv.InvoiceNumber,
+                            InvoiceProjectCode: invCode,
+                            Outcome: "NoMatch",
+                            MatchedProjectId: null,
+                            MatchedProjectLabel: null,
+                            Note: "No Project matched this base code."
+                        ));
+                    }
+                    continue;
+                }
+
+                if (matches.Count > 1)
+                {
+                    skippedAmbiguous++;
+                    if (items.Count < 2000)
+                    {
+                        var note = "Ambiguous base code. Matches: " + string.Join(" | ", matches.Select(m => $"{m.Id}:{m.Label}"));
+                        items.Add(new BackfillInvoiceProjectLinksItem(
+                            InvoiceId: inv.Id,
+                            InvoiceNumber: inv.InvoiceNumber,
+                            InvoiceProjectCode: invCode,
+                            Outcome: "Ambiguous",
+                            MatchedProjectId: null,
+                            MatchedProjectLabel: null,
+                            Note: note
+                        ));
+                    }
+                    continue;
+                }
+
+                // Exactly one match -> safe to link
+                var match = matches[0];
+
+                if (!dryRun)
+                {
+                    inv.ProjectId = match.Id;
+
+                    // Optional normalization: keep invoice strings aligned to the canonical Project
+                    inv.JobName = match.Label;
+
+                    // Ensure stored ProjectCode is the base code derived from the canonical Project label
+                    // (prevents drift if legacy data had weird spacing/dashes)
+                    var canonicalBase = ProjectCodeHelpers.GetBaseProjectCode(match.Label)?.Trim();
+                    if (!string.IsNullOrWhiteSpace(canonicalBase))
+                        inv.ProjectCode = canonicalBase;
+                }
+
+                updated++;
+                if (items.Count < 2000)
+                {
+                    items.Add(new BackfillInvoiceProjectLinksItem(
+                        InvoiceId: inv.Id,
+                        InvoiceNumber: inv.InvoiceNumber,
+                        InvoiceProjectCode: invCode,
+                        Outcome: dryRun ? "WouldUpdate" : "Updated",
+                        MatchedProjectId: match.Id,
+                        MatchedProjectLabel: match.Label,
+                        Note: null
+                    ));
+                }
+            }
+
+            if (!dryRun)
+            {
+                await _db.SaveChangesAsync();
+
+                // One audit entry (not per invoice)
+                await _audit.LogAsync(
+                    action: "Invoice.BackfillProjectLinks",
+                    entityType: "Invoice",
+                    entityId: "(bulk)",
+                    summary: $"Backfilled ProjectId for {updated} invoices (take={take}).",
+                    actorWorkerId: GetActorForAudit().WorkerId,
+                    subjectWorkerId: GetActorForAudit().WorkerId,
+                    actorRole: GetActorForAudit().Role,
+                    actorSource: GetActorForAudit().Source
+                );
+            }
+
+            var result = new BackfillInvoiceProjectLinksResult(
+                DryRun: dryRun,
+                TotalCandidates: invoices.Count,
+                Updated: updated,
+                SkippedAlreadyLinked: skippedAlreadyLinked,
+                SkippedNoMatch: skippedNoMatch,
+                SkippedAmbiguous: skippedAmbiguous,
+                Items: items
+            );
+
+            return Ok(result);
         }
 
     }
