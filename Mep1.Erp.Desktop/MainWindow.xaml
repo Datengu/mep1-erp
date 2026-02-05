@@ -3823,7 +3823,6 @@
                                                            Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
                                                 <TextBox Grid.Row="0" Grid.Column="1"
                                                          Text="{Binding EditApplicationNumberText, UpdateSourceTrigger=PropertyChanged}"
-                                                         Opacity="0.85"
                                                          Margin="0,0,12,6"
                                                          ToolTip="Accepts 1 / 01 / 001 / APP001. Normalized on save."/>
 
