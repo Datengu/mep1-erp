@@ -1,4 +1,5 @@
-﻿using Mep1.Erp.Application;
+﻿using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
+using Mep1.Erp.Application;
 using Mep1.Erp.Core;
 using Mep1.Erp.Core.Contracts;
 using System;
@@ -6,14 +7,16 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
-using System.Globalization;
+using Windows.ApplicationModel;
 using static Mep1.Erp.Application.Reporting;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using Binding = System.Windows.Data.Binding;
@@ -27,6 +30,51 @@ namespace Mep1.Erp.Desktop
         public event PropertyChangedEventHandler? PropertyChanged;
 
         private static readonly CultureInfo UkCulture = CultureInfo.GetCultureInfo("en-GB");
+
+        public string AppVersion
+        {
+            get
+            {
+                // 1) Packaged/MSIX version (authoritative when installed)
+                try
+                {
+                    var v = Package.Current.Id.Version;
+                    return $"v{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
+                }
+                catch
+                {
+                    // ignored - unpackaged
+                }
+
+                // 2) Unpackaged fallback (VS run): read assembly version info
+                try
+                {
+                    var asm = Assembly.GetExecutingAssembly();
+
+                    // Prefer InformationalVersion if you ever add it (supports SemVer + metadata)
+                    var info = asm
+                        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                        ?.InformationalVersion;
+
+                    if (!string.IsNullOrWhiteSpace(info))
+                    {
+                        var clean = info.Split('+')[0]; // remove git hash
+                        return $"v{clean}";
+                    }
+
+                    // Otherwise use AssemblyVersion (matches your Directory.Build.props AssemblyVersion)
+                    var v = asm.GetName().Version;
+                    if (v != null)
+                        return $"v{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
+                }
+                catch
+                {
+                    // ignored
+                }
+
+                return "v-unknown";
+            }
+        }
 
         // ---------------------------------------------
         // Bound properties
@@ -4287,6 +4335,8 @@ namespace Mep1.Erp.Desktop
                     return;
                 }
 
+                var affectedJobKey = NewInvoiceSelectedProject?.JobNameOrNumber;
+
                 var dto = new CreateInvoiceRequestDto
                 {
                     ProjectId = NewInvoiceSelectedProject.ProjectId,
@@ -4336,7 +4386,10 @@ namespace Mep1.Erp.Desktop
                 Invoices = await _api.GetInvoicesAsync();
                 ApplyInvoiceFilter();
 
-                // Optional: clear form after save
+                // Refresh Projects -> Project breakdown if we're currently viewing the same project
+                await RefreshSelectedProjectBreakdownIfMatchesAsync(affectedJobKey);
+
+                // Clear form after save
                 ClearAddInvoiceForm(setStatusMessage: false);
 
                 SuggestNextInvoiceNumberIfEmpty();
@@ -4579,6 +4632,8 @@ namespace Mep1.Erp.Desktop
                 return;
             }
 
+            var affectedJobKey = EditInvoiceSelectedProject?.JobNameOrNumber;
+
             var vatRate = ParseVatRateText(EditInvoiceVatRateText);
 
             try
@@ -4618,6 +4673,8 @@ namespace Mep1.Erp.Desktop
 
                 // Refresh invoices list so grid reflects changes
                 await RefreshInvoicesAsync();
+
+                await RefreshSelectedProjectBreakdownIfMatchesAsync(affectedJobKey);
             }
             catch (Exception ex)
             {
@@ -6519,6 +6576,8 @@ namespace Mep1.Erp.Desktop
 
                 NewApplicationNumberText = normalizedRef;
 
+                var affectedJobKey = NewApplicationSelectedProject?.JobNameOrNumber;
+
                 var dto = new CreateApplicationRequestDto
                 {
                     ProjectId = NewApplicationSelectedProject.ProjectId,
@@ -6540,6 +6599,8 @@ namespace Mep1.Erp.Desktop
                 // Refresh list + keep filter semantics
                 Applications = await _api.GetApplicationsAsync();
                 ApplyApplicationFilter();
+
+                await RefreshSelectedProjectBreakdownIfMatchesAsync(affectedJobKey);
 
                 // Clear form (if you already have this helper)
                 ClearAddApplicationForm(setStatusMessage: false);
@@ -6735,6 +6796,19 @@ namespace Mep1.Erp.Desktop
                     return;
                 }
 
+                string? oldJobKey = null;
+
+                try
+                {
+                    var before = await _api.GetApplicationByIdAsync(SelectedApplicationListItem.Id);
+                    if (before.ProjectId.HasValue)
+                        oldJobKey = ApplicationProjectPicklist.FirstOrDefault(p => p.ProjectId == before.ProjectId.Value)?.JobNameOrNumber;
+                }
+                catch
+                {
+                    // ignore - we'll still refresh new side if we can
+                }
+
                 EditApplicationStatusBarText = "";
                 UpdateEditApplicationValidation();
 
@@ -6767,6 +6841,8 @@ namespace Mep1.Erp.Desktop
                     return;
                 }
 
+                var newJobKey = EditApplicationSelectedProject?.JobNameOrNumber;
+
                 var dto = new UpdateApplicationRequestDto
                 {
                     ProjectId = EditApplicationSelectedProject?.ProjectId,
@@ -6787,6 +6863,12 @@ namespace Mep1.Erp.Desktop
                 // Refresh list + view
                 Applications = await _api.GetApplicationsAsync();
                 ApplyApplicationFilter();
+
+                if (SelectedApplicationListItem.InvoiceId.HasValue)
+                    await RefreshInvoicesAsync();
+
+                await RefreshSelectedProjectBreakdownIfMatchesAsync(oldJobKey);
+                await RefreshSelectedProjectBreakdownIfMatchesAsync(newJobKey);
             }
             catch (Exception ex)
             {
@@ -6870,6 +6952,9 @@ namespace Mep1.Erp.Desktop
                 // Refresh list + view
                 Applications = await _api.GetApplicationsAsync();
                 ApplyApplicationFilter();
+
+                // Refresh invoices too (so invoice grid shows updated linked APP ref etc.)
+                await RefreshInvoicesAsync();
 
                 WpfMessageBox.Show(
                     "Linked successfully.",
@@ -7006,6 +7091,7 @@ namespace Mep1.Erp.Desktop
 
                 AddInvoiceStatusText = "Invoice form pre-filled from application. Enter invoice number and save to link.";
                 UpdateAddInvoiceValidation();
+
             }
             catch (Exception ex)
             {
@@ -7081,12 +7167,23 @@ namespace Mep1.Erp.Desktop
             }
         }
 
-        void OpenEditProjectTab_Click(object sender, RoutedEventArgs e)
+        private async void OpenEditProjectTab_Click(object sender, RoutedEventArgs e)
         {
-            // Switch to Edit Project tab if it exists
-            // This assumes the tab order is: Overview, Project, Add Project, Edit Project
-            // If your order differs, adjust the index.
-            ProjectsTabControl.SelectedIndex = 3;
+            try
+            {
+                if (SelectedProject == null)
+                {
+                    EditProjectStatusText = "Select a project first.";
+                    return;
+                }
+
+                await LoadEditProjectAsync(SelectedProject.JobNameOrNumber);
+                SelectProjectsTab("Edit Project");
+            }
+            catch (Exception ex)
+            {
+                EditProjectStatusText = "Failed to open edit: " + ex.Message;
+            }
         }
 
         private async Task LoadSelectedProjectCcfRefsViewAsync(string jobKey)
@@ -7188,6 +7285,24 @@ namespace Mep1.Erp.Desktop
             }
 
             return sb.ToString();
+        }
+
+        private async Task RefreshSelectedProjectBreakdownIfMatchesAsync(string? affectedJobKey)
+        {
+            if (string.IsNullOrWhiteSpace(affectedJobKey))
+                return;
+
+            var selected = SelectedProject;
+            if (selected == null)
+                return;
+
+            if (!string.Equals(selected.JobNameOrNumber, affectedJobKey, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            // IMPORTANT: invalidate cache so we don't show stale drilldown rows
+            _projectDrilldownCache.Remove(selected.JobNameOrNumber);
+
+            await LoadSelectedProjectDetailsAsync(selected);
         }
     }
 }
