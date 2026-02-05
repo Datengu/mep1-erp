@@ -6786,8 +6786,12 @@ namespace Mep1.Erp.Desktop
                     Notes = string.IsNullOrWhiteSpace(EditApplicationNotesText) ? null : EditApplicationNotesText.Trim()
                 };
 
+                // Capture BEFORE refresh (refresh/filter can clear selection)
+                var appId = SelectedApplicationListItem.Id;
+                var linkedInvoiceId = SelectedApplicationListItem.InvoiceId;
+
                 EditApplicationStatusBarText = "Saving changes...";
-                await _api.UpdateApplicationAsync(SelectedApplicationListItem.Id, dto);
+                await _api.UpdateApplicationAsync(appId, dto);
 
                 EditApplicationStatusBarText = "Saved.";
 
@@ -6795,7 +6799,11 @@ namespace Mep1.Erp.Desktop
                 Applications = await _api.GetApplicationsAsync();
                 ApplyApplicationFilter();
 
-                if (SelectedApplicationListItem.InvoiceId.HasValue)
+                // Re-select the same application if it still exists
+                SelectedApplicationListItem = Applications.FirstOrDefault(a => a.Id == appId);
+
+                // Only refresh invoices based on what was linked before refresh
+                if (linkedInvoiceId.HasValue)
                     await RefreshInvoicesAsync();
 
                 await RefreshSelectedProjectBreakdownIfMatchesAsync(oldJobKey);
