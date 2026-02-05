@@ -3098,7 +3098,7 @@
                                                     <RowDefinition Height="Auto"/>
                                                 </Grid.RowDefinitions>
 
-                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Payment Amount"
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Payment Amount (Gross)"
                                                            Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
 
                                                 <TextBox Grid.Row="0" Grid.Column="1"
