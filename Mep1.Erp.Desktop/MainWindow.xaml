@@ -196,10 +196,10 @@
                                     MouseLeftButtonUp="DashboardOutstandingCard_MouseLeftButtonUp"
                                     Cursor="Hand">
                                 <StackPanel>
-                                    <TextBlock Text="Outstanding (Net)"
+                                    <TextBlock Text="Outstanding (Gross)"
                                                FontSize="12"
                                                Opacity="0.8"/>
-                                    <TextBlock Text="{Binding Dashboard.OutstandingNet, StringFormat='£{0:N2}'}"
+                                    <TextBlock Text="{Binding Dashboard.OutstandingGross, StringFormat='£{0:N2}'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Margin="0,2,0,0"/>
@@ -218,10 +218,10 @@
                                     MouseLeftButtonUp="DashboardOverdueCard_MouseLeftButtonUp"
                                     Cursor="Hand">
                                 <StackPanel>
-                                    <TextBlock Text="Overdue (Net)"
+                                    <TextBlock Text="Overdue (Gross)"
                                                FontSize="12"
                                                Opacity="0.8"/>
-                                    <TextBlock Text="{Binding Dashboard.OverdueOutstandingNet, StringFormat='£{0:N2}'}"
+                                    <TextBlock Text="{Binding Dashboard.OverdueOutstandingGross, StringFormat='£{0:N2}'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Margin="0,2,0,0"/>
@@ -240,10 +240,10 @@
                                     MouseLeftButtonUp="DashboardDueNext30Card_MouseLeftButtonUp"
                                     Cursor="Hand">
                                 <StackPanel>
-                                    <TextBlock Text="Due in next 30 days (Net)"
+                                    <TextBlock Text="Due in next 30 days (Gross)"
                                                FontSize="12"
                                                Opacity="0.8"/>
-                                    <TextBlock Text="{Binding Dashboard.DueNext30DaysOutstandingNet, StringFormat='£{0:N2}'}"
+                                    <TextBlock Text="{Binding Dashboard.DueNext30DaysOutstandingGross, StringFormat='£{0:N2}'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Margin="0,2,0,0"/>

@@ -53,7 +53,6 @@ namespace Mep1.Erp.Api.Controllers
 
                 var summary = Reporting.GetDashboardSummary(_db, settings);
 
-
                 // Applications (cashflow pipeline)
                 // Rules:
                 // - Exclude Draft by only including Submitted/Applied/Agreed
@@ -103,7 +102,9 @@ namespace Mep1.Erp.Api.Controllers
                     ApplicationsAppliedNotInvoicedNet = applicationsAppliedNotInvoicedNet,
                     ApplicationsAppliedNotInvoicedCount = applicationsAppliedNotInvoicedCount,
                     ApplicationsAgreedReadyToInvoiceNet = applicationsAgreedReadyToInvoiceNet,
-                    ApplicationsAgreedReadyToInvoiceCount = applicationsAgreedReadyToInvoiceCount
+                    ApplicationsAgreedReadyToInvoiceCount = applicationsAgreedReadyToInvoiceCount,
+                    OverdueOutstandingGross = summary.OverdueOutstandingGross,
+                    DueNext30DaysOutstandingGross = summary.DueNext30DaysOutstandingGross
                 });
             }
             catch (Exception ex) 

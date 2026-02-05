@@ -20,7 +20,9 @@ namespace Mep1.Erp.Application
         decimal DueNext30DaysOutstandingNet,
         DateTime? NextDueDate,
         int UpcomingApplicationCount,
-        DateTime? NextApplicationDate);
+        DateTime? NextApplicationDate,
+        decimal OverdueOutstandingGross,
+        decimal DueNext30DaysOutstandingGross);
 
     public record ProjectSummary(
         string JobNameOrNumber,
@@ -306,9 +308,11 @@ namespace Mep1.Erp.Application
 
             int overdueCount = 0;
             decimal overdueOutstandingNet = 0m;
+            decimal overdueOutstandingGross = 0m;
 
             int dueNext30DaysCount = 0;
             decimal dueNext30DaysOutstandingNet = 0m;
+            decimal dueNext30DaysOutstandingGross = 0m;
 
             DateTime? nextDueDate = null;
             DateTime? latestInvoiceDate = null;
@@ -339,6 +343,7 @@ namespace Mep1.Erp.Application
                     {
                         overdueCount++;
                         overdueOutstandingNet += outNet;
+                        overdueOutstandingGross += outGross;
                     }
                     else
                     {
@@ -350,6 +355,7 @@ namespace Mep1.Erp.Application
                         {
                             dueNext30DaysCount++;
                             dueNext30DaysOutstandingNet += outNet;
+                            dueNext30DaysOutstandingGross += outGross;
                         }
                     }
                 }
@@ -388,7 +394,9 @@ namespace Mep1.Erp.Application
                 DueNext30DaysOutstandingNet: dueNext30DaysOutstandingNet,
                 NextDueDate: nextDueDate,
                 UpcomingApplicationCount: upcomingAppCount,
-                NextApplicationDate: nextAppDate);
+                NextApplicationDate: nextAppDate,
+                OverdueOutstandingGross: overdueOutstandingGross,
+                DueNext30DaysOutstandingGross: dueNext30DaysOutstandingGross);
         }
 
         public record PeopleSummaryRow(
