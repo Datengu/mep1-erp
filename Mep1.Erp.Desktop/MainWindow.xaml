@@ -513,81 +513,102 @@
                                                                     <RowDefinition Height="Auto"/>
                                                                 </Grid.RowDefinitions>
 
-                                                                <!-- Shared columns so everything aligns -->
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="*"/>
-                                                                    <ColumnDefinition Width="Auto"/>
-                                                                    <ColumnDefinition Width="120"/>
-                                                                </Grid.ColumnDefinitions>
-
-                                                                <!-- Row 0 -->
+                                                                <!-- Title -->
                                                                 <TextBlock Grid.Row="0"
-                                                                           Grid.Column="0"
                                                                            Foreground="White"
                                                                            FontWeight="SemiBold"
-                                                                           Text="Incoming total (net)"/>
+                                                                           FontSize="14"
+                                                                           Text="Projected"/>
 
-                                                                <TextBlock Grid.Row="0"
-                                                                           Grid.Column="1"
-                                                                           Foreground="White"
-                                                                           FontWeight="SemiBold"
-                                                                           Text="£"
-                                                                           Margin="12,0,4,0"/>
+                                                                <Border Grid.Row="1"
+                                                                        Height="1"
+                                                                        Background="#FF333333"
+                                                                        Margin="0,8,0,10"/>
 
-                                                                <TextBlock Grid.Row="0"
-                                                                           Grid.Column="2"
-                                                                           Foreground="White"
-                                                                           FontWeight="SemiBold"
-                                                                           TextAlignment="Right"
-                                                                           Text="{Binding SelectedProjectIncomingNetTotal, StringFormat={}{0:N2}}"/>
+                                                                <!-- Body -->
+                                                                <Grid Grid.Row="2">
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                    </Grid.RowDefinitions>
 
-                                                                <!-- Row 1 -->
-                                                                <TextBlock Grid.Row="1"
-                                                                           Grid.Column="0"
-                                                                           Foreground="White"
-                                                                           FontWeight="SemiBold"
-                                                                           Margin="0,10,0,0"
-                                                                           Text="Outgoing total (net)"/>
+                                                                    <!-- Shared columns so everything aligns -->
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                        <ColumnDefinition Width="120"/>
+                                                                    </Grid.ColumnDefinitions>
 
-                                                                <TextBlock Grid.Row="1"
-                                                                           Grid.Column="1"
-                                                                           Foreground="White"
-                                                                           FontWeight="SemiBold"
-                                                                           Margin="12,10,4,0"
-                                                                           Text="£"/>
+                                                                    <!-- Row 0 -->
+                                                                    <TextBlock Grid.Row="0"
+                                                                               Grid.Column="0"
+                                                                               Foreground="White"
+                                                                               FontWeight="SemiBold"
+                                                                               Text="Incoming total (net)"/>
 
-                                                                <TextBlock Grid.Row="1"
-                                                                           Grid.Column="2"
-                                                                           Foreground="White"
-                                                                           FontWeight="SemiBold"
-                                                                           Margin="0,10,0,0"
-                                                                           TextAlignment="Right"
-                                                                           Text="{Binding SelectedProjectOutgoingNetTotal, StringFormat={}{0:N2}}"/>
+                                                                    <TextBlock Grid.Row="0"
+                                                                               Grid.Column="1"
+                                                                               Foreground="White"
+                                                                               FontWeight="SemiBold"
+                                                                               Text="£"
+                                                                               Margin="12,0,4,0"/>
 
-                                                                <!-- Row 2 (balance standout) -->
-                                                                <TextBlock Grid.Row="2"
-                                                                           Grid.Column="0"
-                                                                           Foreground="White"
-                                                                           FontWeight="SemiBold"
-                                                                           Margin="0,14,0,0"
-                                                                           Text="Balance (incoming - outgoing)"/>
+                                                                    <TextBlock Grid.Row="0"
+                                                                               Grid.Column="2"
+                                                                               Foreground="White"
+                                                                               FontWeight="SemiBold"
+                                                                               TextAlignment="Right"
+                                                                               Text="{Binding SelectedProjectIncomingNetTotal, StringFormat={}{0:N2}}"/>
 
-                                                                <TextBlock Grid.Row="2"
-                                                                           Grid.Column="1"
-                                                                           Foreground="White"
-                                                                           FontWeight="Bold"
-                                                                           FontSize="16"
-                                                                           Margin="12,14,4,0"
-                                                                           Text="£"/>
+                                                                    <!-- Row 1 -->
+                                                                    <TextBlock Grid.Row="1"
+                                                                               Grid.Column="0"
+                                                                               Foreground="White"
+                                                                               FontWeight="SemiBold"
+                                                                               Margin="0,10,0,0"
+                                                                               Text="Outgoing total (net)"/>
 
-                                                                <TextBlock Grid.Row="2"
-                                                                           Grid.Column="2"
-                                                                           Foreground="White"
-                                                                           FontWeight="Bold"
-                                                                           FontSize="16"
-                                                                           Margin="0,14,0,0"
-                                                                           TextAlignment="Right"
-                                                                           Text="{Binding SelectedProjectBalanceNetTotal, StringFormat={}{0:N2}}"/>
+                                                                    <TextBlock Grid.Row="1"
+                                                                               Grid.Column="1"
+                                                                               Foreground="White"
+                                                                               FontWeight="SemiBold"
+                                                                               Margin="12,10,4,0"
+                                                                               Text="£"/>
+
+                                                                    <TextBlock Grid.Row="1"
+                                                                               Grid.Column="2"
+                                                                               Foreground="White"
+                                                                               FontWeight="SemiBold"
+                                                                               Margin="0,10,0,0"
+                                                                               TextAlignment="Right"
+                                                                               Text="{Binding SelectedProjectOutgoingNetTotal, StringFormat={}{0:N2}}"/>
+
+                                                                    <!-- Row 2 (balance standout) -->
+                                                                    <TextBlock Grid.Row="2"
+                                                                               Grid.Column="0"
+                                                                               Foreground="White"
+                                                                               FontWeight="SemiBold"
+                                                                               Margin="0,14,0,0"
+                                                                               Text="Balance (incoming - outgoing)"/>
+
+                                                                    <TextBlock Grid.Row="2"
+                                                                               Grid.Column="1"
+                                                                               Foreground="White"
+                                                                               FontWeight="Bold"
+                                                                               FontSize="16"
+                                                                               Margin="12,14,4,0"
+                                                                               Text="£"/>
+
+                                                                    <TextBlock Grid.Row="2"
+                                                                               Grid.Column="2"
+                                                                               Foreground="White"
+                                                                               FontWeight="Bold"
+                                                                               FontSize="16"
+                                                                               Margin="0,14,0,0"
+                                                                               TextAlignment="Right"
+                                                                               Text="{Binding SelectedProjectBalanceNetTotal, StringFormat={}{0:N2}}"/>
+                                                                </Grid>
                                                             </Grid>
                                                         </Border>
 
@@ -599,12 +620,31 @@
                                                                 CornerRadius="6"
                                                                 Padding="12"
                                                                 Opacity="0.55">
-                                                            <StackPanel>
-                                                                <TextBlock Foreground="White" FontWeight="SemiBold" Text="Actuals (future)"/>
-                                                                <TextBlock Foreground="#FFBFBFBF"
-                                                                           Margin="0,6,0,0"
-                                                                           Text="When actual outgoing / payments are tracked, this panel will mirror the left side."/>
-                                                            </StackPanel>
+
+                                                            <Grid>
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                    <RowDefinition Height="*"/>
+                                                                </Grid.RowDefinitions>
+
+                                                                <!-- Title -->
+                                                                <TextBlock Grid.Row="0"
+                                                                           Foreground="White"
+                                                                           FontWeight="SemiBold"
+                                                                           FontSize="14"
+                                                                           Text="Actual"/>
+
+                                                                <Border Grid.Row="1"
+                                                                        Height="1"
+                                                                        Background="#FF333333"
+                                                                        Margin="0,8,0,10"/>
+
+                                                                <!-- Body -->
+                                                                <TextBlock Grid.Row="2"
+                                                                           Foreground="#FFBFBFBF"
+                                                                           Text="When actual outgoing / payments are tracked, this panel will mirror the Projected side."/>
+                                                            </Grid>
                                                         </Border>
                                                     </Grid>
 
