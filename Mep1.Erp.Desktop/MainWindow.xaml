@@ -2619,7 +2619,7 @@
                                         </DataGridTemplateColumn>
 
                                         <!-- Notes (wrapped) -->
-                                        <DataGridTemplateColumn Header="Notes" Width="280">
+                                        <DataGridTemplateColumn Header="Notes" Width="350">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding Notes}"
@@ -3415,7 +3415,6 @@
                                         </DataGridTemplateColumn>
                                         
                                         <!-- Agreed -->
-
                                         <DataGridTemplateColumn Header="Agreed Net" Width="110">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
@@ -3473,7 +3472,7 @@
                                                             Width="90"/>
 
                                         <!-- Notes (wrapped) -->
-                                        <DataGridTemplateColumn Header="Notes" Width="300">
+                                        <DataGridTemplateColumn Header="Notes" Width="350">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding Notes}"
