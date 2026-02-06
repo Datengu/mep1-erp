@@ -196,10 +196,10 @@
                                     MouseLeftButtonUp="DashboardOutstandingCard_MouseLeftButtonUp"
                                     Cursor="Hand">
                                 <StackPanel>
-                                    <TextBlock Text="Outstanding (Net)"
+                                    <TextBlock Text="Outstanding (Gross)"
                                                FontSize="12"
                                                Opacity="0.8"/>
-                                    <TextBlock Text="{Binding Dashboard.OutstandingNet, StringFormat='£{0:N2}'}"
+                                    <TextBlock Text="{Binding Dashboard.OutstandingGross, StringFormat='£{0:N2}'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Margin="0,2,0,0"/>
@@ -218,10 +218,10 @@
                                     MouseLeftButtonUp="DashboardOverdueCard_MouseLeftButtonUp"
                                     Cursor="Hand">
                                 <StackPanel>
-                                    <TextBlock Text="Overdue (Net)"
+                                    <TextBlock Text="Overdue (Gross)"
                                                FontSize="12"
                                                Opacity="0.8"/>
-                                    <TextBlock Text="{Binding Dashboard.OverdueOutstandingNet, StringFormat='£{0:N2}'}"
+                                    <TextBlock Text="{Binding Dashboard.OverdueOutstandingGross, StringFormat='£{0:N2}'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Margin="0,2,0,0"/>
@@ -240,10 +240,10 @@
                                     MouseLeftButtonUp="DashboardDueNext30Card_MouseLeftButtonUp"
                                     Cursor="Hand">
                                 <StackPanel>
-                                    <TextBlock Text="Due in next 30 days (Net)"
+                                    <TextBlock Text="Due in next 30 days (Gross)"
                                                FontSize="12"
                                                Opacity="0.8"/>
-                                    <TextBlock Text="{Binding Dashboard.DueNext30DaysOutstandingNet, StringFormat='£{0:N2}'}"
+                                    <TextBlock Text="{Binding Dashboard.DueNext30DaysOutstandingGross, StringFormat='£{0:N2}'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Margin="0,2,0,0"/>
@@ -323,10 +323,10 @@
                                     Padding="10"
                                     Margin="4">
                                 <StackPanel>
-                                    <TextBlock Text="Applied (Not Invoiced) (Net)"
+                                    <TextBlock Text="Applied (Not Invoiced) (Gross)"
                                                FontSize="12"
                                                Opacity="0.8"/>
-                                    <TextBlock Text="{Binding Dashboard.ApplicationsAppliedNotInvoicedNet, StringFormat='£{0:N2}'}"
+                                    <TextBlock Text="{Binding Dashboard.ApplicationsAppliedNotInvoicedGross, StringFormat='£{0:N2}'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Margin="0,2,0,0"/>
@@ -334,6 +334,10 @@
                                                FontSize="11"
                                                Opacity="0.7"
                                                Margin="0,2,0,0"/>
+                                    <TextBlock Text="Assumes 20% VAT"
+                                               FontSize="10"
+                                               Opacity="0.5"
+                                               Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 
@@ -343,10 +347,10 @@
                                     Padding="10"
                                     Margin="4">
                                 <StackPanel>
-                                    <TextBlock Text="Agreed (Ready to Invoice) (Net)"
+                                    <TextBlock Text="Agreed (Ready to Invoice) (Gross)"
                                                FontSize="12"
                                                Opacity="0.8"/>
-                                    <TextBlock Text="{Binding Dashboard.ApplicationsAgreedReadyToInvoiceNet, StringFormat='£{0:N2}'}"
+                                    <TextBlock Text="{Binding Dashboard.ApplicationsAgreedReadyToInvoiceGross, StringFormat='£{0:N2}'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Margin="0,2,0,0"/>
@@ -354,6 +358,10 @@
                                                FontSize="11"
                                                Opacity="0.7"
                                                Margin="0,2,0,0"/>
+                                    <TextBlock Text="Assumes 20% VAT"
+                                               FontSize="10"
+                                               Opacity="0.5"
+                                               Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 
@@ -2268,7 +2276,7 @@
                                 BorderThickness="0"
                                 Margin="0">
 
-                        <!-- INVOICES (existing view) -->
+                        <!-- INVOICES -->
                         <TabItem Header="Invoices">
                             <Grid Background="#FF1E1E1E">
                                 <Grid.RowDefinitions>
@@ -2391,7 +2399,7 @@
                                                             Width="80"/>
 
                                         <!-- Amounts -->
-                                        <DataGridTemplateColumn Header="Net" Width="90">
+                                        <DataGridTemplateColumn Header="Net" Width="90" SortMemberPath="NetAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -2438,7 +2446,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Gross" Width="90">
+                                        <DataGridTemplateColumn Header="Gross" Width="90" SortMemberPath="GrossAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -2483,7 +2491,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Payment" Width="90">
+                                        <DataGridTemplateColumn Header="Payment (Gross)" Width="110" SortMemberPath="PaymentAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -2528,7 +2536,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Outstanding Net" Width="120">
+                                        <DataGridTemplateColumn Header="Outstanding Net" Width="120" SortMemberPath="OutstandingNet">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -2573,7 +2581,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Outstanding Gross" Width="130">
+                                        <DataGridTemplateColumn Header="Outstanding Gross" Width="130" SortMemberPath="OutstandingGross">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource InvoicesGridHeaderBaseStyle}">
@@ -2619,7 +2627,7 @@
                                         </DataGridTemplateColumn>
 
                                         <!-- Notes (wrapped) -->
-                                        <DataGridTemplateColumn Header="Notes" Width="300">
+                                        <DataGridTemplateColumn Header="Notes" Width="350">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding Notes}"
@@ -3098,7 +3106,7 @@
                                                     <RowDefinition Height="Auto"/>
                                                 </Grid.RowDefinitions>
 
-                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Payment Amount"
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Payment Amount (Gross)"
                                                            Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,8,6"/>
 
                                                 <TextBox Grid.Row="0" Grid.Column="1"
@@ -3324,7 +3332,7 @@
                                                             Width="110"/>
 
                                         <!-- Amounts -->
-                                        <DataGridTemplateColumn Header="Net" Width="90">
+                                        <DataGridTemplateColumn Header="Net" Width="90" SortMemberPath="NetAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource ApplicationsGridHeaderBaseStyle}">
@@ -3369,7 +3377,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Gross" Width="90">
+                                        <DataGridTemplateColumn Header="Gross" Width="90" SortMemberPath="GrossAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource ApplicationsGridHeaderBaseStyle}">
@@ -3415,8 +3423,7 @@
                                         </DataGridTemplateColumn>
                                         
                                         <!-- Agreed -->
-
-                                        <DataGridTemplateColumn Header="Agreed Net" Width="110">
+                                        <DataGridTemplateColumn Header="Agreed Net" Width="110" SortMemberPath="AgreedNetAmount">
                                             <DataGridTemplateColumn.HeaderStyle>
                                                 <Style TargetType="DataGridColumnHeader"
                                                        BasedOn="{StaticResource ApplicationsGridHeaderBaseStyle}">
@@ -3473,7 +3480,7 @@
                                                             Width="90"/>
 
                                         <!-- Notes (wrapped) -->
-                                        <DataGridTemplateColumn Header="Notes" Width="300">
+                                        <DataGridTemplateColumn Header="Notes" Width="350">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding Notes}"

@@ -21,5 +21,9 @@ namespace Mep1.Erp.Core.Contracts
         public int ApplicationsAppliedNotInvoicedCount { get; init; }
         public decimal ApplicationsAgreedReadyToInvoiceNet { get; init; }
         public int ApplicationsAgreedReadyToInvoiceCount { get; init; }
+        public decimal OverdueOutstandingGross { get; init; }
+        public decimal DueNext30DaysOutstandingGross { get; init; }
+        public decimal ApplicationsAppliedNotInvoicedGross { get; init; }
+        public decimal ApplicationsAgreedReadyToInvoiceGross { get; init; }
     }
 }
