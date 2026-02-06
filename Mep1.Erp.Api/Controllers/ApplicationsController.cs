@@ -407,13 +407,13 @@ namespace Mep1.Erp.Api.Controllers
         [HttpPost("{id:int}/link-invoice")]
         public async Task<ActionResult> LinkInvoice([FromRoute] int id, [FromBody] LinkInvoiceRequestDto dto)
         {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+
             var app = await _db.Applications.FirstOrDefaultAsync(a => a.Id == id);
             if (app == null)
                 return NotFound("Application not found.");
 
-            var invoice = await _db.Invoices
-                .FirstOrDefaultAsync(i => i.Id == dto.InvoiceId);
-
+            var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.Id == dto.InvoiceId);
             if (invoice == null)
                 return BadRequest("Invoice not found.");
 
@@ -423,23 +423,31 @@ namespace Mep1.Erp.Api.Controllers
                     $"Invoice project '{invoice.ProjectId}' does not match application project '{app.ProjectId}'."
                 );
 
-            // Safety: ensure it’s the same project
+            // Safety: ensure it’s the same project code too (legacy/string)
             if (!string.Equals(invoice.ProjectCode?.Trim(), app.ProjectCode?.Trim(), StringComparison.OrdinalIgnoreCase))
                 return BadRequest($"Invoice project '{invoice.ProjectCode}' does not match application project '{app.ProjectCode}'.");
 
-            // Enforce 1:1 – if this application already has a linked invoice, unlink it first.
+            // If this application already has a different invoice linked, unlink it first
             var existingForApp = await _db.Invoices.FirstOrDefaultAsync(i => i.ApplicationId == app.Id);
             if (existingForApp != null && existingForApp.Id != invoice.Id)
+            {
                 existingForApp.ApplicationId = null;
+                existingForApp.Application = null;
+            }
 
-            // Enforce 1:1 – if this invoice is linked to another application, block.
+            // If this invoice is already linked to a different application, unlink it and relink
             if (invoice.ApplicationId != null && invoice.ApplicationId.Value != app.Id)
-                return Conflict("This invoice is already linked to a different application.");
+            {
+                invoice.ApplicationId = null;
+                invoice.Application = null;
+            }
 
+            // Now link invoice -> application
             invoice.ApplicationId = app.Id;
             invoice.Application = app;
 
             await _db.SaveChangesAsync();
+            await tx.CommitAsync();
 
             var actor = GetActorForAudit();
             await _audit.LogAsync(
