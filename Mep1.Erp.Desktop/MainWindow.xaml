@@ -332,8 +332,35 @@
                         </UniformGrid>
 
                         <!-- Applications (pipeline) -->
-                        <UniformGrid Columns="2">
+                        <UniformGrid Columns="3">
 
+                            <!-- All (Not Invoiced) -->
+                            <Border Background="#FF262626"
+                                    CornerRadius="6"
+                                    Padding="10"
+                                    Margin="4">
+                                <StackPanel>
+                                    <TextBlock Text="All Applications (Not Invoiced) (Gross)"
+                                               FontSize="12"
+                                               Opacity="0.8"/>
+
+                                    <TextBlock Text="{Binding DashboardApplicationsAllNotInvoicedGross, StringFormat='£{0:N2}'}"
+                                               FontSize="22"
+                                               FontWeight="Bold"
+                                               Margin="0,2,0,0"/>
+
+                                    <TextBlock Text="{Binding DashboardApplicationsAllNotInvoicedCount, StringFormat='{}{0} applications'}"
+                                               FontSize="11"
+                                               Opacity="0.7"
+                                               Margin="0,2,0,0"/>
+
+                                    <TextBlock Text="Applied + Agreed"
+                                               FontSize="11"
+                                               Opacity="0.5"
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            
                             <!-- Applied (Not Invoiced) -->
                             <Border Background="#FF262626"
                                     CornerRadius="6"
@@ -383,6 +410,28 @@
                             </Border>
 
                         </UniformGrid>
+
+                        <!-- Total owed (Outstanding invoices + Applications not invoiced yet) -->
+                        <Border Background="#FF262626"
+                                CornerRadius="6"
+                                Padding="12"
+                                Margin="4,10,4,0">
+                            <StackPanel>
+                                <TextBlock Text="Total owed (Outstanding invoices + Applications not invoiced) (Gross)"
+                                           FontSize="12"
+                                           Opacity="0.8"/>
+
+                                <TextBlock Text="{Binding DashboardTotalOwedGross, StringFormat='£{0:N2}'}"
+                                           FontSize="26"
+                                           FontWeight="Bold"
+                                           Margin="0,2,0,0"/>
+
+                                <TextBlock Text="{Binding DashboardTotalOwedCount, StringFormat='{}{0} items (invoices + applications)'}"
+                                           FontSize="11"
+                                           Opacity="0.7"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
 
                     </StackPanel>
 

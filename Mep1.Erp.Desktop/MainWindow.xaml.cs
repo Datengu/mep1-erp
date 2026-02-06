@@ -91,8 +91,34 @@ namespace Mep1.Erp.Desktop
         public DashboardSummaryDto Dashboard
         {
             get => _dashboard;
-            set => SetField(ref _dashboard, value, nameof(Dashboard));
+            set
+            {
+                if (SetField(ref _dashboard, value, nameof(Dashboard)))
+                {
+                    // Also refresh computed dashboard properties
+                    OnPropertyChanged(nameof(DashboardApplicationsAllNotInvoicedGross));
+                    OnPropertyChanged(nameof(DashboardApplicationsAllNotInvoicedCount));
+                    OnPropertyChanged(nameof(DashboardTotalOwedGross));
+                    OnPropertyChanged(nameof(DashboardTotalOwedCount));
+                }
+            }
         }
+
+        public decimal DashboardApplicationsAllNotInvoicedGross
+            => (Dashboard?.ApplicationsAppliedNotInvoicedGross ?? 0m)
+             + (Dashboard?.ApplicationsAgreedReadyToInvoiceGross ?? 0m);
+
+        public int DashboardApplicationsAllNotInvoicedCount
+            => (Dashboard?.ApplicationsAppliedNotInvoicedCount ?? 0)
+             + (Dashboard?.ApplicationsAgreedReadyToInvoiceCount ?? 0);
+
+        public decimal DashboardTotalOwedGross
+            => (Dashboard?.OutstandingGross ?? 0m)
+             + DashboardApplicationsAllNotInvoicedGross;
+
+        public int DashboardTotalOwedCount
+            => (Dashboard?.UnpaidInvoiceCount ?? 0)
+             + DashboardApplicationsAllNotInvoicedCount;
 
         private List<ProjectSummaryDto> _projectSummaries = new();
         public List<ProjectSummaryDto> ProjectSummaries
