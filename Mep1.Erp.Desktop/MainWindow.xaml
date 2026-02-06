@@ -509,7 +509,11 @@
                                                                Foreground="White"
                                                                Text="{Binding SelectedProject.JobNameOrNumber, TargetNullValue=Select a project in Overview}"/>
 
-                                                    <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Foreground="#FFBFBFBF"
+                                                               Margin="0,2,0,0"
+                                                               Text="{Binding SelectedProjectCompanyName, StringFormat=Company: {0}, TargetNullValue=Company: -}"/>
+
+                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                                         <TextBlock Foreground="#FFBFBFBF"
                                                                    Text="{Binding SelectedProject.BaseCode, StringFormat=Code: {0}, TargetNullValue=Code: -}"
                                                                    Margin="0,0,12,0"/>
@@ -517,7 +521,6 @@
                                                                    Text="{Binding SelectedProject.Category, StringFormat=Category: {0}, TargetNullValue=Category: -}"/>
                                                     </StackPanel>
                                                 </StackPanel>
-
                                                 <!-- Nice-to-have: jump to edit tab (optional wiring later) -->
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                                     <Button Content="Edit Project"

@@ -159,6 +159,13 @@ namespace Mep1.Erp.Desktop
 
         public decimal SelectedProjectBalanceNetTotal => SelectedProjectIncomingNetTotal - SelectedProjectOutgoingNetTotal;
 
+        private string _selectedProjectCompanyName = "";
+        public string SelectedProjectCompanyName
+        {
+            get => _selectedProjectCompanyName;
+            set => SetField(ref _selectedProjectCompanyName, value, nameof(SelectedProjectCompanyName));
+        }
+
         // Filtered CCF refs for the currently selected project
         private ObservableCollection<ProjectCcfRefDetailsDto> _selectedProjectCcfRefsView = new();
         public ObservableCollection<ProjectCcfRefDetailsDto> SelectedProjectCcfRefsView
@@ -2830,12 +2837,24 @@ namespace Mep1.Erp.Desktop
             SelectedProjectApplications = new();
             SelectedProjectIncomingRows.Clear();
             SelectedProjectSupplierCosts.Clear();
+            SelectedProjectCompanyName = "";
 
             try
             {
                 ProjectDrilldownDto drill;
 
                 var cacheKey = projSummary.JobNameOrNumber;
+                // Load company name (from /edit endpoint) in parallel with drilldown
+                Task<ProjectEditDto>? editTask = null;
+                try
+                {
+                    editTask = _api.GetProjectForEditAsync(cacheKey);
+                }
+                catch
+                {
+                    // ignore (we'll just show blank company name)
+                }
+
                 if (_projectDrilldownCache.TryGetValue(cacheKey, out var cached) &&
                     (DateTime.UtcNow - cached.fetchedUtc) <= ProjectDrilldownCacheTtl)
                 {
@@ -2850,6 +2869,20 @@ namespace Mep1.Erp.Desktop
                 // If user clicked another project while we were loading, ignore this result
                 if (myVersion != _projectDrilldownLoadVersion)
                     return;
+
+                // Apply company name (best-effort)
+                if (editTask != null)
+                {
+                    try
+                    {
+                        var edit = await editTask;
+                        SelectedProjectCompanyName = string.IsNullOrWhiteSpace(edit.CompanyName) ? "-" : edit.CompanyName;
+                    }
+                    catch
+                    {
+                        SelectedProjectCompanyName = "null";
+                    }
+                }
 
                 // Apply results
                 SelectedProjectLabourThisMonth = drill.LabourThisMonth
