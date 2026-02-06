@@ -3894,6 +3894,7 @@
                                                             <sys:String>Draft</sys:String>
                                                             <sys:String>Submitted</sys:String>
                                                             <sys:String>Agreed</sys:String>
+                                                            <sys:String>Invoiced</sys:String>
                                                             <sys:String>VOID</sys:String>
                                                         </x:Array>
                                                     </ComboBox.ItemsSource>
