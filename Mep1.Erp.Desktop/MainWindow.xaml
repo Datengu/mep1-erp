@@ -338,7 +338,9 @@
                             <Border Background="#FF262626"
                                     CornerRadius="6"
                                     Padding="10"
-                                    Margin="4">
+                                    Margin="4"
+                                    Cursor="Hand"
+                                    MouseLeftButtonUp="DashboardCard_AllApplicationsNotInvoiced_Click">
                                 <StackPanel>
                                     <TextBlock Text="All Applications (Not Invoiced) (Gross)"
                                                FontSize="12"
@@ -365,7 +367,9 @@
                             <Border Background="#FF262626"
                                     CornerRadius="6"
                                     Padding="10"
-                                    Margin="4">
+                                    Margin="4"
+                                    Cursor="Hand"
+                                    MouseLeftButtonUp="DashboardCard_AppliedNotInvoiced_Click">
                                 <StackPanel>
                                     <TextBlock Text="Applied (Not Invoiced) (Gross)"
                                                FontSize="12"
@@ -389,7 +393,9 @@
                             <Border Background="#FF262626"
                                     CornerRadius="6"
                                     Padding="10"
-                                    Margin="4">
+                                    Margin="4"
+                                    Cursor="Hand"
+                                    MouseLeftButtonUp="DashboardCard_AgreedReadyToInvoice_Click">
                                 <StackPanel>
                                     <TextBlock Text="Agreed (Ready to Invoice) (Gross)"
                                                FontSize="12"

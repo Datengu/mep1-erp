@@ -7293,5 +7293,35 @@ namespace Mep1.Erp.Desktop
             await RefreshDashboardAsync();
         }
 
+        private void NavigateToApplicationsAndApplyPredicate(Func<ApplicationListEntryDto, bool>? predicate)
+        {
+            // Switch tab
+            MainTabControl.SelectedItem = ApplicationsTabItem;
+
+            // Apply predicate + refresh
+            _applicationFilterPredicate = predicate;
+            ApplyApplicationFilter();
+
+            // Nice UX: focus the grid so wheel scroll works immediately
+            ApplicationsGrid?.Focus();
+        }
+
+        private void DashboardCard_AllApplicationsNotInvoiced_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            NavigateToApplicationsAndApplyPredicate(app => app.InvoiceId == null);
+        }
+
+        private void DashboardCard_AppliedNotInvoiced_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // "Applied (Not Invoiced)" = no invoice + not agreed yet
+            NavigateToApplicationsAndApplyPredicate(app => app.InvoiceId == null && app.DateAgreed == null);
+        }
+
+        private void DashboardCard_AgreedReadyToInvoice_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // "Agreed (Ready to Invoice)" = no invoice + agreed date set
+            NavigateToApplicationsAndApplyPredicate(app => app.InvoiceId == null && app.DateAgreed != null);
+        }
+
     }
 }
