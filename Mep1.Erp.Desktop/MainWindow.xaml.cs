@@ -182,7 +182,7 @@ namespace Mep1.Erp.Desktop
             set => SetField(ref _projectView, value, nameof(ProjectView));
         }
 
-        private ProjectActiveFilter _projectFilter = ProjectActiveFilter.All;
+        private ProjectActiveFilter _projectFilter = ProjectActiveFilter.ActiveOnly;
         public ProjectActiveFilter ProjectFilter
         {
             get => _projectFilter;
