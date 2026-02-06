@@ -160,7 +160,7 @@
             </TabControl.Resources>
 
             <!-- 🔹 DASHBOARD TAB (HOME) -->
-            <TabItem Header="Dashboard">
+            <TabItem Header="Dashboard" x:Name="DashboardTabItem" GotFocus="DashboardTab_GotFocus">
                 <Grid Background="#FF1E1E1E">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -170,15 +170,32 @@
                     </Grid.RowDefinitions>
 
                     <!-- Title / description -->
-                    <StackPanel Grid.Row="0" Margin="12,8,12,4">
-                        <TextBlock Text="Cashflow overview"
-                       FontSize="18"
-                       FontWeight="Bold"
-                       Margin="0,0,0,4"/>
-                        <TextBlock Text="Shows how much money is still owed, what is overdue, and what is due in the next 30 days."
-                       FontSize="12"
-                       Opacity="0.7"/>
-                    </StackPanel>
+                    <Grid Grid.Row="0" Margin="12,8,12,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: title + description -->
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Cashflow overview"
+                                       FontSize="18"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,4"/>
+
+                            <TextBlock Text="Shows how much money is still owed, what is overdue, and what is due in the next 30 days."
+                                       FontSize="12"
+                                       Opacity="0.7"/>
+                        </StackPanel>
+
+                        <!-- Right: refresh button (top aligned) -->
+                        <Button Grid.Column="1"
+                                Content="Refresh"
+                                Padding="12,6"
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Top"
+                                Click="RefreshDashboard_Click"/>
+                    </Grid>
 
                     <!-- Metrics cards -->
                     <StackPanel Grid.Row="1" Margin="8,4,8,8">

@@ -7205,5 +7205,67 @@ namespace Mep1.Erp.Desktop
 
             await LoadSelectedProjectDetailsAsync(selected);
         }
+
+        private bool _isDashboardRefreshing;
+
+        private async Task RefreshDashboardAsync()
+        {
+            if (_isDashboardRefreshing)
+                return;
+
+            _isDashboardRefreshing = true;
+
+            try
+            {
+                // Dashboard
+                Dashboard = await _api.GetDashboardSummaryAsync(Settings.UpcomingApplicationsDaysAhead);
+
+                // Due Schedule + Upcoming Applications are part of the dashboard experience too
+                DueSchedule = await _api.GetDueScheduleAsync();
+                UpcomingApplications = await _api.GetUpcomingApplicationsAsync(Settings.UpcomingApplicationsDaysAhead);
+
+                // Invoices/Applications often drive the dashboard numbers and "what's due"
+                Invoices = await _api.GetInvoicesAsync();
+                Applications = await _api.GetApplicationsAsync();
+
+                // If you show project-derived items on dashboard, keep these fresh too
+                ProjectSummaries = await _api.GetProjectSummariesAsync();
+
+                // Maintain your default selection logic
+                if (SelectedProjectForCcf == null && ProjectSummaries.Count > 0)
+                {
+                    SelectedProjectForCcf = ProjectSummaries.FirstOrDefault(p => p.IsActive) ?? ProjectSummaries[0];
+                }
+
+                // Re-apply views/filters/sorts that depend on the underlying lists
+                EnsureInvoiceView();
+                EnsureApplicationView();
+                EnsureProjectView();
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show(
+                    "Dashboard refresh failed:\n\n" + ex.Message,
+                    "API error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+            }
+            finally
+            {
+                _isDashboardRefreshing = false;
+            }
+        }
+
+        private async void RefreshDashboard_Click(object sender, RoutedEventArgs e)
+        {
+            await RefreshDashboardAsync();
+        }
+
+        private async void DashboardTab_GotFocus(object sender, RoutedEventArgs e)
+        {
+            await RefreshDashboardAsync();
+        }
+
     }
 }
